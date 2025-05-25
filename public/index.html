@@ -108,27 +108,6 @@
             border-radius: 0 8px 8px 0;
         }
         
-        .onboarding-container {
-            display: none;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-        
-        .onboarding-container h2 {
-            margin-bottom: 1rem;
-            color: #fff;
-        }
-        
-        .onboarding-container p {
-            margin-bottom: 2rem;
-            opacity: 0.9;
-            line-height: 1.6;
-        }
-        
         .chat-container {
             display: none;
             background: rgba(255, 255, 255, 0.1);
@@ -313,14 +292,6 @@
             <div id="authError"></div>
         </div>
         
-        <!-- Onboarding for new users -->
-        <div id="onboardingContainer" class="onboarding-container">
-            <h2>Welcome to MindOS!</h2>
-            <p>I'm your adaptive intelligence assistant. To create your personalized life management system, I'll need to learn about your lifestyle, goals, and preferences through a comprehensive interview.</p>
-            <p>This will take about 10-15 minutes and will help me understand your daily routines, priorities, and aspirations so I can provide truly intelligent assistance.</p>
-            <button onclick="startOnboarding()" style="width: auto; padding: 1rem 2rem;">Begin Setup Interview</button>
-        </div>
-        
         <!-- Main App -->
         <div id="mainApp" class="hidden">
             <div class="status-bar">
@@ -332,7 +303,7 @@
             <div class="chat-container" id="chatContainer">
                 <div class="messages" id="messages">
                     <div class="message assistant">
-                        <strong>MindOS:</strong> Your adaptive intelligence system is ready. How can I help you today?
+                        <strong>MindOS:</strong> Welcome! I'm your adaptive intelligence assistant. Let's start by understanding your lifestyle and goals so I can create a personalized management system for you. What would you like to focus on first?
                     </div>
                 </div>
                 
@@ -361,16 +332,46 @@
         let token = localStorage.getItem('mindos_token');
         let user = JSON.parse(localStorage.getItem('mindos_user') || '{}');
         let conversationHistory = [];
-        let isOnboarding = false;
         
-        // Initialize
+        // Initialize - FIXED: Only check auth if we have a valid token
         document.addEventListener('DOMContentLoaded', function() {
-            if (token && token !== 'null') {
-                checkUserStatus();
-            } else {
-                showAuthContainer();
+            // Always show auth container first
+            showAuthContainer();
+            
+            // Only attempt login if we have a valid token
+            if (token && token !== 'null' && token !== 'undefined') {
+                attemptAutoLogin();
             }
         });
+        
+        // FIXED: New function for auto-login attempts
+        async function attemptAutoLogin() {
+            try {
+                const response = await fetch('/api/user-status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const status = await response.json();
+                    if (!status.isNewUser) {
+                        showMainApp();
+                    }
+                } else {
+                    // Invalid token, clear it
+                    localStorage.removeItem('mindos_token');
+                    localStorage.removeItem('mindos_user');
+                    token = null;
+                    user = {};
+                }
+            } catch (error) {
+                console.log('Auto-login failed:', error);
+                // Clear invalid data
+                localStorage.removeItem('mindos_token');
+                localStorage.removeItem('mindos_user');
+                token = null;
+                user = {};
+            }
+        }
         
         // Authentication functions
         function showLogin() {
@@ -410,7 +411,7 @@
                     user = data.user;
                     localStorage.setItem('mindos_token', token);
                     localStorage.setItem('mindos_user', JSON.stringify(user));
-                    checkUserStatus();
+                    showMainApp();
                 } else {
                     showError(data.error);
                 }
@@ -443,7 +444,7 @@
                     user = data.user;
                     localStorage.setItem('mindos_token', token);
                     localStorage.setItem('mindos_user', JSON.stringify(user));
-                    showOnboarding();
+                    showMainApp();
                 } else {
                     showError(data.error);
                 }
@@ -460,60 +461,8 @@
             showAuthContainer();
         }
         
-        async function checkUserStatus() {
-            console.log('Checking user status...');
-            try {
-                const response = await fetch('/api/user-status', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (response.ok) {
-                    const status = await response.json();
-                    console.log('Status response:', status);
-                    
-                    if (status.isNewUser) {
-                        console.log('New user - showing auth');
-                        showAuthContainer();
-                        return;
-                    }
-                    
-                    if (status.hasCompletedOnboarding) {
-                        console.log('Completed user - showing main app');
-                        showMainApp();
-                        document.getElementById('systemStatus').textContent = 
-                            `System ${Math.round(status.totalCompleteness)}% Complete`;
-                    } else {
-                        console.log('Incomplete user - showing onboarding');
-                        console.log('Onboarding element exists:', !!document.getElementById('onboardingContainer'));
-                        showOnboarding();
-                        if (status.needsDeepDive && status.needsDeepDive.length > 0) {
-                            document.querySelector('#onboardingContainer p').innerHTML = 
-                                `I need to learn more about: <strong>${status.needsDeepDive.map(([area]) => 
-                                    area.replace(/([A-Z])/g, ' $1').toLowerCase()).join(', ')}</strong><br><br>
-                                Let's have a quick conversation to fill these gaps and improve your system.`;
-                        }
-                    }
-                } else {
-                    console.error('User status check failed');
-                    showAuthContainer();
-                }
-            } catch (error) {
-                console.error('Error checking user status:', error);
-                showAuthContainer();
-            }
-        }
-        
-        function showOnboarding() {
-            console.log('showOnboarding() called');
-            document.getElementById('authContainer').classList.add('hidden');
-            document.getElementById('onboardingContainer').classList.remove('hidden');
-            document.getElementById('mainApp').classList.add('hidden');
-            console.log('Onboarding container visible:', !document.getElementById('onboardingContainer').classList.contains('hidden'));
-        }
-        
         function showMainApp() {
             document.getElementById('authContainer').classList.add('hidden');
-            document.getElementById('onboardingContainer').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
             document.getElementById('chatContainer').style.display = 'flex';
             document.getElementById('userInfo').textContent = `Welcome, ${user.username}!`;
@@ -521,43 +470,10 @@
         
         function showAuthContainer() {
             document.getElementById('authContainer').classList.remove('hidden');
-            document.getElementById('onboardingContainer').classList.add('hidden');
             document.getElementById('mainApp').classList.add('hidden');
         }
         
-        // Onboarding system
-        async function startOnboarding() {
-            isOnboarding = true;
-            document.getElementById('onboardingContainer').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
-            document.getElementById('chatContainer').style.display = 'flex';
-            document.getElementById('userInfo').textContent = `Setting up ${user.username}'s system...`;
-            document.getElementById('systemStatus').textContent = 'Onboarding Interview';
-            
-            // Clear messages and start interview
-            document.getElementById('messages').innerHTML = '';
-            
-            try {
-                const response = await fetch('/api/start-onboarding', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    addMessage('MindOS', data.content[0].text, 'assistant');
-                } else {
-                    showError('Failed to start onboarding');
-                }
-            } catch (error) {
-                showError('Error starting onboarding: ' + error.message);
-            }
-        }
-        
-        // Chat functions
+        // Chat functions - SIMPLIFIED
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
@@ -569,10 +485,6 @@
             showLoading(true);
             
             try {
-                const systemContext = isOnboarding ? 
-                    `Continue the MindOS onboarding interview for ${user.username}. Based on their response, ask the next most important question to understand their lifestyle and build their personal management system. Keep it conversational and natural.` :
-                    `You are MindOS v5.3 helping ${user.username} with their life management. Respond helpfully and intelligently.`;
-                
                 const response = await fetch('/api/claude', {
                     method: 'POST',
                     headers: {
@@ -582,7 +494,9 @@
                     body: JSON.stringify({
                         messages: [{
                             role: 'user',
-                            content: `${systemContext}\n\nUser: ${message}`
+                            content: `You are MindOS v5.3, an adaptive intelligence life management system. The user ${user.username} is chatting with you. Be helpful, intelligent, and focus on understanding their needs to build a personalized management system. Use a conversational interview style to learn about their lifestyle, goals, and daily routines.
+
+User message: ${message}`
                         }],
                         max_tokens: 1000
                     })
