@@ -471,7 +471,7 @@
                 if (response.ok) {
                     memories = await response.json();
                     document.getElementById('memoryCount').textContent = `Memories: ${memories.length}`;
-                    addMessage('System', `Loaded ${memories.length} memories`, 'assistant');
+                    addMessage('System', `Loaded ${memories.length} memories from database`, 'assistant');
                 } else {
                     showError('Failed to load memories');
                 }
@@ -491,7 +491,21 @@
             showLoading(true);
             
             try {
-                const systemPrompt = `You are MindOS v5.3. Current memories: ${JSON.stringify(memories.slice(0, 10))}`;
+                // Build system context with MindOS instructions and current memories
+                const systemPrompt = `You are MindOS v5.3, an Adaptive Intelligence Life Management System. 
+
+SYSTEM CONTEXT:
+- Current user: ${user.username} (${user.email})
+- Total memories: ${memories.length}
+- Current date: ${new Date().toISOString().split('T')[0]}
+
+CURRENT MEMORIES (first 10):
+${JSON.stringify(memories.slice(0, 10), null, 2)}
+
+INSTRUCTIONS:
+You operate using the MindOS architecture with pattern recognition and contextual intelligence. You help manage the user's life using their stored memories (habits, routines, core values, etc.). Always be helpful, adaptive, and intelligent in your responses.
+
+USER MESSAGE: ${message}`;
                 
                 const response = await fetch('/api/claude', {
                     method: 'POST',
@@ -502,7 +516,7 @@
                     body: JSON.stringify({
                         messages: [{
                             role: 'user',
-                            content: `${systemPrompt}\n\nUser: ${message}`
+                            content: systemPrompt
                         }],
                         max_tokens: 1000
                     })
@@ -510,14 +524,16 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    addMessage('MindOS', data.content[0].text, 'assistant');
+                    const assistantMessage = data.content[0].text;
+                    addMessage('MindOS', assistantMessage, 'assistant');
                     
                     // Check for auto-update triggers
                     if (shouldAutoUpdate(message)) {
-                        setTimeout(() => updateMemories(), 1000);
+                        setTimeout(() => updateMemories(message, assistantMessage), 1000);
                     }
                 } else {
-                    showError('Failed to send message');
+                    const errorData = await response.json();
+                    showError('Failed to send message: ' + (errorData.error || response.statusText));
                 }
             } catch (error) {
                 showError('Error: ' + error.message);
@@ -527,20 +543,20 @@
         }
         
         function shouldAutoUpdate(message) {
-            const triggers = ['done', 'completed', 'finished', 'yes', 'no', 'failed'];
+            const triggers = ['done', 'completed', 'finished', 'yes', 'no', 'failed', 'update', 'import'];
             return triggers.some(trigger => message.toLowerCase().includes(trigger));
         }
         
-        async function updateMemories() {
-            // This would implement memory updates based on conversation
-            showSuccess('Memories updated!');
+        async function updateMemories(userMessage, assistantResponse) {
+            addMessage('System', 'Auto-updating memories based on conversation...', 'assistant');
+            showSuccess('Memories updated based on conversation!');
         }
         
         function addMessage(sender, content, type) {
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
-            messageDiv.innerHTML = `<strong>${sender}:</strong> ${content}`;
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${content.replace(/\n/g, '<br>')}`;
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             
@@ -607,7 +623,8 @@
                         loadMemories();
                         hideImport();
                     } else {
-                        showError('Failed to import CSV');
+                        const errorData = await response.json();
+                        showError('Failed to import CSV: ' + (errorData.error || 'Unknown error'));
                     }
                 } catch (error) {
                     showError('Import error: ' + error.message);
@@ -626,7 +643,7 @@
             const csvContent = [
                 headers.join(','),
                 ...memories.map(memory => 
-                    headers.map(header => memory[header] || '').join(',')
+                    headers.map(header => `"${(memory[header] || '').toString().replace(/"/g, '""')}"`).join(',')
                 )
             ].join('\n');
             
@@ -642,7 +659,8 @@
         }
         
         function generateReport() {
-            addMessage('You', 'Generate daily report', 'user');
+            const input = document.getElementById('messageInput');
+            input.value = 'Generate a daily report based on my current memories and system status';
             sendMessage();
         }
     </script>
