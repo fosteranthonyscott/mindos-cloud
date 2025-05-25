@@ -108,6 +108,27 @@
             border-radius: 0 8px 8px 0;
         }
         
+        .onboarding-container {
+            display: none;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .onboarding-container h2 {
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        
+        .onboarding-container p {
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
         .chat-container {
             display: none;
             background: rgba(255, 255, 255, 0.1);
@@ -168,6 +189,7 @@
             margin-bottom: 1rem;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
         
         .controls {
@@ -183,17 +205,6 @@
             font-size: 0.9rem;
             padding: 0.5rem;
             margin: 0;
-        }
-        
-        .import-section {
-            margin-top: 2rem;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-        }
-        
-        .file-input {
-            margin: 1rem 0;
         }
         
         .hidden {
@@ -302,18 +313,26 @@
             <div id="authError"></div>
         </div>
         
+        <!-- Onboarding for new users -->
+        <div id="onboardingContainer" class="onboarding-container">
+            <h2>Welcome to MindOS!</h2>
+            <p>I'm your adaptive intelligence assistant. To create your personalized life management system, I'll need to learn about your lifestyle, goals, and preferences through a comprehensive interview.</p>
+            <p>This will take about 10-15 minutes and will help me understand your daily routines, priorities, and aspirations so I can provide truly intelligent assistance.</p>
+            <button onclick="startOnboarding()" style="width: auto; padding: 1rem 2rem;">Begin Setup Interview</button>
+        </div>
+        
         <!-- Main App -->
         <div id="mainApp" class="hidden">
             <div class="status-bar">
                 <span id="userInfo">Welcome!</span>
-                <span id="memoryCount">Memories: 0</span>
+                <span id="systemStatus">System Ready</span>
                 <button onclick="logout()" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem; margin: 0;">Logout</button>
             </div>
             
             <div class="chat-container" id="chatContainer">
                 <div class="messages" id="messages">
                     <div class="message assistant">
-                        <strong>MindOS:</strong> Ready to help with your life management!
+                        <strong>MindOS:</strong> Your adaptive intelligence system is ready. How can I help you today?
                     </div>
                 </div>
                 
@@ -329,17 +348,10 @@
             </div>
             
             <div class="controls">
-                <button onclick="loadMemories()">Load Memories</button>
                 <button onclick="generateReport()">Daily Report</button>
-                <button onclick="exportMemories()">Export CSV</button>
-                <button onclick="showImport()">Import CSV</button>
-            </div>
-            
-            <div id="importSection" class="import-section hidden">
-                <h3>Import CSV</h3>
-                <input type="file" id="csvFile" accept=".csv" class="file-input">
-                <button onclick="importCSV()">Import</button>
-                <button onclick="hideImport()">Cancel</button>
+                <button onclick="reviewGoals()">Review Goals</button>
+                <button onclick="planDay()">Plan My Day</button>
+                <button onclick="systemHealth()">System Health</button>
             </div>
         </div>
     </div>
@@ -348,14 +360,13 @@
         // Global state
         let token = localStorage.getItem('mindos_token');
         let user = JSON.parse(localStorage.getItem('mindos_user') || '{}');
-        let memories = [];
         let conversationHistory = [];
+        let isOnboarding = false;
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             if (token) {
-                showMainApp();
-                loadMemories();
+                checkUserStatus();
             }
         });
         
@@ -397,8 +408,7 @@
                     user = data.user;
                     localStorage.setItem('mindos_token', token);
                     localStorage.setItem('mindos_user', JSON.stringify(user));
-                    showMainApp();
-                    loadMemories();
+                    checkUserStatus();
                 } else {
                     showError(data.error);
                 }
@@ -431,8 +441,7 @@
                     user = data.user;
                     localStorage.setItem('mindos_token', token);
                     localStorage.setItem('mindos_user', JSON.stringify(user));
-                    showMainApp();
-                    showSuccess('Account created successfully!');
+                    showOnboarding();
                 } else {
                     showError(data.error);
                 }
@@ -449,8 +458,36 @@
             showAuthContainer();
         }
         
+        async function checkUserStatus() {
+            try {
+                const response = await fetch('/api/user-status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const status = await response.json();
+                    if (status.hasCompletedOnboarding) {
+                        showMainApp();
+                    } else {
+                        showOnboarding();
+                    }
+                } else {
+                    showOnboarding(); // Default for new users
+                }
+            } catch (error) {
+                showOnboarding();
+            }
+        }
+        
+        function showOnboarding() {
+            document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('onboardingContainer').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+        }
+        
         function showMainApp() {
             document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('onboardingContainer').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
             document.getElementById('chatContainer').style.display = 'flex';
             document.getElementById('userInfo').textContent = `Welcome, ${user.username}!`;
@@ -458,28 +495,43 @@
         
         function showAuthContainer() {
             document.getElementById('authContainer').classList.remove('hidden');
+            document.getElementById('onboardingContainer').classList.add('hidden');
             document.getElementById('mainApp').classList.add('hidden');
         }
         
-        // Memory functions
-        async function loadMemories() {
+        // Onboarding system
+        async function startOnboarding() {
+            isOnboarding = true;
+            document.getElementById('onboardingContainer').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('chatContainer').style.display = 'flex';
+            document.getElementById('userInfo').textContent = `Setting up ${user.username}'s system...`;
+            document.getElementById('systemStatus').textContent = 'Onboarding Interview';
+            
+            // Clear messages and start interview
+            document.getElementById('messages').innerHTML = '';
+            
             try {
-                const response = await fetch('/api/memories', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const response = await fetch('/api/start-onboarding', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
                 
                 if (response.ok) {
-                    memories = await response.json();
-                    document.getElementById('memoryCount').textContent = `Memories: ${memories.length}`;
-                    addMessage('System', `Loaded ${memories.length} memories from database`, 'assistant');
+                    const data = await response.json();
+                    addMessage('MindOS', data.content[0].text, 'assistant');
                 } else {
-                    showError('Failed to load memories');
+                    showError('Failed to start onboarding');
                 }
             } catch (error) {
-                showError('Error loading memories: ' + error.message);
+                showError('Error starting onboarding: ' + error.message);
             }
         }
         
+        // Chat functions
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
@@ -491,21 +543,9 @@
             showLoading(true);
             
             try {
-                // Build system context with MindOS instructions and current memories
-                const systemPrompt = `You are MindOS v5.3, an Adaptive Intelligence Life Management System. 
-
-SYSTEM CONTEXT:
-- Current user: ${user.username} (${user.email})
-- Total memories: ${memories.length}
-- Current date: ${new Date().toISOString().split('T')[0]}
-
-CURRENT MEMORIES (first 10):
-${JSON.stringify(memories.slice(0, 10), null, 2)}
-
-INSTRUCTIONS:
-You operate using the MindOS architecture with pattern recognition and contextual intelligence. You help manage the user's life using their stored memories (habits, routines, core values, etc.). Always be helpful, adaptive, and intelligent in your responses.
-
-USER MESSAGE: ${message}`;
+                const systemContext = isOnboarding ? 
+                    `Continue the MindOS onboarding interview for ${user.username}. Based on their response, ask the next most important question to understand their lifestyle and build their personal management system. Keep it conversational and natural.` :
+                    `You are MindOS v5.3 helping ${user.username} with their life management. Respond helpfully and intelligently.`;
                 
                 const response = await fetch('/api/claude', {
                     method: 'POST',
@@ -516,7 +556,7 @@ USER MESSAGE: ${message}`;
                     body: JSON.stringify({
                         messages: [{
                             role: 'user',
-                            content: systemPrompt
+                            content: `${systemContext}\n\nUser: ${message}`
                         }],
                         max_tokens: 1000
                     })
@@ -526,11 +566,6 @@ USER MESSAGE: ${message}`;
                     const data = await response.json();
                     const assistantMessage = data.content[0].text;
                     addMessage('MindOS', assistantMessage, 'assistant');
-                    
-                    // Check for auto-update triggers
-                    if (shouldAutoUpdate(message)) {
-                        setTimeout(() => updateMemories(message, assistantMessage), 1000);
-                    }
                 } else {
                     const errorData = await response.json();
                     showError('Failed to send message: ' + (errorData.error || response.statusText));
@@ -540,16 +575,6 @@ USER MESSAGE: ${message}`;
             }
             
             showLoading(false);
-        }
-        
-        function shouldAutoUpdate(message) {
-            const triggers = ['done', 'completed', 'finished', 'yes', 'no', 'failed', 'update', 'import'];
-            return triggers.some(trigger => message.toLowerCase().includes(trigger));
-        }
-        
-        async function updateMemories(userMessage, assistantResponse) {
-            addMessage('System', 'Auto-updating memories based on conversation...', 'assistant');
-            showSuccess('Memories updated based on conversation!');
         }
         
         function addMessage(sender, content, type) {
@@ -590,77 +615,28 @@ USER MESSAGE: ${message}`;
             setTimeout(() => successDiv.remove(), 3000);
         }
         
-        // Import/Export functions
-        function showImport() {
-            document.getElementById('importSection').classList.remove('hidden');
-        }
-        
-        function hideImport() {
-            document.getElementById('importSection').classList.add('hidden');
-        }
-        
-        async function importCSV() {
-            const file = document.getElementById('csvFile').files[0];
-            if (!file) {
-                showError('Please select a CSV file');
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const response = await fetch('/api/import-csv', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ csvData: e.target.result })
-                    });
-                    
-                    if (response.ok) {
-                        showSuccess('CSV imported successfully!');
-                        loadMemories();
-                        hideImport();
-                    } else {
-                        const errorData = await response.json();
-                        showError('Failed to import CSV: ' + (errorData.error || 'Unknown error'));
-                    }
-                } catch (error) {
-                    showError('Import error: ' + error.message);
-                }
-            };
-            reader.readAsText(file);
-        }
-        
-        function exportMemories() {
-            if (memories.length === 0) {
-                showError('No memories to export');
-                return;
-            }
-            
-            const headers = Object.keys(memories[0]).filter(key => key !== 'user_id');
-            const csvContent = [
-                headers.join(','),
-                ...memories.map(memory => 
-                    headers.map(header => `"${(memory[header] || '').toString().replace(/"/g, '""')}"`).join(',')
-                )
-            ].join('\n');
-            
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `mindos_memories_${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }
-        
+        // App functions
         function generateReport() {
             const input = document.getElementById('messageInput');
-            input.value = 'Generate a daily report based on my current memories and system status';
+            input.value = 'Generate my daily report and system status';
+            sendMessage();
+        }
+        
+        function reviewGoals() {
+            const input = document.getElementById('messageInput');
+            input.value = 'Help me review my goals and progress';
+            sendMessage();
+        }
+        
+        function planDay() {
+            const input = document.getElementById('messageInput');
+            input.value = 'Help me plan my day based on my priorities and schedule';
+            sendMessage();
+        }
+        
+        function systemHealth() {
+            const input = document.getElementById('messageInput');
+            input.value = 'Show me my system health and any areas that need attention';
             sendMessage();
         }
     </script>
