@@ -38,14 +38,11 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Routes
-
 // User registration
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
         
-        // Check if user exists
         const existingUser = await pool.query(
             'SELECT id FROM users WHERE email = $1 OR username = $2',
             [email, username]
@@ -55,18 +52,15 @@ app.post('/api/register', async (req, res) => {
             return res.status(400).json({ error: 'User already exists' });
         }
         
-        // Hash password
         const saltRounds = 10;
         const password_hash = await bcrypt.hash(password, saltRounds);
         
-        // Create user
         const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         await pool.query(
             'INSERT INTO users (id, username, email, password_hash, created_at) VALUES ($1, $2, $3, $4, $5)',
             [userId, username, email, password_hash, new Date().toISOString()]
         );
         
-        // Generate token
         const token = jwt.sign({ userId, username }, JWT_SECRET);
         
         res.json({ token, user: { id: userId, username, email } });
@@ -81,7 +75,6 @@ app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         
-        // Find user
         const user = await pool.query(
             'SELECT * FROM users WHERE email = $1',
             [email]
@@ -91,13 +84,11 @@ app.post('/api/login', async (req, res) => {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
         
-        // Check password
         const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
         if (!validPassword) {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
         
-        // Generate token
         const token = jwt.sign(
             { userId: user.rows[0].id, username: user.rows[0].username },
             JWT_SECRET
@@ -128,39 +119,6 @@ app.get('/api/memories', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Get memories error:', error);
         res.status(500).json({ error: 'Failed to fetch memories' });
-    }
-});
-
-// Update memories
-app.post('/api/memories/update', authenticateToken, async (req, res) => {
-    try {
-        const { memories } = req.body;
-        
-        // Clear existing memories for user
-        await pool.query('DELETE FROM memories WHERE user_id = $1', [req.user.userId]);
-        
-        // Insert new memories
-        for (const memory of memories) {
-            await pool.query(`
-                INSERT INTO memories (
-                    "id", "type", "desc", "stage", "trigger", "status", "pri", "due", "date", "time",
-                    "freq", "last", "energy", "mins", "strategy", "search_query", "success_criteria",
-                    "notes", "streak", "rate", "deps", "loc", "weather", "mood", "src", "created", "modified", "user_id"
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
-            `, [
-                memory.id, memory.type, memory.desc, memory.stage, memory.trigger,
-                memory.status, memory.pri, memory.due, memory.date, memory.time,
-                memory.freq, memory.last, memory.energy, memory.mins, memory.strategy,
-                memory.search_query, memory.success_criteria, memory.notes, memory.streak,
-                memory.rate, memory.deps, memory.loc, memory.weather, memory.mood,
-                memory.src, memory.created, memory.modified, req.user.userId
-            ]);
-        }
-        
-        res.json({ success: true, count: memories.length });
-    } catch (error) {
-        console.error('Update memories error:', error);
-        res.status(500).json({ error: 'Failed to update memories' });
     }
 });
 
@@ -199,47 +157,30 @@ app.post('/api/claude', authenticateToken, async (req, res) => {
     }
 });
 
-// CSV import
-app.post('/api/import-csv', authenticateToken, async (req, res) => {
+// Add memory
+app.post('/api/memories', authenticateToken, async (req, res) => {
     try {
-        const { csvData } = req.body;
-        const lines = csvData.split('\n');
-        const headers = lines[0].split(',');
+        const memory = req.body;
         
-        // Clear existing memories
-        await pool.query('DELETE FROM memories WHERE user_id = $1', [req.user.userId]);
+        await pool.query(`
+            INSERT INTO memories (
+                "id", "type", "desc", "stage", "trigger", "status", "pri", "due", "date", "time",
+                "freq", "last", "energy", "mins", "strategy", "search_query", "success_criteria",
+                "notes", "streak", "rate", "deps", "loc", "weather", "mood", "src", "created", "modified", "user_id"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+        `, [
+            memory.id, memory.type, memory.desc, memory.stage, memory.trigger,
+            memory.status, memory.pri, memory.due, memory.date, memory.time,
+            memory.freq, memory.last, memory.energy, memory.mins, memory.strategy,
+            memory.search_query, memory.success_criteria, memory.notes, memory.streak,
+            memory.rate, memory.deps, memory.loc, memory.weather, memory.mood,
+            memory.src, memory.created, memory.modified, req.user.userId
+        ]);
         
-        // Parse and insert CSV data
-        for (let i = 1; i < lines.length; i++) {
-            if (lines[i].trim()) {
-                const values = lines[i].split(',');
-                const memory = {};
-                
-                headers.forEach((header, index) => {
-                    memory[header.trim()] = values[index] ? values[index].trim() : '';
-                });
-                
-                await pool.query(`
-                    INSERT INTO memories (
-                        id, type, desc, stage, trigger, status, pri, due, date, time,
-                        freq, last, energy, mins, strategy, search_query, success_criteria,
-                        notes, streak, rate, deps, loc, weather, mood, src, created, modified, user_id
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
-                `, [
-                    memory.id, memory.type, memory.desc, memory.stage, memory.trigger,
-                    memory.status, memory.pri, memory.due, memory.date, memory.time,
-                    memory.freq, memory.last, memory.energy, memory.mins, memory.strategy,
-                    memory.search_query, memory.success_criteria, memory.notes, memory.streak,
-                    memory.rate, memory.deps, memory.loc, memory.weather, memory.mood,
-                    memory.src, memory.created, memory.modified, req.user.userId
-                ]);
-            }
-        }
-        
-        res.json({ success: true, message: 'CSV imported successfully' });
+        res.json({ success: true });
     } catch (error) {
-        console.error('CSV import error:', error);
-        res.status(500).json({ error: 'Failed to import CSV' });
+        console.error('Add memory error:', error);
+        res.status(500).json({ error: 'Failed to add memory' });
     }
 });
 
