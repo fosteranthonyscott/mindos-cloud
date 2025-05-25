@@ -365,10 +365,9 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            if (token) {
+            if (token && token !== 'null') {
                 checkUserStatus();
             } else {
-                // Show auth if no token
                 showAuthContainer();
             }
         });
@@ -505,9 +504,11 @@
         }
         
         function showOnboarding() {
+            console.log('showOnboarding() called');
             document.getElementById('authContainer').classList.add('hidden');
             document.getElementById('onboardingContainer').classList.remove('hidden');
             document.getElementById('mainApp').classList.add('hidden');
+            console.log('Onboarding container visible:', !document.getElementById('onboardingContainer').classList.contains('hidden'));
         }
         
         function showMainApp() {
