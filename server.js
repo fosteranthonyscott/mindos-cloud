@@ -183,7 +183,9 @@ app.post('/api/memories', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Failed to add memory' });
     }
 });
-
+app.get('/api/test', (req, res) => {
+    res.json({ message: 'API working' });
+});
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'MindOS Cloud Running', timestamp: new Date().toISOString() });
