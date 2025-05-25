@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,15 @@ app.use((req, res, next) => {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'mindos-jwt-secret-2025';
 
+// PostgreSQL connection
+const db = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// In-memory conversation storage (clears on app restart)
+const activeConversations = new Map();
+
 const auth = (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
@@ -31,10 +41,6 @@ const auth = (req, res, next) => {
 
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', claude: !!process.env.CLAUDE_API_KEY });
-});
-
-app.get('/api/test', (req, res) => {
-    res.json({ message: 'API test working' });
 });
 
 app.post('/api/register', (req, res) => {
@@ -58,7 +64,28 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// Claude endpoint
+// Memory functions
+async function storeMemory(userId, type, content) {
+    try {
+        const query = 'INSERT INTO memories (user_id, type, content, created_at) VALUES ($1, $2, $3, NOW())';
+        await db.query(query, [userId, type, content]);
+    } catch (error) {
+        console.error('Error storing memory:', error);
+    }
+}
+
+async function getMemories(userId, limit = 20) {
+    try {
+        const query = 'SELECT type, content, created_at FROM memories WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2';
+        const result = await db.query(query, [userId, limit]);
+        return result.rows;
+    } catch (error) {
+        console.error('Error getting memories:', error);
+        return [];
+    }
+}
+
+// Claude endpoint with session + memory system
 app.post('/api/claude', auth, async (req, res) => {
     console.log('Claude endpoint hit by user:', req.user?.username);
     
@@ -68,7 +95,40 @@ app.post('/api/claude', auth, async (req, res) => {
             return res.status(500).json({ error: 'Claude API not configured' });
         }
 
-        const { messages, max_tokens = 1000 } = req.body;
+        const { messages } = req.body;
+        const userMessage = messages[0].content;
+        const userId = req.user.userId;
+        
+        // Get or create session conversation
+        if (!activeConversations.has(userId)) {
+            activeConversations.set(userId, []);
+        }
+        const conversation = activeConversations.get(userId);
+        
+        // Add user message to session
+        conversation.push({ role: 'user', content: userMessage });
+        
+        // Get long-term memories for context
+        const memories = await getMemories(userId);
+        const memoryContext = memories.length > 0 
+            ? memories.map(m => `[${m.type}] ${m.content}`).join('\n')
+            : 'No previous memories stored.';
+        
+        // Build conversation with system context
+        const conversationWithContext = [
+            {
+                role: 'user',
+                content: `You are MindOS v5.3, an adaptive intelligence life management system helping ${req.user.username}.
+
+LONG-TERM MEMORIES:
+${memoryContext}
+
+CURRENT CONVERSATION CONTEXT:
+${conversation.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+
+Based on both long-term memories and current conversation, provide helpful assistance. Focus on building their personalized management system through natural conversation.`
+            }
+        ];
         
         const fetch = (await import('node-fetch')).default;
         
@@ -82,8 +142,8 @@ app.post('/api/claude', auth, async (req, res) => {
             },
             body: JSON.stringify({
                 model: 'claude-3-5-sonnet-20241022',
-                max_tokens,
-                messages
+                max_tokens: 1000,
+                messages: conversationWithContext
             })
         });
 
@@ -96,6 +156,11 @@ app.post('/api/claude', auth, async (req, res) => {
         }
 
         const data = await response.json();
+        const assistantMessage = data.content[0].text;
+        
+        // Add Claude response to session
+        conversation.push({ role: 'assistant', content: assistantMessage });
+        
         console.log('Claude API success');
         res.json(data);
     } catch (error) {
@@ -104,78 +169,34 @@ app.post('/api/claude', auth, async (req, res) => {
     }
 });
 
-// Smart onboarding system
-app.post('/api/start-onboarding', auth, async (req, res) => {
+// Save important information as long-term memory
+app.post('/api/save-memory', auth, async (req, res) => {
     try {
-        const { knowledgeGaps } = req.body || {};
-        
-        let onboardingType = 'initial';
-        let focusAreas = 'all life areas';
-        
-        if (knowledgeGaps && knowledgeGaps.length > 0) {
-            onboardingType = 'targeted';
-            focusAreas = knowledgeGaps.join(', ');
-        }
-        
-        const onboardingPrompt = {
-            messages: [{
-                role: 'user',
-                content: `You are MindOS v5.3 conducting a ${onboardingType} interview for ${req.user.username}.
-
-${onboardingType === 'initial' ? 
-`INITIAL SETUP: Build complete life management system through intelligent questioning.
-
-Key areas to explore comprehensively:
-- Core values and life priorities
-- Daily routines and habits (morning, work, evening)
-- Work schedule and professional commitments
-- Health and wellness practices
-- Financial habits and goals
-- Relationships and family dynamics
-- Personal development aspirations
-- Stress management and coping strategies
-- Home organization and maintenance needs
-- Long-term life vision
-
-Start with warm welcome and begin systematic exploration.` :
-
-`KNOWLEDGE GAP INTERVIEW: Focus on incomplete areas: ${focusAreas}
-
-Based on previous interactions, these areas need deeper understanding:
-${knowledgeGaps.map(area => `- ${area.replace(/([A-Z])/g, ' $1').toLowerCase()}`).join('\n')}
-
-Ask targeted, specific questions to fill knowledge gaps. Be conversational but thorough.`}
-
-Remember: You're building an intelligent system that adapts to their life. Every answer helps create better automation and assistance.
-
-Begin the interview now.`
-            }],
-            max_tokens: 1000
-        };
-        
-        const fetch = (await import('node-fetch')).default;
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.CLAUDE_API_KEY,
-                'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify(onboardingPrompt)
-        });
-
-        if (!response.ok) {
-            throw new Error('Claude API error');
-        }
-
-        const data = await response.json();
-        res.json(data);
+        const { content, type = 'user_info' } = req.body;
+        await storeMemory(req.user.userId, type, content);
+        res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Dynamic user assessment - handle no auth gracefully
+// Get user's memories
+app.get('/api/memories', auth, async (req, res) => {
+    try {
+        const memories = await getMemories(req.user.userId);
+        res.json(memories);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Clear current conversation session
+app.post('/api/clear-session', auth, (req, res) => {
+    activeConversations.delete(req.user.userId);
+    res.json({ success: true });
+});
+
+// User status endpoint
 app.get('/api/user-status', (req, res) => {
     try {
         const authHeader = req.headers['authorization'];
@@ -187,34 +208,14 @@ app.get('/api/user-status', (req, res) => {
         
         const user = jwt.verify(token, JWT_SECRET);
         
-        // Mock knowledge areas - will be dynamic from conversation history
-        const knowledgeAreas = {
-            coreValues: 0,      // 0-100% completeness
-            dailyRoutines: 0,
-            workSchedule: 0,
-            healthHabits: 0,
-            financialGoals: 0,
-            relationships: 0,
-            stressManagement: 0,
-            homeOrganization: 0
-        };
-        
-        const totalCompleteness = Object.values(knowledgeAreas).reduce((a, b) => a + b, 0) / Object.keys(knowledgeAreas).length;
-        
         res.json({
-            hasCompletedOnboarding: totalCompleteness >= 75,
-            knowledgeAreas,
-            totalCompleteness,
-            needsDeepDive: Object.entries(knowledgeAreas).filter(([area, score]) => score < 50),
+            hasCompletedOnboarding: true,
+            isNewUser: false,
             lastActive: new Date().toISOString()
         });
     } catch (error) {
         res.json({ hasCompletedOnboarding: false, isNewUser: true });
     }
-});
-
-app.get('/api/memories', auth, (req, res) => {
-    res.json([]);
 });
 
 app.get('*', (req, res) => {
