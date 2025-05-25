@@ -143,9 +143,9 @@ app.post('/api/memories/update', authenticateToken, async (req, res) => {
         for (const memory of memories) {
             await pool.query(`
                 INSERT INTO memories (
-                    id, type, desc, stage, trigger, status, pri, due, date, time,
-                    freq, last, energy, mins, strategy, search_query, success_criteria,
-                    notes, streak, rate, deps, loc, weather, mood, src, created, modified, user_id
+                    "id", "type", "desc", "stage", "trigger", "status", "pri", "due", "date", "time",
+                    "freq", "last", "energy", "mins", "strategy", "search_query", "success_criteria",
+                    "notes", "streak", "rate", "deps", "loc", "weather", "mood", "src", "created", "modified", "user_id"
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
             `, [
                 memory.id, memory.type, memory.desc, memory.stage, memory.trigger,
