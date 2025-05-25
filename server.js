@@ -104,31 +104,51 @@ app.post('/api/claude', auth, async (req, res) => {
     }
 });
 
-// Onboarding system
+// Smart onboarding system
 app.post('/api/start-onboarding', auth, async (req, res) => {
     try {
+        const { knowledgeGaps } = req.body || {};
+        
+        let onboardingType = 'initial';
+        let focusAreas = 'all life areas';
+        
+        if (knowledgeGaps && knowledgeGaps.length > 0) {
+            onboardingType = 'targeted';
+            focusAreas = knowledgeGaps.join(', ');
+        }
+        
         const onboardingPrompt = {
             messages: [{
                 role: 'user',
-                content: `You are MindOS v5.3 conducting a comprehensive life setup interview for ${req.user.username}. 
+                content: `You are MindOS v5.3 conducting a ${onboardingType} interview for ${req.user.username}.
 
-Your goal: Build a complete personal life management system through intelligent questioning.
+${onboardingType === 'initial' ? 
+`INITIAL SETUP: Build complete life management system through intelligent questioning.
 
-Key areas to explore:
-- Core values and priorities
-- Daily routines and habits
-- Work schedule and commitments  
+Key areas to explore comprehensively:
+- Core values and life priorities
+- Daily routines and habits (morning, work, evening)
+- Work schedule and professional commitments
 - Health and wellness practices
 - Financial habits and goals
-- Relationships and family
-- Personal development goals
-- Stress management and coping mechanisms
-- Home organization and maintenance
-- Long-term aspirations
+- Relationships and family dynamics
+- Personal development aspirations
+- Stress management and coping strategies
+- Home organization and maintenance needs
+- Long-term life vision
 
-Start with a warm welcome and begin the interview process. Ask thoughtful, specific questions that will help you understand their complete lifestyle. Don't ask everything at once - be conversational and build naturally.
+Start with warm welcome and begin systematic exploration.` :
 
-Begin the onboarding interview now.`
+`KNOWLEDGE GAP INTERVIEW: Focus on incomplete areas: ${focusAreas}
+
+Based on previous interactions, these areas need deeper understanding:
+${knowledgeGaps.map(area => `- ${area.replace(/([A-Z])/g, ' $1').toLowerCase()}`).join('\n')}
+
+Ask targeted, specific questions to fill knowledge gaps. Be conversational but thorough.`}
+
+Remember: You're building an intelligent system that adapts to their life. Every answer helps create better automation and assistance.
+
+Begin the interview now.`
             }],
             max_tokens: 1000
         };
@@ -155,12 +175,27 @@ Begin the onboarding interview now.`
     }
 });
 
-// Get user's system status
+// Dynamic user assessment
 app.get('/api/user-status', auth, (req, res) => {
-    // For now, return mock status - will integrate with database later
+    // Mock knowledge areas - will be dynamic from conversation history
+    const knowledgeAreas = {
+        coreValues: 0,      // 0-100% completeness
+        dailyRoutines: 0,
+        workSchedule: 0,
+        healthHabits: 0,
+        financialGoals: 0,
+        relationships: 0,
+        stressManagement: 0,
+        homeOrganization: 0
+    };
+    
+    const totalCompleteness = Object.values(knowledgeAreas).reduce((a, b) => a + b, 0) / Object.keys(knowledgeAreas).length;
+    
     res.json({
-        hasCompletedOnboarding: false,
-        totalMemories: 0,
+        hasCompletedOnboarding: totalCompleteness >= 75,
+        knowledgeAreas,
+        totalCompleteness,
+        needsDeepDive: Object.entries(knowledgeAreas).filter(([area, score]) => score < 50),
         lastActive: new Date().toISOString()
     });
 });
