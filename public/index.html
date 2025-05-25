@@ -485,6 +485,7 @@
                             `System ${Math.round(status.totalCompleteness)}% Complete`;
                     } else {
                         console.log('Incomplete user - showing onboarding');
+                        console.log('Onboarding element exists:', !!document.getElementById('onboardingContainer'));
                         showOnboarding();
                         if (status.needsDeepDive && status.needsDeepDive.length > 0) {
                             document.querySelector('#onboardingContainer p').innerHTML = 
