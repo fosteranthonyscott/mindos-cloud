@@ -175,29 +175,42 @@ Begin the interview now.`
     }
 });
 
-// Dynamic user assessment
-app.get('/api/user-status', auth, (req, res) => {
-    // Mock knowledge areas - will be dynamic from conversation history
-    const knowledgeAreas = {
-        coreValues: 0,      // 0-100% completeness
-        dailyRoutines: 0,
-        workSchedule: 0,
-        healthHabits: 0,
-        financialGoals: 0,
-        relationships: 0,
-        stressManagement: 0,
-        homeOrganization: 0
-    };
-    
-    const totalCompleteness = Object.values(knowledgeAreas).reduce((a, b) => a + b, 0) / Object.keys(knowledgeAreas).length;
-    
-    res.json({
-        hasCompletedOnboarding: totalCompleteness >= 75,
-        knowledgeAreas,
-        totalCompleteness,
-        needsDeepDive: Object.entries(knowledgeAreas).filter(([area, score]) => score < 50),
-        lastActive: new Date().toISOString()
-    });
+// Dynamic user assessment - handle no auth gracefully
+app.get('/api/user-status', (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        
+        if (!token) {
+            return res.json({ hasCompletedOnboarding: false, isNewUser: true });
+        }
+        
+        const user = jwt.verify(token, JWT_SECRET);
+        
+        // Mock knowledge areas - will be dynamic from conversation history
+        const knowledgeAreas = {
+            coreValues: 0,      // 0-100% completeness
+            dailyRoutines: 0,
+            workSchedule: 0,
+            healthHabits: 0,
+            financialGoals: 0,
+            relationships: 0,
+            stressManagement: 0,
+            homeOrganization: 0
+        };
+        
+        const totalCompleteness = Object.values(knowledgeAreas).reduce((a, b) => a + b, 0) / Object.keys(knowledgeAreas).length;
+        
+        res.json({
+            hasCompletedOnboarding: totalCompleteness >= 75,
+            knowledgeAreas,
+            totalCompleteness,
+            needsDeepDive: Object.entries(knowledgeAreas).filter(([area, score]) => score < 50),
+            lastActive: new Date().toISOString()
+        });
+    } catch (error) {
+        res.json({ hasCompletedOnboarding: false, isNewUser: true });
+    }
 });
 
 app.get('/api/memories', auth, (req, res) => {
