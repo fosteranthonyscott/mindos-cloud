@@ -462,6 +462,7 @@
         }
         
         async function checkUserStatus() {
+            console.log('Checking user status...');
             try {
                 const response = await fetch('/api/user-status', {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -469,15 +470,23 @@
                 
                 if (response.ok) {
                     const status = await response.json();
+                    console.log('Status response:', status);
+                    
+                    if (status.isNewUser) {
+                        console.log('New user - showing auth');
+                        showAuthContainer();
+                        return;
+                    }
                     
                     if (status.hasCompletedOnboarding) {
+                        console.log('Completed user - showing main app');
                         showMainApp();
                         document.getElementById('systemStatus').textContent = 
                             `System ${Math.round(status.totalCompleteness)}% Complete`;
                     } else {
+                        console.log('Incomplete user - showing onboarding');
                         showOnboarding();
                         if (status.needsDeepDive && status.needsDeepDive.length > 0) {
-                            // Show targeted onboarding message
                             document.querySelector('#onboardingContainer p').innerHTML = 
                                 `I need to learn more about: <strong>${status.needsDeepDive.map(([area]) => 
                                     area.replace(/([A-Z])/g, ' $1').toLowerCase()).join(', ')}</strong><br><br>
@@ -656,3 +665,4 @@
         }
     </script>
 </body>
+</html>
