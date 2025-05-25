@@ -186,6 +186,19 @@
             margin: 0;
         }
         
+        .memory-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .memory-controls button {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            margin: 0;
+            width: auto;
+        }
+        
         .hidden {
             display: none;
         }
@@ -300,6 +313,11 @@
                 <button onclick="logout()" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem; margin: 0;">Logout</button>
             </div>
             
+            <div class="memory-controls">
+                <button onclick="viewMemories()">View Memories</button>
+                <button onclick="clearSession()">Clear Session</button>
+            </div>
+            
             <div class="chat-container" id="chatContainer">
                 <div class="messages" id="messages">
                     <div class="message assistant">
@@ -345,18 +363,15 @@
         let user = JSON.parse(localStorage.getItem('mindos_user') || '{}');
         let conversationHistory = [];
         
-        // Initialize - FIXED: Only check auth if we have a valid token
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            // Always show auth container first
             showAuthContainer();
             
-            // Only attempt login if we have a valid token
             if (token && token !== 'null' && token !== 'undefined') {
                 attemptAutoLogin();
             }
         });
         
-        // FIXED: New function for auto-login attempts
         async function attemptAutoLogin() {
             try {
                 const response = await fetch('/api/user-status', {
@@ -369,7 +384,6 @@
                         showMainApp();
                     }
                 } else {
-                    // Invalid token, clear it
                     localStorage.removeItem('mindos_token');
                     localStorage.removeItem('mindos_user');
                     token = null;
@@ -377,7 +391,6 @@
                 }
             } catch (error) {
                 console.log('Auto-login failed:', error);
-                // Clear invalid data
                 localStorage.removeItem('mindos_token');
                 localStorage.removeItem('mindos_user');
                 token = null;
@@ -485,7 +498,51 @@
             document.getElementById('mainApp').classList.add('hidden');
         }
         
-        // Chat functions - SIMPLIFIED
+        // Memory functions
+        async function viewMemories() {
+            try {
+                const response = await fetch('/api/memories', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const memories = await response.json();
+                    const memoryText = memories.length > 0 
+                        ? memories.map(m => `[${m.type}] ${m.content}`).join('\n\n')
+                        : 'No memories stored yet.';
+                    
+                    addMessage('System', `Your stored memories:\n\n${memoryText}`, 'assistant');
+                } else {
+                    showError('Failed to load memories');
+                }
+            } catch (error) {
+                showError('Error loading memories: ' + error.message);
+            }
+        }
+        
+        async function clearSession() {
+            try {
+                const response = await fetch('/api/clear-session', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    document.getElementById('messages').innerHTML = `
+                        <div class="message assistant">
+                            <strong>MindOS:</strong> Session cleared. I remember your stored memories but our current conversation has been reset.
+                        </div>
+                    `;
+                    showSuccess('Session cleared successfully');
+                } else {
+                    showError('Failed to clear session');
+                }
+            } catch (error) {
+                showError('Error clearing session: ' + error.message);
+            }
+        }
+        
+        // Chat functions
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
@@ -506,11 +563,8 @@
                     body: JSON.stringify({
                         messages: [{
                             role: 'user',
-                            content: `You are MindOS v5.3, an adaptive intelligence life management system. The user ${user.username} is chatting with you. Be helpful, intelligent, and focus on understanding their needs to build a personalized management system. Use a conversational interview style to learn about their lifestyle, goals, and daily routines.
-
-User message: ${message}`
-                        }],
-                        max_tokens: 1000
+                            content: message
+                        }]
                     })
                 });
                 
