@@ -40,19 +40,25 @@ app.get('/api/test', (req, res) => {
 app.post('/api/register', (req, res) => {
     const { username, email } = req.body;
     const userId = `user_${Date.now()}`;
-    const token = jwt.sign({ userId, username }, JWT_SECRET);
-    res.json({ token, user: { id: userId, username, email } });
+    const token = jwt.sign({ userId, username }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ 
+        token, 
+        user: { id: userId, username, email, isNewUser: true } 
+    });
 });
 
 app.post('/api/login', (req, res) => {
     const { email } = req.body;
     const userId = `user_${Date.now()}`;
     const username = email.split('@')[0];
-    const token = jwt.sign({ userId, username }, JWT_SECRET);
-    res.json({ token, user: { id: userId, username, email } });
+    const token = jwt.sign({ userId, username }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ 
+        token, 
+        user: { id: userId, username, email, isNewUser: false } 
+    });
 });
 
-// Claude endpoint with detailed logging
+// Claude endpoint
 app.post('/api/claude', auth, async (req, res) => {
     console.log('Claude endpoint hit by user:', req.user?.username);
     
@@ -63,7 +69,6 @@ app.post('/api/claude', auth, async (req, res) => {
         }
 
         const { messages, max_tokens = 1000 } = req.body;
-        console.log('Request body:', JSON.stringify(req.body, null, 2));
         
         const fetch = (await import('node-fetch')).default;
         
@@ -99,22 +104,69 @@ app.post('/api/claude', auth, async (req, res) => {
     }
 });
 
-app.get('/api/memories', auth, (req, res) => {
-    res.json([]);
+// Onboarding system
+app.post('/api/start-onboarding', auth, async (req, res) => {
+    try {
+        const onboardingPrompt = {
+            messages: [{
+                role: 'user',
+                content: `You are MindOS v5.3 conducting a comprehensive life setup interview for ${req.user.username}. 
+
+Your goal: Build a complete personal life management system through intelligent questioning.
+
+Key areas to explore:
+- Core values and priorities
+- Daily routines and habits
+- Work schedule and commitments  
+- Health and wellness practices
+- Financial habits and goals
+- Relationships and family
+- Personal development goals
+- Stress management and coping mechanisms
+- Home organization and maintenance
+- Long-term aspirations
+
+Start with a warm welcome and begin the interview process. Ask thoughtful, specific questions that will help you understand their complete lifestyle. Don't ask everything at once - be conversational and build naturally.
+
+Begin the onboarding interview now.`
+            }],
+            max_tokens: 1000
+        };
+        
+        const fetch = (await import('node-fetch')).default;
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify(onboardingPrompt)
+        });
+
+        if (!response.ok) {
+            throw new Error('Claude API error');
+        }
+
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
-// List all routes for debugging
-app.get('/api/routes', (req, res) => {
-    const routes = [];
-    app._router.stack.forEach(middleware => {
-        if (middleware.route) {
-            routes.push({
-                method: Object.keys(middleware.route.methods)[0].toUpperCase(),
-                path: middleware.route.path
-            });
-        }
+// Get user's system status
+app.get('/api/user-status', auth, (req, res) => {
+    // For now, return mock status - will integrate with database later
+    res.json({
+        hasCompletedOnboarding: false,
+        totalMemories: 0,
+        lastActive: new Date().toISOString()
     });
-    res.json(routes);
+});
+
+app.get('/api/memories', auth, (req, res) => {
+    res.json([]);
 });
 
 app.get('*', (req, res) => {
@@ -123,10 +175,4 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log('Routes registered:');
-    app._router.stack.forEach(middleware => {
-        if (middleware.route) {
-            console.log(`${Object.keys(middleware.route.methods)[0].toUpperCase()} ${middleware.route.path}`);
-        }
-    });
 });
