@@ -466,13 +466,23 @@
                 
                 if (response.ok) {
                     const status = await response.json();
+                    
                     if (status.hasCompletedOnboarding) {
                         showMainApp();
+                        document.getElementById('systemStatus').textContent = 
+                            `System ${Math.round(status.totalCompleteness)}% Complete`;
                     } else {
                         showOnboarding();
+                        if (status.needsDeepDive.length > 0) {
+                            // Show targeted onboarding message
+                            document.querySelector('#onboardingContainer p').innerHTML = 
+                                `I need to learn more about: <strong>${status.needsDeepDive.map(([area]) => 
+                                    area.replace(/([A-Z])/g, ' $1').toLowerCase()).join(', ')}</strong><br><br>
+                                Let's have a quick conversation to fill these gaps and improve your system.`;
+                        }
                     }
                 } else {
-                    showOnboarding(); // Default for new users
+                    showOnboarding();
                 }
             } catch (error) {
                 showOnboarding();
