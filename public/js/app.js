@@ -590,10 +590,16 @@ const EventHandlers = {
     // Sidebar event handlers
     setupSidebarHandlers() {
         // Hamburger menu
-        document.getElementById('hamburgerBtn').addEventListener('click', UI.toggleSidebar);
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        if (hamburgerBtn) {
+            hamburgerBtn.addEventListener('click', UI.toggleSidebar);
+        }
         
         // Overlay click
-        document.getElementById('overlay').addEventListener('click', UI.closeSidebar);
+        const overlay = document.getElementById('overlay');
+        if (overlay) {
+            overlay.addEventListener('click', UI.closeSidebar);
+        }
         
         // Menu item handlers
         document.querySelectorAll('.menu-item[data-action]').forEach(item => {
@@ -734,9 +740,31 @@ const UI = {
     showAuthScreen() {
         const authScreen = document.getElementById('authScreen');
         const chatApp = document.getElementById('chatApp');
+        const cardApp = document.getElementById('cardApp');
         
         if (authScreen) authScreen.classList.remove('hidden');
         if (chatApp) chatApp.classList.add('hidden');
+        if (cardApp) cardApp.classList.add('hidden');
+    },
+    
+    // Show card app
+    showCardApp() {
+        const authScreen = document.getElementById('authScreen');
+        const chatApp = document.getElementById('chatApp');
+        const cardApp = document.getElementById('cardApp');
+        
+        if (authScreen) authScreen.classList.add('hidden');
+        if (chatApp) chatApp.classList.add('hidden');
+        if (cardApp) {
+            cardApp.classList.remove('hidden');
+            cardApp.style.display = 'flex';
+        }
+        
+        // Update user info
+        const userName = document.getElementById('userName');
+        if (userName) {
+            userName.textContent = MindOS.user.username || 'User';
+        }
     },
     
     // Show chat app
@@ -820,12 +848,9 @@ const App = {
         }
     },
     
-    // Show chat app and load data
+    // Show main app and load data - UPDATED
     async showChatApp() {
-        UI.showChatApp();
-        
-        // Apply Chrome fixes after showing chat app
-        ChromeFixes.ensureInputVisibility();
+        UI.showCardApp(); // Changed from UI.showChatApp()
         
         // Load session info and memories
         await Promise.all([
@@ -833,15 +858,10 @@ const App = {
             this.loadMemories()
         ]);
         
-        // Add welcome message if no existing messages
-        if (typeof Chat !== 'undefined') {
-            Chat.addWelcomeMessage();
+        // Initialize cards instead of chat
+        if (typeof Cards !== 'undefined') {
+            Cards.loadTodaysCards(); // Changed from Chat.addWelcomeMessage()
         }
-        
-        // Ensure input is visible after everything loads
-        setTimeout(() => {
-            ChromeFixes.ensureInputVisibility();
-        }, 100);
     },
     
     // Load session information
@@ -925,6 +945,13 @@ function debugInputContainer() {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
+    
+    // Initialize Cards module if available
+    if (typeof Cards !== 'undefined') {
+        Cards.init();
+    } else {
+        console.warn('Cards module not loaded');
+    }
     
     // Auto-debug for Chrome users
     if (/Chrome/.test(navigator.userAgent)) {
