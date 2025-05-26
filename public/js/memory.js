@@ -1,4 +1,4 @@
-// Memory Management Module - FIXED CONFIRMATION AND EDITING
+// Memory Management Module - FIXED for Card Interface
 const Memory = {
     // Current state
     selectedMemory: null,
@@ -10,18 +10,25 @@ const Memory = {
         this.setupEventListeners();
     },
     
-    // Setup event listeners
+    // Setup event listeners - FIXED to check for element existence
     setupEventListeners() {
-        // Memory modal buttons
-        document.getElementById('saveCloseBtn').addEventListener('click', () => this.saveChanges(true, true));
-        document.getElementById('addFieldsBtn').addEventListener('click', () => Modals.openAddFieldsModal());
-        document.getElementById('discussMemoryBtn').addEventListener('click', this.openMemoryChat.bind(this));
-        document.getElementById('deleteMemoryBtn').addEventListener('click', this.confirmDelete.bind(this));
-        document.getElementById('closeMemoryBtn').addEventListener('click', () => Modals.closeMemoryModal());
-        document.getElementById('memoryModalCloseBtn').addEventListener('click', () => Modals.closeMemoryModal());
-        
-        // All memories modal
-        document.getElementById('allMemoriesCloseBtn').addEventListener('click', () => Modals.closeAllMemoriesModal());
+        // Memory modal buttons - check if elements exist first
+        const saveCloseBtn = document.getElementById('saveCloseBtn');
+        const addFieldsBtn = document.getElementById('addFieldsBtn');
+        const discussMemoryBtn = document.getElementById('discussMemoryBtn');
+        const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
+        const closeMemoryBtn = document.getElementById('closeMemoryBtn');
+        const memoryModalCloseBtn = document.getElementById('memoryModalCloseBtn');
+        const allMemoriesCloseBtn = document.getElementById('allMemoriesCloseBtn');
+
+        // Only add listeners if elements exist
+        if (saveCloseBtn) saveCloseBtn.addEventListener('click', () => this.saveChanges(true, true));
+        if (addFieldsBtn) addFieldsBtn.addEventListener('click', () => Modals.openAddFieldsModal());
+        if (discussMemoryBtn) discussMemoryBtn.addEventListener('click', this.openMemoryChat.bind(this));
+        if (deleteMemoryBtn) deleteMemoryBtn.addEventListener('click', this.confirmDelete.bind(this));
+        if (closeMemoryBtn) closeMemoryBtn.addEventListener('click', () => Modals.closeMemoryModal());
+        if (memoryModalCloseBtn) memoryModalCloseBtn.addEventListener('click', () => Modals.closeMemoryModal());
+        if (allMemoriesCloseBtn) allMemoriesCloseBtn.addEventListener('click', () => Modals.closeAllMemoriesModal());
     },
     
     // Show memory confirmation dialog - FIXED VERSION with proper event handlers
@@ -194,29 +201,35 @@ const Memory = {
         
         switch (action) {
             case 'dismiss':
-                // Just show message, don't store memories
-                Chat.addMessage('assistant', assistantMessage);
+                // Just show message in chat if available, don't store memories
+                if (typeof Chat !== 'undefined') {
+                    Chat.addMessage('assistant', assistantMessage);
+                }
                 shouldContinue = true;
                 break;
                 
             case 'confirm':
                 // Store memories and show message, no continuation
                 await this.storePendingMemories();
-                Chat.addMessage('assistant', assistantMessage);
-                Chat.addMemoryIndicator(memories.length, 'stored');
+                if (typeof Chat !== 'undefined') {
+                    Chat.addMessage('assistant', assistantMessage);
+                    Chat.addMemoryIndicator(memories.length, 'stored');
+                }
                 break;
                 
             case 'confirmContinue':
                 // Store memories, show message, and continue conversation
                 await this.storePendingMemories();
-                Chat.addMessage('assistant', assistantMessage);
-                Chat.addMemoryIndicator(memories.length, 'stored');
+                if (typeof Chat !== 'undefined') {
+                    Chat.addMessage('assistant', assistantMessage);
+                    Chat.addMemoryIndicator(memories.length, 'stored');
+                }
                 shouldContinue = true;
                 break;
         }
         
-        // Continue conversation if requested
-        if (shouldContinue) {
+        // Continue conversation if requested and Chat module exists
+        if (shouldContinue && typeof Chat !== 'undefined') {
             setTimeout(() => {
                 this.continueConversation();
             }, 1500);
@@ -233,10 +246,12 @@ const Memory = {
     continueConversation() {
         console.log('🔄 Continuing conversation...');
         
-        const continuationPrompt = "Please continue with your previous response. You were in the middle of helping me and I'd like you to pick up where you left off.";
-        
-        Chat.addMessage('user', continuationPrompt);
-        Chat.sendContinuationMessage(continuationPrompt);
+        if (typeof Chat !== 'undefined') {
+            const continuationPrompt = "Please continue with your previous response. You were in the middle of helping me and I'd like you to pick up where you left off.";
+            
+            Chat.addMessage('user', continuationPrompt);
+            Chat.sendContinuationMessage(continuationPrompt);
+        }
     },
     
     // FIXED: Confirm memories with proper cleanup
@@ -332,6 +347,8 @@ const Memory = {
     // Populate memory editor with all current fields
     populateMemoryEditor(containerId, memory) {
         const container = document.getElementById(containerId);
+        if (!container) return;
+        
         container.innerHTML = '';
         
         // Required fields first
@@ -415,6 +432,8 @@ const Memory = {
     // Show add fields dialog for editor
     showAddFieldsForEditor(containerId, memory) {
         const container = document.getElementById(containerId);
+        if (!container) return;
+        
         const currentFields = Array.from(container.querySelectorAll('[data-field]')).map(el => 
             el.getAttribute('data-field')
         );
@@ -446,39 +465,44 @@ const Memory = {
         
         // Populate available fields
         const fieldsGrid = document.getElementById(fieldsId + '_grid');
-        Object.entries(memoryFieldDefinitions).forEach(([fieldKey, fieldDef]) => {
-            if (!currentFields.includes(fieldKey) && !fieldDef.required) {
-                const fieldOption = document.createElement('div');
-                fieldOption.className = 'field-option';
-                fieldOption.innerHTML = `
-                    <div class="field-option-icon">
-                        <i class="${fieldDef.icon}"></i>
-                    </div>
-                    <div class="field-option-name">${fieldDef.label}</div>
-                    <div class="field-option-desc">Add ${fieldDef.label.toLowerCase()} information</div>
-                `;
-                
-                fieldOption.addEventListener('click', () => {
-                    // Add field to editor
-                    const newField = this.createEditorField(fieldKey, '', fieldDef, false);
-                    container.appendChild(newField);
+        if (fieldsGrid && memoryFieldDefinitions) {
+            Object.entries(memoryFieldDefinitions).forEach(([fieldKey, fieldDef]) => {
+                if (!currentFields.includes(fieldKey) && !fieldDef.required) {
+                    const fieldOption = document.createElement('div');
+                    fieldOption.className = 'field-option';
+                    fieldOption.innerHTML = `
+                        <div class="field-option-icon">
+                            <i class="${fieldDef.icon}"></i>
+                        </div>
+                        <div class="field-option-name">${fieldDef.label}</div>
+                        <div class="field-option-desc">Add ${fieldDef.label.toLowerCase()} information</div>
+                    `;
                     
-                    // Focus new field
-                    const input = newField.querySelector('.memory-detail-input, .memory-detail-select');
-                    if (input) input.focus();
+                    fieldOption.addEventListener('click', () => {
+                        // Add field to editor
+                        const newField = this.createEditorField(fieldKey, '', fieldDef, false);
+                        container.appendChild(newField);
+                        
+                        // Focus new field
+                        const input = newField.querySelector('.memory-detail-input, .memory-detail-select');
+                        if (input) input.focus();
+                        
+                        // Close add fields dialog
+                        document.body.removeChild(fieldsDialog);
+                    });
                     
-                    // Close add fields dialog
-                    document.body.removeChild(fieldsDialog);
-                });
-                
-                fieldsGrid.appendChild(fieldOption);
-            }
-        });
+                    fieldsGrid.appendChild(fieldOption);
+                }
+            });
+        }
         
         // Cancel button
-        document.getElementById(fieldsId + '_cancel').addEventListener('click', () => {
-            document.body.removeChild(fieldsDialog);
-        });
+        const cancelBtn = document.getElementById(fieldsId + '_cancel');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                document.body.removeChild(fieldsDialog);
+            });
+        }
     },
     
     // Cancel memory edit and return to confirmation
@@ -494,6 +518,8 @@ const Memory = {
     // Save memory edit and return to confirmation
     saveMemoryEdit(index, dialog, onConfirm, onDismiss) {
         const container = dialog.querySelector('.memory-modal-body');
+        if (!container) return;
+        
         const fields = container.querySelectorAll('[data-field-key]');
         
         // Collect all field values
@@ -531,9 +557,13 @@ const Memory = {
             await this.storeMemory(MindOS.user.userId, memory.type, memory.content, memory.additionalData);
         }
         
-        // Refresh memories and show indicator
+        // Refresh memories
         await this.loadMemories();
-        Chat.addMemoryIndicator(MindOS.pendingMemories.length, 'stored');
+        
+        // Refresh cards if available
+        if (typeof Cards !== 'undefined') {
+            Cards.refresh();
+        }
         
         MindOS.pendingMemories = [];
     },
@@ -545,27 +575,39 @@ const Memory = {
             this.updateDisplays();
         } catch (error) {
             console.error('Failed to load memories:', error);
-            Utils.showAlert('Failed to load memories', 'error');
+            if (typeof Utils !== 'undefined') {
+                Utils.showAlert('Failed to load memories', 'error');
+            }
         }
     },
     
     // Refresh memories
     async refreshMemories() {
         await this.loadMemories();
-        await App.loadSessionInfo();
-        Utils.showAlert('Memories refreshed successfully', 'success');
-        UI.closeSidebar();
+        if (typeof App !== 'undefined') {
+            await App.loadSessionInfo();
+        }
+        if (typeof Utils !== 'undefined') {
+            Utils.showAlert('Memories refreshed successfully', 'success');
+        }
+        if (typeof UI !== 'undefined') {
+            UI.closeSidebar();
+        }
     },
     
     // Update all memory displays
     updateDisplays() {
-        UI.updateMemoryDisplay();
+        if (typeof UI !== 'undefined') {
+            UI.updateMemoryDisplay();
+        }
         this.updateSidebarMemories();
     },
     
-    // Update sidebar memories display
+    // Update sidebar memories display (for chat interface compatibility)
     updateSidebarMemories() {
         const recentMemoriesDiv = document.getElementById('recentMemories');
+        if (!recentMemoriesDiv) return; // Element doesn't exist in card interface
+        
         recentMemoriesDiv.innerHTML = '';
         
         const recentMemories = MindOS.userMemories.slice(0, 8);
@@ -615,7 +657,7 @@ const Memory = {
         });
     },
     
-    // View memory details
+    // View memory details (creates modal dynamically since it may not exist in HTML)
     viewDetails(memoryId) {
         const memory = MindOS.userMemories.find(m => m.id === memoryId);
         if (!memory) return;
@@ -623,13 +665,70 @@ const Memory = {
         this.selectedMemory = memory;
         this.changes = {}; // Reset changes
         
+        // Create memory modal dynamically
+        this.createMemoryModal(memory);
+    },
+    
+    // Create memory modal dynamically
+    createMemoryModal(memory) {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('dynamicMemoryModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        const modal = document.createElement('div');
+        modal.id = 'dynamicMemoryModal';
+        modal.className = 'memory-confirmation-dialog';
+        
+        modal.innerHTML = `
+            <div class="memory-confirmation-content" style="max-width: 800px;">
+                <div class="memory-confirmation-header">
+                    <div class="memory-confirmation-title">
+                        <i class="fas fa-brain"></i> Memory Details
+                    </div>
+                    <button class="memory-modal-close" onclick="Memory.closeDynamicModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="memory-modal-body" id="dynamicMemoryContent" style="max-height: 400px; overflow-y: auto; padding: 1.5rem;">
+                    <!-- Memory fields will be populated here -->
+                </div>
+                
+                <div class="memory-confirmation-actions">
+                    <button class="modal-btn danger" onclick="Memory.confirmDelete()">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button class="modal-btn secondary" onclick="Memory.closeDynamicModal()">Close</button>
+                    <button class="modal-btn success" onclick="Memory.saveChanges(true, true)">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Populate the modal
         this.populateMemoryModal(memory);
-        document.getElementById('memoryModal').classList.add('show');
+    },
+    
+    // Close dynamic modal
+    closeDynamicModal() {
+        const modal = document.getElementById('dynamicMemoryModal');
+        if (modal) {
+            modal.remove();
+        }
+        this.selectedMemory = null;
+        this.changes = {};
     },
     
     // Populate memory detail modal
     populateMemoryModal(memory) {
-        const modalContent = document.getElementById('memoryModalContent');
+        const modalContent = document.getElementById('dynamicMemoryContent');
+        if (!modalContent) return;
+        
         modalContent.innerHTML = '';
 
         // Create editable fields for all existing data
@@ -703,7 +802,7 @@ const Memory = {
 
         // Clear auto-save timeout and set new one
         if (this.autoSaveTimeout) clearTimeout(this.autoSaveTimeout);
-        this.autoSaveTimeout = setTimeout(() => this.autoSaveChanges(), MindOS.config.autoSaveDelay);
+        this.autoSaveTimeout = setTimeout(() => this.autoSaveChanges(), MindOS.config?.autoSaveDelay || 2000);
     },
     
     // Auto-save changes
@@ -718,12 +817,12 @@ const Memory = {
     // Save memory changes
     async saveChanges(showAlert = true, closeAfter = false) {
         if (!this.selectedMemory || Object.keys(this.changes).length === 0) {
-            if (showAlert) Utils.showAlert('No changes to save', 'success');
+            if (showAlert && typeof Utils !== 'undefined') {
+                Utils.showAlert('No changes to save', 'success');
+            }
             if (closeAfter) {
                 setTimeout(() => {
-                    document.getElementById('memoryModal').classList.remove('show');
-                    this.selectedMemory = null;
-                    this.changes = {};
+                    this.closeDynamicModal();
                 }, 100);
             }
             return true;
@@ -745,27 +844,43 @@ const Memory = {
             this.updateDisplays();
             this.updateSaveStatus('saved');
             
-            if (showAlert) Utils.showAlert('Memory updated successfully', 'success');
+            if (showAlert && typeof Utils !== 'undefined') {
+                Utils.showAlert('Memory updated successfully', 'success');
+            }
             
             if (closeAfter) {
                 setTimeout(() => {
-                    document.getElementById('memoryModal').classList.remove('show');
-                    this.selectedMemory = null;
-                    this.changes = {};
+                    this.closeDynamicModal();
                 }, 800);
             }
             return true;
         } catch (error) {
             console.error('Save error:', error);
             this.updateSaveStatus('error');
-            if (showAlert) Utils.showAlert('Failed to save: ' + error.message, 'error');
+            if (showAlert && typeof Utils !== 'undefined') {
+                Utils.showAlert('Failed to save: ' + error.message, 'error');
+            }
             return false;
         }
     },
     
     // Update save status indicator
     updateSaveStatus(status) {
-        const statusEl = document.getElementById('saveStatus');
+        // Try to find status element, create if needed
+        let statusEl = document.getElementById('saveStatus');
+        if (!statusEl) {
+            // Create status element in the modal header
+            const header = document.querySelector('.memory-confirmation-header');
+            if (header) {
+                statusEl = document.createElement('div');
+                statusEl.id = 'saveStatus';
+                statusEl.className = 'save-status';
+                header.appendChild(statusEl);
+            }
+        }
+        
+        if (!statusEl) return;
+        
         statusEl.className = `save-status ${status}`;
         
         switch (status) {
@@ -797,20 +912,6 @@ const Memory = {
         this.autoSaveChanges();
     },
     
-    // Add field to memory
-    addField(fieldKey, fieldDef) {
-        // Add field to memory modal
-        const modalContent = document.getElementById('memoryModalContent');
-        const newField = this.createEditableField(fieldKey, '', fieldDef);
-        modalContent.appendChild(newField);
-
-        // Focus on the new field
-        const input = newField.querySelector('.memory-detail-input, .memory-detail-select');
-        if (input) input.focus();
-
-        this.updateSaveStatus('unsaved');
-    },
-    
     // Store memory on frontend
     async storeMemory(userId, type, content, additionalData) {
         try {
@@ -822,186 +923,45 @@ const Memory = {
         }
     },
     
-    // Open all memories modal
-    openAllMemoriesModal() {
-        UI.closeSidebar();
-        this.populateAllMemoriesModal();
-        document.getElementById('allMemoriesModal').classList.add('show');
-    },
-    
-    // Populate all memories modal
-    populateAllMemoriesModal() {
-        // Group memories by type
-        const memoryGroups = {};
-        MindOS.userMemories.forEach(memory => {
-            const type = memory.type || 'general';
-            if (!memoryGroups[type]) memoryGroups[type] = [];
-            memoryGroups[type].push(memory);
-        });
-
-        // Create filter buttons
-        const filtersDiv = document.getElementById('memoryTypeFilters');
-        filtersDiv.innerHTML = '<button class="filter-btn active" onclick="Memory.filterMemories(\'all\')">All</button>';
-        
-        Object.keys(memoryGroups).forEach(type => {
-            const btn = document.createElement('button');
-            btn.className = 'filter-btn';
-            btn.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} (${memoryGroups[type].length})`;
-            btn.onclick = () => this.filterMemories(type);
-            filtersDiv.appendChild(btn);
-        });
-
-        // Display all memories
-        this.displayMemoriesGrid(memoryGroups);
-    },
-    
-    // 1. Fix the filterMemories function (around line 914)
-filterMemories(filterType) {
-    // Update filter buttons - FIXED: Use proper event handling
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    // Find and activate the clicked button
-    const activeBtn = Array.from(document.querySelectorAll('.filter-btn')).find(btn => 
-        btn.textContent.toLowerCase().includes(filterType) || (filterType === 'all' && btn.textContent === 'All')
-    );
-    if (activeBtn) activeBtn.classList.add('active');
-
-    // Filter memories
-    const memoryGroups = {};
-    MindOS.userMemories.forEach(memory => {
-        const type = memory.type || 'general';
-        if (filterType === 'all' || type === filterType) {
-            if (!memoryGroups[type]) memoryGroups[type] = [];
-            memoryGroups[type].push(memory);
-        }
-    });
-
-    this.displayMemoriesGrid(memoryGroups);
-},
-
-    
-    // Display memories grid
-    displayMemoriesGrid(memoryGroups) {
-        const gridDiv = document.getElementById('memoriesGrid');
-        gridDiv.innerHTML = '';
-
-        if (Object.keys(memoryGroups).length === 0) {
-            gridDiv.innerHTML = '<div style="text-align: center; padding: 3rem; color: #888;">No memories found</div>';
-            return;
-        }
-
-        Object.entries(memoryGroups).forEach(([type, memories]) => {
-            const section = document.createElement('div');
-            section.className = 'memory-type-section';
-            
-            const header = document.createElement('div');
-            header.className = 'memory-type-header';
-            header.textContent = `${type} (${memories.length})`;
-            section.appendChild(header);
-
-            const grid = document.createElement('div');
-            grid.className = 'memory-grid';
-            
-            memories.forEach(memory => {
-                const card = this.createMemoryCard(memory);
-                grid.appendChild(card);
-            });
-
-            section.appendChild(grid);
-            gridDiv.appendChild(section);
-        });
-    },
-    
-    // Create memory card element
-    createMemoryCard(memory) {
-        const card = document.createElement('div');
-        card.className = 'memory-card';
-        card.onclick = (e) => {
-            if (!e.target.closest('.memory-card-actions')) {
-                this.viewDetails(memory.id);
-                Modals.closeAllMemoriesModal();
-            }
-        };
-
-        let metadata = [];
-        if (memory.performance_streak && memory.performance_streak > 0) {
-            metadata.push(`<div class="meta-item"><i class="fas fa-fire"></i> ${memory.performance_streak} days</div>`);
-        }
-        if (memory.stage) {
-            metadata.push(`<div class="meta-item"><i class="fas fa-layer-group"></i> ${memory.stage}</div>`);
-        }
-        if (memory.location) {
-            metadata.push(`<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>`);
-        }
-        if (memory.mood) {
-            metadata.push(`<div class="meta-item"><i class="fas fa-smile"></i> ${memory.mood}</div>`);
-        }
-
-        card.innerHTML = `
-            <div class="memory-card-header">
-                ${memory.priority ? `<div class="memory-card-priority priority-${memory.priority}">Priority ${memory.priority}</div>` : '<div></div>'}
-                <div class="memory-card-actions">
-                    <button class="memory-action-btn" onclick="Memory.viewDetails(${memory.id}); Modals.closeAllMemoriesModal();" title="View Details">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="memory-action-btn delete" onclick="Memory.confirmDeleteDirect(${memory.id})" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="memory-card-content">${memory.content_short || memory.content?.substring(0, 120) || 'No content'}</div>
-            ${metadata.length > 0 ? `<div class="memory-card-meta">${metadata.join('')}</div>` : ''}
-        `;
-
-        return card;
-    },
-    
-    // Open chat about specific memory
-    openMemoryChat() {
-        if (!this.selectedMemory) return;
-        
-        Modals.closeMemoryModal();
-        UI.closeSidebar();
-        
-        // Create a detailed prompt about this memory
-        const memoryPrompt = `I'd like to discuss this specific memory in detail:
-
-**Type**: ${this.selectedMemory.type}
-**Content**: ${this.selectedMemory.content}
-${this.selectedMemory.notes ? `**Notes**: ${this.selectedMemory.notes}` : ''}
-${this.selectedMemory.priority ? `**Priority**: ${this.selectedMemory.priority}/5` : ''}
-${this.selectedMemory.status ? `**Status**: ${this.selectedMemory.status}` : ''}
-${this.selectedMemory.stage ? `**Stage**: ${this.selectedMemory.stage}` : ''}
-
-Please provide full context about this memory and help me with any modifications, additional details, or related planning I might need.`;
-        
-        document.getElementById('messageInput').value = memoryPrompt;
-        Chat.sendMessage();
-    },
-    
     // Confirm delete memory (direct)
     confirmDeleteDirect(memoryId) {
         const memory = MindOS.userMemories.find(m => m.id === memoryId);
         if (!memory) return;
         
-        Modals.showConfirmDialog(
-            'Delete Memory',
-            `Are you sure you want to delete this memory?\n\n"${memory.content_short || memory.content?.substring(0, 100) || 'Memory'}"`,
-            () => this.deleteMemory(memoryId)
-        );
+        if (typeof Modals !== 'undefined') {
+            Modals.showConfirmDialog(
+                'Delete Memory',
+                `Are you sure you want to delete this memory?\n\n"${memory.content_short || memory.content?.substring(0, 100) || 'Memory'}"`,
+                () => this.deleteMemory(memoryId)
+            );
+        } else {
+            // Fallback to native confirm
+            if (confirm(`Delete "${memory.content_short || 'this memory'}"?`)) {
+                this.deleteMemory(memoryId);
+            }
+        }
     },
     
     // Confirm delete current memory
     confirmDelete() {
         if (!this.selectedMemory) return;
         
-        Modals.showConfirmDialog(
-            'Delete Memory',
-            `Are you sure you want to delete this memory?\n\n"${this.selectedMemory.content_short || this.selectedMemory.content?.substring(0, 100) || 'Memory'}"`,
-            () => {
+        if (typeof Modals !== 'undefined') {
+            Modals.showConfirmDialog(
+                'Delete Memory',
+                `Are you sure you want to delete this memory?\n\n"${this.selectedMemory.content_short || this.selectedMemory.content?.substring(0, 100) || 'Memory'}"`,
+                () => {
+                    this.deleteMemory(this.selectedMemory.id);
+                    this.closeDynamicModal();
+                }
+            );
+        } else {
+            // Fallback to native confirm
+            if (confirm(`Delete "${this.selectedMemory.content_short || 'this memory'}"?`)) {
                 this.deleteMemory(this.selectedMemory.id);
-                Modals.closeMemoryModal();
+                this.closeDynamicModal();
             }
-        );
+        }
     },
     
     // Delete memory
@@ -1013,21 +973,20 @@ Please provide full context about this memory and help me with any modifications
             MindOS.userMemories = MindOS.userMemories.filter(m => m.id !== memoryId);
             this.updateDisplays();
             
-            // Add success message to chat
-            Chat.addMessage('assistant', 'Memory deleted successfully. The information has been removed from my knowledge base.');
-            
-            // Add visual indicator
-            Chat.addMemoryIndicator(1, 'deleted');
-            
-            Utils.showAlert('Memory deleted successfully', 'success');
-            
-            // Refresh all memories modal if open
-            if (document.getElementById('allMemoriesModal').classList.contains('show')) {
-                this.populateAllMemoriesModal();
+            // Refresh cards if available
+            if (typeof Cards !== 'undefined') {
+                Cards.refresh();
             }
+            
+            if (typeof Utils !== 'undefined') {
+                Utils.showAlert('Memory deleted successfully', 'success');
+            }
+            
         } catch (error) {
             console.error('Delete memory error:', error);
-            Utils.showAlert('Error deleting memory: ' + error.message, 'error');
+            if (typeof Utils !== 'undefined') {
+                Utils.showAlert('Error deleting memory: ' + error.message, 'error');
+            }
         }
     },
     
