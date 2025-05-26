@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindOS - Personal AI Assistant</title>
+    <title>MindOS - Your Personal Feed</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -14,13 +14,14 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+            height: 100vh;
         }
 
         /* =========================
-           LOGIN SCREEN 
+           LOGIN SCREEN (Unchanged for now)
         ========================= */
         .login-screen {
             display: flex;
@@ -28,6 +29,7 @@
             justify-content: center;
             min-height: 100vh;
             padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
         .login-card {
@@ -127,39 +129,59 @@
         }
 
         /* =========================
-           DASHBOARD SCREEN 
+           SOCIAL MEDIA FEED LAYOUT
         ========================= */
-        .dashboard {
+        .feed-container {
             display: none;
-            min-height: 100vh;
-            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            overflow: hidden;
         }
 
-        .header {
-            background: rgba(255, 255, 255, 0.1);
+        /* Fixed Header */
+        .feed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(20px);
-            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            color: white;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            z-index: 1000;
         }
 
-        .user-info {
+        .header-left {
             display: flex;
             align-items: center;
             gap: 1rem;
         }
 
-        .user-avatar {
+        .mindos-logo {
             width: 50px;
             height: 50px;
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, #667eea, #764ba2);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
+            color: white;
+        }
+
+        .user-info h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .user-info p {
+            font-size: 0.9rem;
+            color: #888;
         }
 
         .header-actions {
@@ -168,192 +190,291 @@
         }
 
         .header-btn {
-            background: rgba(255, 255, 255, 0.2);
+            width: 45px;
+            height: 45px;
+            background: rgba(255, 255, 255, 0.1);
             border: none;
+            border-radius: 50%;
             color: white;
-            padding: 0.75rem;
-            border-radius: 10px;
             cursor: pointer;
-            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
         }
 
         .header-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
         }
 
-        .main-content {
+        .header-btn.add-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        /* Feed Scroll Container */
+        .feed-scroll {
+            height: 100vh;
+            width: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding-top: 80px;
+        }
+
+        .feed-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Individual Feed Cards */
+        .feed-card {
+            height: calc(100vh - 80px);
+            width: 100%;
+            position: relative;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f4c75 100%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feed-card:nth-child(even) {
+            background: linear-gradient(135deg, #2d1b69 0%, #11998e 50%, #38ef7d 100%);
+        }
+
+        .feed-card:nth-child(3n) {
+            background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
+        }
+
+        /* Card Content Area */
+        .card-content-area {
             flex: 1;
             padding: 2rem;
             display: flex;
             flex-direction: column;
-            gap: 2rem;
-        }
-
-        .quick-actions {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
             justify-content: center;
-        }
-
-        .quick-action {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 600;
-        }
-
-        .quick-action:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .cards-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 1.5rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .memory-card {
-            background: white;
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s;
             position: relative;
         }
 
-        .memory-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .card-type {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 15px;
+        .card-type-badge {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .card-actions {
-            display: flex;
-            gap: 0.5rem;
+        .card-priority {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            font-size: 1.5rem;
+            color: #ffd700;
         }
 
-        .card-action {
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .card-action:hover {
-            background: #f0f0f0;
-            color: #333;
+        .card-main-content {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .card-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-description {
             font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #333;
-        }
-
-        .card-content {
-            color: #666;
             line-height: 1.5;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 2rem;
         }
 
-        .empty-state {
-            text-align: center;
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Social Media Actions */
+        .card-actions {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: none;
+            border-radius: 50%;
             color: white;
-            padding: 4rem 2rem;
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            opacity: 0.7;
-        }
-
-        .empty-state h3 {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 1.5rem;
-            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
         }
 
-        /* =========================
-           MODAL SYSTEM 
-        ========================= */
-        .modal {
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .action-btn.liked {
+            background: #ff3040;
+            color: white;
+        }
+
+        .action-btn.completed {
+            background: #00d084;
+            color: white;
+        }
+
+        .action-count {
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* Progress Indicator */
+        .progress-dots {
+            position: fixed;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 900;
+        }
+
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.active {
+            background: white;
+            transform: scale(1.5);
+        }
+
+        /* Edit Mode Overlay */
+        .edit-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
-            padding: 1rem;
+            z-index: 2000;
+            padding: 2rem;
         }
 
-        .modal.show {
+        .edit-overlay.show {
             display: flex;
         }
 
-        .modal-content {
-            background: white;
+        .edit-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
             border-radius: 20px;
             padding: 2rem;
             width: 100%;
             max-width: 500px;
-            max-height: 90vh;
+            max-height: 80vh;
             overflow-y: auto;
         }
 
-        .modal-title {
+        .edit-title {
             font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 1.5rem;
             text-align: center;
         }
 
-        .modal-actions {
+        .edit-input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .edit-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .edit-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        }
+
+        .edit-actions {
             display: flex;
             gap: 1rem;
             margin-top: 2rem;
         }
 
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
+        .edit-btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        /* =========================
-           LOADING & ALERTS 
-        ========================= */
+        .edit-btn.primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .edit-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* Loading States */
         .loading {
             position: relative;
             color: transparent !important;
@@ -378,52 +499,76 @@
             100% { transform: rotate(360deg); }
         }
 
-        .alert {
+        /* Toast Notifications */
+        .toast {
             position: fixed;
-            top: 2rem;
-            right: 2rem;
-            padding: 1rem 1.5rem;
-            border-radius: 10px;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
             color: white;
+            padding: 1rem 2rem;
+            border-radius: 30px;
             font-weight: 600;
-            z-index: 2000;
-            animation: slideIn 0.3s ease-out;
+            z-index: 3000;
+            animation: slideUp 0.3s ease-out;
         }
 
-        .alert.success { background: #4CAF50; }
-        .alert.error { background: #f44336; }
-        .alert.warning { background: #ff9800; }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100%); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
 
-        /* =========================
-           RESPONSIVE 
-        ========================= */
+        /* Responsive Design */
         @media (max-width: 768px) {
-            .header {
-                padding: 1rem;
-                flex-direction: column;
-                gap: 1rem;
+            .feed-header {
+                padding: 0 1rem;
             }
-
-            .main-content {
-                padding: 1rem;
+            
+            .card-title {
+                font-size: 2rem;
             }
-
-            .cards-container {
-                grid-template-columns: 1fr;
+            
+            .card-description {
+                font-size: 1rem;
             }
-
-            .quick-actions {
-                justify-content: stretch;
+            
+            .card-content-area {
+                padding: 1.5rem;
             }
+            
+            .card-actions {
+                bottom: 1rem;
+                right: 1rem;
+            }
+            
+            .action-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.3rem;
+            }
+        }
 
-            .quick-action {
-                flex: 1;
-                justify-content: center;
+        /* Smooth Scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Custom Scrollbar for Desktop */
+        @media (min-width: 769px) {
+            .feed-scroll::-webkit-scrollbar {
+                display: block;
+                width: 4px;
+            }
+            
+            .feed-scroll::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            .feed-scroll::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 2px;
             }
         }
     </style>
@@ -476,21 +621,28 @@
         </div>
     </div>
 
-    <!-- Dashboard Screen -->
-    <div id="dashboard" class="dashboard">
-        <div class="header">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <i class="fas fa-user"></i>
+    <!-- Social Media Feed -->
+    <div id="feedContainer" class="feed-container">
+        <!-- Fixed Header -->
+        <div class="feed-header">
+            <div class="header-left">
+                <div class="mindos-logo">
+                    <i class="fas fa-brain"></i>
                 </div>
-                <div>
-                    <div id="userName">Loading...</div>
-                    <div id="itemCount">0 items today</div>
+                <div class="user-info">
+                    <h3 id="feedUserName">Loading...</h3>
+                    <p id="feedItemCount">0 items in feed</p>
                 </div>
             </div>
             <div class="header-actions">
-                <button class="header-btn" onclick="showAddModal()" title="Add Item">
+                <button class="header-btn add-btn" onclick="showQuickAdd()" title="Add New Item">
                     <i class="fas fa-plus"></i>
+                </button>
+                <button class="header-btn" onclick="refreshFeed()" title="Refresh Feed">
+                    <i class="fas fa-refresh"></i>
+                </button>
+                <button class="header-btn" onclick="showProfile()" title="Profile">
+                    <i class="fas fa-user"></i>
                 </button>
                 <button class="header-btn" onclick="logout()" title="Logout">
                     <i class="fas fa-sign-out-alt"></i>
@@ -498,67 +650,40 @@
             </div>
         </div>
 
-        <div class="main-content">
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-                <button class="quick-action" onclick="addQuickItem('task')">
-                    <i class="fas fa-tasks"></i> Add Task
-                </button>
-                <button class="quick-action" onclick="addQuickItem('routine')">
-                    <i class="fas fa-repeat"></i> Add Routine
-                </button>
-                <button class="quick-action" onclick="addQuickItem('goal')">
-                    <i class="fas fa-bullseye"></i> Add Goal
-                </button>
-            </div>
+        <!-- Scrollable Feed -->
+        <div class="feed-scroll" id="feedScroll">
+            <!-- Feed cards will be dynamically inserted here -->
+        </div>
 
-            <!-- Cards Container -->
-            <div id="cardsContainer" class="cards-container">
-                <!-- Cards will be inserted here -->
-            </div>
-
-            <!-- Empty State -->
-            <div id="emptyState" class="empty-state" style="display: none;">
-                <i class="fas fa-calendar-day"></i>
-                <h3>Nothing scheduled for today</h3>
-                <p>Add your first task, routine, or goal to get started</p>
-            </div>
+        <!-- Progress Indicator -->
+        <div class="progress-dots" id="progressDots">
+            <!-- Progress dots will be dynamically inserted here -->
         </div>
     </div>
 
-    <!-- Add Item Modal -->
-    <div id="addModal" class="modal">
-        <div class="modal-content">
-            <h2 class="modal-title">Add New Item</h2>
-            <form id="addForm">
-                <div class="form-group">
-                    <label for="itemType">Type</label>
-                    <select id="itemType" class="form-group input" style="width: 100%; padding: 1rem; border: 2px solid #e0e6ff; border-radius: 12px;">
-                        <option value="task">Task</option>
-                        <option value="routine">Routine</option>
-                        <option value="goal">Goal</option>
-                        <option value="note">Note</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="itemContent">Description</label>
-                    <textarea id="itemContent" rows="3" style="width: 100%; padding: 1rem; border: 2px solid #e0e6ff; border-radius: 12px; resize: vertical; font-family: inherit;" placeholder="What do you want to accomplish?" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="itemPriority">Priority</label>
-                    <select id="itemPriority" style="width: 100%; padding: 1rem; border: 2px solid #e0e6ff; border-radius: 12px;">
-                        <option value="1">Low</option>
-                        <option value="2">Medium</option>
-                        <option value="3" selected>Normal</option>
-                        <option value="4">High</option>
-                        <option value="5">Critical</option>
-                    </select>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="hideModal()">Cancel</button>
-                    <button type="submit" class="btn">Add Item</button>
-                </div>
-            </form>
+    <!-- Edit Overlay -->
+    <div id="editOverlay" class="edit-overlay">
+        <div class="edit-card">
+            <h2 class="edit-title">Edit Item</h2>
+            <input type="text" id="editTitle" class="edit-input" placeholder="Title">
+            <textarea id="editDescription" class="edit-input" rows="4" placeholder="Description"></textarea>
+            <select id="editPriority" class="edit-input">
+                <option value="1">Low Priority</option>
+                <option value="2">Medium Priority</option>
+                <option value="3">Normal Priority</option>
+                <option value="4">High Priority</option>
+                <option value="5">Critical Priority</option>
+            </select>
+            <select id="editStatus" class="edit-input">
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="paused">Paused</option>
+                <option value="archived">Archived</option>
+            </select>
+            <div class="edit-actions">
+                <button class="edit-btn secondary" onclick="closeEdit()">Cancel</button>
+                <button class="edit-btn primary" onclick="saveEdit()">Save Changes</button>
+            </div>
         </div>
     </div>
 
@@ -566,16 +691,18 @@
         // Global State
         let currentUser = null;
         let authToken = localStorage.getItem('mindos_token');
-        let userItems = [];
+        let feedItems = [];
+        let currentEditItem = null;
+        let currentCardIndex = 0;
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 MindOS Starting...');
+            console.log('🚀 MindOS Social Feed Starting...');
             
             if (authToken) {
                 const isValid = await validateToken();
                 if (isValid) {
-                    showDashboard();
+                    showFeed();
                     return;
                 }
             }
@@ -583,7 +710,7 @@
             showLogin();
         });
 
-        // Authentication Functions
+        // Authentication Functions (Same as before)
         function showLogin() {
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('registerForm').style.display = 'none';
@@ -622,7 +749,7 @@
             const password = document.getElementById('loginPassword').value;
             
             if (!email || !password) {
-                showAlert('Please fill in all fields', 'error');
+                showToast('Please fill in all fields', 'error');
                 return;
             }
             
@@ -643,13 +770,13 @@
                     currentUser = data.user;
                     localStorage.setItem('mindos_token', authToken);
                     
-                    showAlert('Welcome back!', 'success');
-                    showDashboard();
+                    showToast('Welcome back!', 'success');
+                    showFeed();
                 } else {
-                    showAlert(data.error || 'Login failed', 'error');
+                    showToast(data.error || 'Login failed', 'error');
                 }
             } catch (error) {
-                showAlert('Network error. Please try again.', 'error');
+                showToast('Network error. Please try again.', 'error');
                 console.error('Login error:', error);
             } finally {
                 btn.classList.remove('loading');
@@ -666,12 +793,12 @@
             const password = document.getElementById('regPassword').value;
             
             if (!username || !email || !password) {
-                showAlert('Please fill in all fields', 'error');
+                showToast('Please fill in all fields', 'error');
                 return;
             }
             
             if (password.length < 6) {
-                showAlert('Password must be at least 6 characters', 'error');
+                showToast('Password must be at least 6 characters', 'error');
                 return;
             }
             
@@ -692,13 +819,13 @@
                     currentUser = data.user;
                     localStorage.setItem('mindos_token', authToken);
                     
-                    showAlert('Account created successfully!', 'success');
-                    showDashboard();
+                    showToast('Account created successfully!', 'success');
+                    showFeed();
                 } else {
-                    showAlert(data.error || 'Registration failed', 'error');
+                    showToast(data.error || 'Registration failed', 'error');
                 }
             } catch (error) {
-                showAlert('Network error. Please try again.', 'error');
+                showToast('Network error. Please try again.', 'error');
                 console.error('Register error:', error);
             } finally {
                 btn.classList.remove('loading');
@@ -706,220 +833,390 @@
             }
         });
 
-        // Dashboard Functions
-        async function showDashboard() {
+        // Feed Functions
+        async function showFeed() {
             document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'flex';
+            document.getElementById('feedContainer').style.display = 'block';
             
             if (currentUser) {
-                document.getElementById('userName').textContent = currentUser.username;
+                document.getElementById('feedUserName').textContent = currentUser.username;
             }
             
-            await loadTodaysItems();
+            await loadFeedItems();
+            setupScrollListener();
         }
 
-        async function loadTodaysItems() {
+        async function loadFeedItems() {
             try {
-                const response = await fetch('/api/memories/today', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
+                // Load from different endpoints to create diverse feed
+                const [todayResponse, allResponse] = await Promise.all([
+                    fetch('/api/memories/today', {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    }),
+                    fetch('/api/memories?limit=20', {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    })
+                ]);
                 
-                if (response.ok) {
-                    userItems = await response.json();
-                    renderCards();
-                } else {
-                    console.error('Failed to load items');
-                    showEmptyState();
-                }
+                const todayItems = todayResponse.ok ? await todayResponse.json() : [];
+                const allItems = allResponse.ok ? await allResponse.json() : [];
+                
+                // Combine and deduplicate
+                const combined = [...todayItems, ...allItems];
+                const unique = combined.filter((item, index, arr) => 
+                    arr.findIndex(i => i.id === item.id) === index
+                );
+                
+                feedItems = shuffleArray(unique); // Randomize for social media feel
+                renderFeed();
+                
             } catch (error) {
-                console.error('Error loading items:', error);
-                showEmptyState();
+                console.error('Error loading feed:', error);
+                showToast('Error loading feed', 'error');
             }
         }
 
-        function renderCards() {
-            const container = document.getElementById('cardsContainer');
-            const emptyState = document.getElementById('emptyState');
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function renderFeed() {
+            const feedScroll = document.getElementById('feedScroll');
+            const progressDots = document.getElementById('progressDots');
             
-            if (userItems.length === 0) {
-                showEmptyState();
+            if (feedItems.length === 0) {
+                feedScroll.innerHTML = `
+                    <div class="feed-card">
+                        <div class="card-content-area">
+                            <div class="card-main-content">
+                                <h2 class="card-title">Welcome to MindOS!</h2>
+                                <p class="card-description">Your personal feed is empty. Start by adding your first routine, task, or goal.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
                 return;
             }
             
-            emptyState.style.display = 'none';
-            container.innerHTML = '';
+            // Render feed cards
+            feedScroll.innerHTML = '';
+            progressDots.innerHTML = '';
             
-            userItems.forEach(item => {
-                const card = createCard(item);
-                container.appendChild(card);
+            feedItems.forEach((item, index) => {
+                const card = createFeedCard(item, index);
+                feedScroll.appendChild(card);
+                
+                const dot = document.createElement('div');
+                dot.className = 'progress-dot';
+                if (index === 0) dot.classList.add('active');
+                progressDots.appendChild(dot);
             });
             
-            document.getElementById('itemCount').textContent = `${userItems.length} items today`;
+            document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
         }
 
-        function createCard(item) {
+        function createFeedCard(item, index) {
             const card = document.createElement('div');
-            card.className = 'memory-card';
+            card.className = 'feed-card';
+            card.dataset.index = index;
+            card.dataset.itemId = item.id;
             
             const priority = parseInt(item.priority) || 1;
-            const priorityStars = '★'.repeat(priority) + '☆'.repeat(5 - priority);
+            const priorityStars = '★'.repeat(priority);
+            
+            const typeColors = {
+                routine: '#667eea',
+                goal: '#764ba2',
+                task: '#f093fb',
+                note: '#4facfe',
+                preference: '#43e97b',
+                insight: '#fa709a'
+            };
             
             card.innerHTML = `
-                <div class="card-header">
-                    <div class="card-type">${item.type}</div>
-                    <div class="card-actions">
-                        <button class="card-action" onclick="editItem(${item.id})" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="card-action" onclick="deleteItem(${item.id})" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                <div class="card-content-area">
+                    <div class="card-type-badge" style="background: ${typeColors[item.type] || '#667eea'};">
+                        ${item.type || 'item'}
+                    </div>
+                    <div class="card-priority">${priorityStars}</div>
+                    
+                    <div class="card-main-content">
+                        <h2 class="card-title">${item.content_short || item.content?.substring(0, 100) || 'Untitled'}</h2>
+                        <p class="card-description">${item.notes || item.content?.substring(100, 300) || 'No additional details'}</p>
+                        
+                        <div class="card-meta">
+                            <span>Status: ${item.status || 'active'}</span>
+                            <span>${item.routine_type || ''}</span>
+                        </div>
                     </div>
                 </div>
-                <div class="card-title">${item.content_short || item.content?.substring(0, 60) || 'Untitled'}</div>
-                <div class="card-content">
-                    ${item.notes || item.content?.substring(60, 150) || ''}
-                    <div style="margin-top: 0.5rem; color: #ff9800; font-size: 0.9rem;">
-                        ${priorityStars}
-                    </div>
+                
+                <div class="card-actions">
+                    <button class="action-btn ${item.liked ? 'liked' : ''}" onclick="toggleLike(${item.id})">
+                        <i class="fas fa-heart"></i>
+                        <span class="action-count">${item.like_count || 0}</span>
+                    </button>
+                    
+                    <button class="action-btn ${item.status === 'completed' ? 'completed' : ''}" onclick="toggleComplete(${item.id})">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    
+                    <button class="action-btn" onclick="editItem(${item.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    
+                    <button class="action-btn" onclick="shareItem(${item.id})">
+                        <i class="fas fa-share"></i>
+                    </button>
+                    
+                    <button class="action-btn" onclick="deleteItem(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             `;
             
             return card;
         }
 
-        function showEmptyState() {
-            document.getElementById('cardsContainer').innerHTML = '';
-            document.getElementById('emptyState').style.display = 'block';
-            document.getElementById('itemCount').textContent = '0 items today';
-        }
-
-        // Modal Functions
-        function showAddModal() {
-            document.getElementById('addModal').classList.add('show');
-        }
-
-        function hideModal() {
-            document.getElementById('addModal').classList.remove('show');
-            document.getElementById('addForm').reset();
-        }
-
-        function addQuickItem(type) {
-            document.getElementById('itemType').value = type;
-            showAddModal();
-            document.getElementById('itemContent').focus();
-        }
-
-        // Add Form Handler
-        document.getElementById('addForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Scroll Management
+        function setupScrollListener() {
+            const feedScroll = document.getElementById('feedScroll');
+            const progressDots = document.querySelectorAll('.progress-dot');
             
-            const type = document.getElementById('itemType').value;
-            const content = document.getElementById('itemContent').value;
-            const priority = document.getElementById('itemPriority').value;
-            
-            if (!content.trim()) {
-                showAlert('Please enter a description', 'error');
-                return;
+            feedScroll.addEventListener('scroll', () => {
+                const scrollTop = feedScroll.scrollTop;
+                const cardHeight = window.innerHeight - 80; // Minus header height
+                const currentIndex = Math.round(scrollTop / cardHeight);
+                
+                // Update progress dots
+                progressDots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === currentIndex);
+                });
+                
+                currentCardIndex = currentIndex;
+            });
+        }
+
+        // Social Media Actions
+        async function toggleLike(itemId) {
+            try {
+                // This would connect to a backend endpoint for likes
+                // For now, just update UI
+                const btn = event.target.closest('.action-btn');
+                const count = btn.querySelector('.action-count');
+                const isLiked = btn.classList.contains('liked');
+                
+                btn.classList.toggle('liked');
+                count.textContent = parseInt(count.textContent) + (isLiked ? -1 : 1);
+                
+                showToast(isLiked ? 'Unliked' : 'Liked!', 'success');
+            } catch (error) {
+                console.error('Error toggling like:', error);
             }
+        }
+
+        async function toggleComplete(itemId) {
+            try {
+                const item = feedItems.find(i => i.id === itemId);
+                const newStatus = item.status === 'completed' ? 'active' : 'completed';
+                
+                const response = await fetch(`/api/memories/${itemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (response.ok) {
+                    item.status = newStatus;
+                    const btn = event.target.closest('.action-btn');
+                    btn.classList.toggle('completed', newStatus === 'completed');
+                    showToast(newStatus === 'completed' ? 'Completed!' : 'Reactivated', 'success');
+                } else {
+                    showToast('Failed to update status', 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling complete:', error);
+            }
+        }
+
+        function editItem(itemId) {
+            const item = feedItems.find(i => i.id === itemId);
+            if (!item) return;
+            
+            currentEditItem = item;
+            
+            document.getElementById('editTitle').value = item.content_short || item.content || '';
+            document.getElementById('editDescription').value = item.notes || '';
+            document.getElementById('editPriority').value = item.priority || 3;
+            document.getElementById('editStatus').value = item.status || 'active';
+            
+            document.getElementById('editOverlay').classList.add('show');
+        }
+
+        function closeEdit() {
+            document.getElementById('editOverlay').classList.remove('show');
+            currentEditItem = null;
+        }
+
+        async function saveEdit() {
+            if (!currentEditItem) return;
+            
+            const title = document.getElementById('editTitle').value;
+            const description = document.getElementById('editDescription').value;
+            const priority = document.getElementById('editPriority').value;
+            const status = document.getElementById('editStatus').value;
             
             try {
-                const response = await fetch('/api/memories', {
-                    method: 'POST',
+                const response = await fetch(`/api/memories/${currentEditItem.id}`, {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
-                        type,
-                        content: content.trim(),
+                        content_short: title,
+                        notes: description,
                         priority: parseInt(priority),
-                        status: 'active'
+                        status: status
                     })
                 });
                 
                 if (response.ok) {
-                    hideModal();
-                    showAlert('Item added successfully!', 'success');
-                    await loadTodaysItems();
+                    showToast('Updated successfully!', 'success');
+                    closeEdit();
+                    await refreshFeed();
                 } else {
-                    const error = await response.json();
-                    showAlert(error.error || 'Failed to add item', 'error');
+                    showToast('Failed to update', 'error');
                 }
             } catch (error) {
-                showAlert('Network error. Please try again.', 'error');
-                console.error('Add item error:', error);
+                console.error('Error saving edit:', error);
+                showToast('Error saving changes', 'error');
             }
-        });
-
-        // Item Actions
-        async function editItem(id) {
-            // For now, just show an alert - we'll add edit functionality later
-            showAlert('Edit functionality coming soon!', 'warning');
         }
 
-        async function deleteItem(id) {
-            if (!confirm('Are you sure you want to delete this item?')) return;
+        function shareItem(itemId) {
+            const item = feedItems.find(i => i.id === itemId);
+            if (!item) return;
+            
+            const text = `Check out my ${item.type}: ${item.content_short || item.content}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'MindOS Item',
+                    text: text
+                });
+            } else {
+                navigator.clipboard.writeText(text);
+                showToast('Copied to clipboard!', 'success');
+            }
+        }
+
+        async function deleteItem(itemId) {
+            if (!confirm('Delete this item?')) return;
             
             try {
-                const response = await fetch(`/api/memories/${id}`, {
+                const response = await fetch(`/api/memories/${itemId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
                 if (response.ok) {
-                    showAlert('Item deleted successfully', 'success');
-                    await loadTodaysItems();
+                    showToast('Deleted', 'success');
+                    await refreshFeed();
                 } else {
-                    showAlert('Failed to delete item', 'error');
+                    showToast('Failed to delete', 'error');
                 }
             } catch (error) {
-                showAlert('Network error. Please try again.', 'error');
-                console.error('Delete error:', error);
+                console.error('Error deleting:', error);
             }
         }
 
-        // Utility Functions
+        // Header Actions
+        function showQuickAdd() {
+            // This would open a quick add modal or slide-up interface
+            showToast('Quick add coming soon!', 'info');
+        }
+
+        async function refreshFeed() {
+            await loadFeedItems();
+            showToast('Feed refreshed!', 'success');
+        }
+
+        function showProfile() {
+            showToast('Profile coming soon!', 'info');
+        }
+
         function logout() {
             localStorage.removeItem('mindos_token');
             authToken = null;
             currentUser = null;
-            userItems = [];
+            feedItems = [];
             
-            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('feedContainer').style.display = 'none';
             document.getElementById('loginScreen').style.display = 'flex';
             showLogin();
             
-            showAlert('Logged out successfully', 'success');
+            showToast('Logged out', 'success');
         }
 
-        function showAlert(message, type = 'success') {
-            const alert = document.createElement('div');
-            alert.className = `alert ${type}`;
-            alert.textContent = message;
+        // Utility Functions
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
             
-            document.body.appendChild(alert);
+            document.body.appendChild(toast);
             
             setTimeout(() => {
-                alert.remove();
-            }, 4000);
+                toast.remove();
+            }, 3000);
         }
 
-        // Close modal when clicking outside
-        document.getElementById('addModal').addEventListener('click', (e) => {
-            if (e.target.id === 'addModal') {
-                hideModal();
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeEdit();
+            }
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                const direction = e.key === 'ArrowUp' ? -1 : 1;
+                scrollToCard(currentCardIndex + direction);
             }
         });
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                hideModal();
-            }
-            if (e.key === '+' && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                showAddModal();
+        function scrollToCard(index) {
+            const feedScroll = document.getElementById('feedScroll');
+            const cardHeight = window.innerHeight - 80;
+            const targetScroll = index * cardHeight;
+            
+            feedScroll.scrollTo({
+                top: targetScroll,
+                behavior: 'smooth'
+            });
+        }
+
+        // Touch/Swipe Support (for mobile)
+        let touchStartY = 0;
+        
+        document.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        document.addEventListener('touchend', (e) => {
+            const touchEndY = e.changedTouches[0].clientY;
+            const diff = touchStartY - touchEndY;
+            
+            if (Math.abs(diff) > 50) { // Minimum swipe distance
+                const direction = diff > 0 ? 1 : -1;
+                scrollToCard(currentCardIndex + direction);
             }
         });
     </script>
