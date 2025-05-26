@@ -1,8 +1,11 @@
-// Chat Module
+// ENHANCED Chat Module - Complete with chunked responses and existing functionality
 const Chat = {
+    // Enhanced properties for chunking
+    isWaitingForChunk: false,
+    chunkTimeout: null,
     
-    // Add message to chat display
-    addMessage(type, content) {
+    // Enhanced addMessage with chunk support and memory indicators
+    addMessage(type, content, options = {}) {
         const messagesContainer = document.getElementById('messages');
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}`;
@@ -20,19 +23,46 @@ const Chat = {
             <div>
                 <div class="message-content">${formattedContent}</div>
                 <div class="message-time">${timeString}</div>
+                ${options.showIndicator ? this.createMemoryIndicator(options.showIndicator) : ''}
             </div>
         `;
         
         messagesContainer.appendChild(messageDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        return messageDiv;
+    },
+
+    // NEW: Create memory operation indicator
+    createMemoryIndicator(operationInfo) {
+        if (!operationInfo || operationInfo.count === 0) return '';
+        
+        const iconMap = {
+            'stored': 'fas fa-brain',
+            'updated': 'fas fa-sync-alt',
+            'processed': 'fas fa-cog',
+            'deleted': 'fas fa-trash'
+        };
+        
+        const icon = iconMap[operationInfo.type] || 'fas fa-brain';
+        const text = operationInfo.type === 'updated' ? 'updated' : 
+                    operationInfo.type === 'deleted' ? 'deleted' :
+                    operationInfo.type === 'processed' ? 'processed' : 'stored';
+        
+        return `<div class="memory-operation-indicator ${operationInfo.type}">
+            <i class="${icon}"></i> ${operationInfo.count} memory operation${operationInfo.count > 1 ? 's' : ''} ${text}
+        </div>`;
     },
     
-    // Send message to Claude
+    // ENHANCED Send message with memory operations and chunking support
     async sendMessage() {
         const input = document.getElementById('messageInput');
         const message = input.value.trim();
         
         if (!message || MindOS.isLoading) return;
+        
+        // Handle user interruption of chunked responses
+        this.handleUserInterrupt();
         
         this.addMessage('user', message);
         input.value = '';
@@ -45,7 +75,8 @@ const Chat = {
                 messages: [{
                     role: 'user', 
                     content: message
-                }]
+                }],
+                request_chunks: true // Request chunked responses if server supports it
             });
             
             const assistantMessage = response.content[0].text;
@@ -67,8 +98,9 @@ const Chat = {
                 switch (memoryMode) {
                     case MemoryConfig.MODES.AUTO:
                         await Memory.storePendingMemories();
-                        this.addMessage('assistant', assistantMessage);
-                        this.addMemoryIndicator(toolUses.length, 'stored');
+                        this.addMessage('assistant', assistantMessage, {
+                            showIndicator: { type: 'stored', count: toolUses.length }
+                        });
                         break;
                         
                     case MemoryConfig.MODES.CONFIRM:
@@ -91,7 +123,8 @@ const Chat = {
                         break;
                 }
             } else {
-                this.addMessage('assistant', assistantMessage);
+                // Handle enhanced response with potential chunking
+                await this.handleEnhancedResponse(response, assistantMessage);
             }
             
             MindOS.sessionInfo.messageCount = (MindOS.sessionInfo.messageCount || 0) + 2;
@@ -104,7 +137,98 @@ const Chat = {
         }
     },
 
-    // Send continuation message
+    // NEW: Handle enhanced response with chunking and memory operations
+    async handleEnhancedResponse(response, assistantMessage) {
+        try {
+            // Show memory operation indicator if any operations were processed
+            const memoryIndicator = response.memory_operations > 0 ? {
+                type: 'processed',
+                count: response.memory_operations
+            } : null;
+            
+            // Add the message
+            this.addMessage('assistant', assistantMessage, {
+                showIndicator: memoryIndicator
+            });
+            
+            // Handle chunked responses if server supports it
+            if (response.has_more_chunks) {
+                this.scheduleNextChunk();
+            }
+            
+            // Add quick responses if provided
+            if (response.quick_responses && response.quick_responses.length > 0) {
+                this.addQuickResponses(response.quick_responses);
+            }
+            
+        } catch (error) {
+            console.error('Error handling enhanced response:', error);
+            this.addMessage('assistant', 'I had trouble processing that. Could you try again?');
+        }
+    },
+
+    // NEW: Schedule next chunk with natural delay
+    scheduleNextChunk() {
+        if (this.isWaitingForChunk) return;
+        
+        this.isWaitingForChunk = true;
+        
+        // Show typing indicator after a brief delay
+        this.chunkTimeout = setTimeout(() => {
+            this.showTypingIndicator();
+            
+            // Request next chunk after typing indicator
+            setTimeout(() => {
+                this.requestNextChunk();
+            }, 1000);
+        }, 1500); // 1.5 second delay for natural feel
+    },
+
+    // NEW: Request next chunk from server
+    async requestNextChunk() {
+        try {
+            const response = await API.get('/api/claude/next-chunk');
+            
+            this.hideTypingIndicator();
+            
+            if (response.content && response.content[0]) {
+                // Add the next chunk
+                this.addMessage('assistant', response.content[0].text);
+                
+                // Schedule next chunk if more available
+                if (response.has_more_chunks) {
+                    this.scheduleNextChunk();
+                } else {
+                    this.isWaitingForChunk = false;
+                }
+            } else {
+                this.isWaitingForChunk = false;
+            }
+            
+        } catch (error) {
+            console.error('Error getting next chunk:', error);
+            this.hideTypingIndicator();
+            this.isWaitingForChunk = false;
+        }
+    },
+
+    // Enhanced showTypingIndicator
+    showTypingIndicator() {
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator && !typingIndicator.classList.contains('show')) {
+            typingIndicator.classList.add('show');
+        }
+    },
+
+    // Enhanced hideTypingIndicator
+    hideTypingIndicator() {
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            typingIndicator.classList.remove('show');
+        }
+    },
+
+    // Send continuation message (enhanced from existing)
     async sendContinuationMessage(message) {
         UI.setLoading(true);
         
@@ -113,7 +237,8 @@ const Chat = {
                 messages: [{
                     role: 'user',
                     content: message
-                }]
+                }],
+                request_chunks: true
             });
             
             const assistantMessage = response.content[0].text;
@@ -133,10 +258,12 @@ const Chat = {
                 }));
                 
                 await Memory.storePendingMemories();
-                this.addMessage('assistant', assistantMessage);
-                this.addMemoryIndicator(toolUses.length, 'stored');
+                this.addMessage('assistant', assistantMessage, {
+                    showIndicator: { type: 'stored', count: toolUses.length }
+                });
             } else {
-                this.addMessage('assistant', assistantMessage);
+                // Handle the response with chunking support
+                await this.handleEnhancedResponse(response, assistantMessage);
             }
             
             // Update session info
@@ -150,7 +277,7 @@ const Chat = {
         }
     },
     
-    // Format message content with markdown support
+    // Format message content with basic markdown support
     formatMessageContent(content) {
         return content
             .replace(/\n/g, '<br>')
@@ -168,7 +295,7 @@ const Chat = {
         textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
     },
     
-    // Add welcome message
+    // ENHANCED Add welcome message with natural chunking
     addWelcomeMessage() {
         const messagesContainer = document.getElementById('messages');
         if (messagesContainer.children.length === 0) {
@@ -180,13 +307,38 @@ I currently have ${MindOS.userMemories.length} stored memories about you. You ca
 
 What would you like to work on today?`;
             
-            this.addMessage('assistant', welcomeText);
+            // Check if chunked welcome is supported
+            if (window.location.search.includes('chunked=true') || localStorage.getItem('chunked_welcome') === 'true') {
+                // Chunked welcome message
+                setTimeout(() => {
+                    this.addMessage('assistant', `👋 Hey! I'm MindOS, your personal AI assistant.`);
+                }, 500);
+                
+                setTimeout(() => {
+                    this.addMessage('assistant', `I've got ${MindOS.userMemories.length} memories about you and can help track your progress.`);
+                }, 2500);
+                
+                setTimeout(() => {
+                    this.addMessage('assistant', `What's on your agenda today?`);
+                }, 4500);
+            } else {
+                // Standard welcome message
+                this.addMessage('assistant', welcomeText);
+            }
         }
     },
     
-    // Clear chat session
+    // Clear chat session (enhanced with chunk cleanup)
     async clearSession() {
         try {
+            // Clear any pending chunks
+            this.isWaitingForChunk = false;
+            if (this.chunkTimeout) {
+                clearTimeout(this.chunkTimeout);
+                this.chunkTimeout = null;
+            }
+            this.hideTypingIndicator();
+            
             await API.post('/api/clear-session');
             
             // Clear messages
@@ -235,7 +387,7 @@ What would you like to work on today?`;
         Utils.showAlert('Chat exported successfully', 'success');
     },
     
-    // Add memory indicator to last message
+    // Enhanced memory indicator (backward compatible)
     addMemoryIndicator(count, type = 'stored') {
         const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
         if (!lastMessage) return;
@@ -243,10 +395,23 @@ What would you like to work on today?`;
         const indicator = document.createElement('div');
         indicator.className = `memory-${type}-indicator`;
         
+        const iconMap = {
+            'stored': 'fas fa-brain',
+            'updated': 'fas fa-sync-alt', 
+            'processed': 'fas fa-cog',
+            'deleted': 'fas fa-trash'
+        };
+        
+        const icon = iconMap[type] || 'fas fa-brain';
+        
         if (type === 'stored') {
-            indicator.innerHTML = `<i class="fas fa-brain"></i> ${count} memory${count > 1 ? 'ies' : ''} stored`;
+            indicator.innerHTML = `<i class="${icon}"></i> ${count} memory${count > 1 ? 'ies' : ''} stored`;
+        } else if (type === 'updated') {
+            indicator.innerHTML = `<i class="${icon}"></i> ${count} memory${count > 1 ? 'ies' : ''} updated`;
+        } else if (type === 'processed') {
+            indicator.innerHTML = `<i class="${icon}"></i> ${count} operation${count > 1 ? 's' : ''} processed`;
         } else if (type === 'deleted') {
-            indicator.innerHTML = `<i class="fas fa-trash"></i> Memory deleted`;
+            indicator.innerHTML = `<i class="${icon}"></i> Memory deleted`;
         }
         
         lastMessage.appendChild(indicator);
@@ -342,8 +507,8 @@ What would you like to work on today?`;
         });
     },
     
-    // Get message context for AI (last N messages)
-    getMessageContext(count = 10) {
+    // Get message context for AI (optimized for chunked responses)
+    getMessageContext(count = 8) { // Reduced from 10 for better chunking performance
         const messages = document.querySelectorAll('.message');
         const context = [];
         
@@ -360,5 +525,87 @@ What would you like to work on today?`;
         });
         
         return context;
+    },
+    
+    // NEW: Handle quick responses for better conversation flow
+    addQuickResponses(responses) {
+        const lastMessage = document.querySelector('.message.assistant:last-child');
+        if (!lastMessage || !responses || responses.length === 0) return;
+        
+        const quickResponseDiv = document.createElement('div');
+        quickResponseDiv.className = 'quick-responses';
+        quickResponseDiv.innerHTML = '<div class="quick-responses-label">Quick replies:</div>';
+        
+        const responseContainer = document.createElement('div');
+        responseContainer.className = 'quick-responses-container';
+        
+        responses.slice(0, 3).forEach(response => { // Limit to 3 quick responses
+            const btn = document.createElement('button');
+            btn.className = 'quick-response-btn';
+            btn.textContent = response;
+            btn.onclick = () => {
+                this.sendPredefinedMessage(response);
+                quickResponseDiv.remove();
+            };
+            responseContainer.appendChild(btn);
+        });
+        
+        quickResponseDiv.appendChild(responseContainer);
+        lastMessage.appendChild(quickResponseDiv);
+        
+        // Auto-remove quick responses after 30 seconds
+        setTimeout(() => {
+            if (quickResponseDiv.parentNode) {
+                quickResponseDiv.remove();
+            }
+        }, 30000);
+    },
+    
+    // NEW: Interrupt chunked response if user types
+    handleUserInterrupt() {
+        if (this.isWaitingForChunk) {
+            console.log('🛑 User interrupted chunked response');
+            this.isWaitingForChunk = false;
+            if (this.chunkTimeout) {
+                clearTimeout(this.chunkTimeout);
+                this.chunkTimeout = null;
+            }
+            this.hideTypingIndicator();
+        }
+    },
+    
+    // NEW: Enable/disable chunked responses
+    toggleChunkedMode(enabled) {
+        localStorage.setItem('chunked_responses', enabled ? 'true' : 'false');
+        localStorage.setItem('chunked_welcome', enabled ? 'true' : 'false');
+        
+        if (enabled) {
+            Utils.showAlert('Chunked responses enabled', 'success');
+        } else {
+            Utils.showAlert('Chunked responses disabled', 'info');
+            this.handleUserInterrupt(); // Stop any current chunking
+        }
+    },
+    
+    // NEW: Check if chunked mode is enabled
+    isChunkedModeEnabled() {
+        return localStorage.getItem('chunked_responses') === 'true';
     }
 };
+
+// Enhanced event listener for user interrupt
+document.addEventListener('DOMContentLoaded', () => {
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.addEventListener('input', () => {
+            if (messageInput.value.trim().length > 0) {
+                Chat.handleUserInterrupt();
+            }
+        });
+        
+        // Also interrupt on focus (user wants to type)
+        messageInput.addEventListener('focus', () => {
+            Chat.handleUserInterrupt();
+        });
+    }
+});
