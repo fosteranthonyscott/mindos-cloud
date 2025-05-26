@@ -41,9 +41,13 @@ async function runMigrationIfNeeded() {
         try {
             console.log('🔄 Running database migrations...');
             
+            // Drop existing tables if they exist
+            await db.query(`DROP TABLE IF EXISTS memories CASCADE;`);
+            await db.query(`DROP TABLE IF EXISTS "user" CASCADE;`);
+            
             // Create user table
             await db.query(`
-                CREATE TABLE IF NOT EXISTS "user" (
+                CREATE TABLE "user" (
                     id SERIAL PRIMARY KEY,
                     user_id TEXT NOT NULL UNIQUE,
                     username TEXT NOT NULL,
@@ -59,7 +63,7 @@ async function runMigrationIfNeeded() {
             
             // Create memories table
             await db.query(`
-                CREATE TABLE IF NOT EXISTS memories (
+                CREATE TABLE memories (
                     id SERIAL PRIMARY KEY,
                     user_id TEXT NOT NULL,
                     type TEXT NOT NULL,
