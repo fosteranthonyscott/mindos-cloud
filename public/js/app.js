@@ -883,3 +883,114 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
     ChromeFixes.init();
 });
+
+// Debug function to test input container - Add to browser console or app.js
+
+function debugInputContainer() {
+    console.log('🔍 Debugging Input Container...');
+    
+    const inputContainer = document.querySelector('.input-container');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatApp = document.getElementById('chatApp');
+    
+    console.log('Input Container Element:', inputContainer);
+    console.log('Message Input Element:', messageInput);
+    console.log('Send Button Element:', sendBtn);
+    console.log('Chat App Element:', chatApp);
+    
+    if (inputContainer) {
+        const styles = window.getComputedStyle(inputContainer);
+        console.log('Input Container Styles:', {
+            display: styles.display,
+            position: styles.position,
+            bottom: styles.bottom,
+            left: styles.left,
+            right: styles.right,
+            zIndex: styles.zIndex,
+            visibility: styles.visibility,
+            opacity: styles.opacity,
+            height: styles.height,
+            width: styles.width
+        });
+        
+        const rect = inputContainer.getBoundingClientRect();
+        console.log('Input Container Position:', {
+            top: rect.top,
+            bottom: rect.bottom,
+            left: rect.left,
+            right: rect.right,
+            width: rect.width,
+            height: rect.height,
+            visible: rect.height > 0 && rect.width > 0
+        });
+        
+        // Test if input container is visible in viewport
+        const isVisible = rect.bottom >= 0 && 
+                         rect.right >= 0 && 
+                         rect.top <= window.innerHeight && 
+                         rect.left <= window.innerWidth;
+        
+        console.log('Is Input Container Visible:', isVisible);
+        
+        // Force visibility if not visible
+        if (!isVisible) {
+            console.log('⚠️ Input container not visible, forcing visibility...');
+            inputContainer.style.display = 'flex';
+            inputContainer.style.position = 'fixed';
+            inputContainer.style.bottom = '0';
+            inputContainer.style.left = '0';
+            inputContainer.style.right = '0';
+            inputContainer.style.zIndex = '1000';
+            inputContainer.style.visibility = 'visible';
+            inputContainer.style.opacity = '1';
+            console.log('✅ Forced input container visibility');
+        }
+        
+    } else {
+        console.error('❌ Input container not found!');
+        
+        // Try to find it by different selectors
+        const alternatives = [
+            '.input-group',
+            '#messageInput',
+            '[class*="input"]'
+        ];
+        
+        alternatives.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                console.log(`Found alternative element with selector "${selector}":`, element);
+            }
+        });
+    }
+    
+    // Browser detection
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    console.log('Browser Info:', {
+        isChrome: isChrome,
+        isMobile: isMobile,
+        userAgent: navigator.userAgent,
+        viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight
+        }
+    });
+    
+    return {
+        inputContainer,
+        messageInput,
+        sendBtn,
+        isChrome,
+        isMobile
+    };
+}
+
+// Auto-run debug on page load for Chrome
+if (/Chrome/.test(navigator.userAgent)) {
+    window.addEventListener('load', () => {
+        setTimeout(debugInputContainer, 1000);
+    });
+}
