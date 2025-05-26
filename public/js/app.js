@@ -421,7 +421,7 @@ const MemorySettings = {
     }
 };
 
-// UI Helper Functions - FIXED VERSION
+// UI Helper Functions - MERGED VERSION
 const UI = {
     // Show loading state
     setLoading(loading) {
@@ -680,30 +680,7 @@ const EventHandlers = {
         });
     }
 };
-
-// UI Helper Functions
-const UI = {
-    // Show loading state
-    setLoading(loading) {
-        MindOS.isLoading = loading;
-        const typingIndicator = document.getElementById('typingIndicator');
-        const sendBtn = document.getElementById('sendBtn');
-        
-        if (loading) {
-            if (typingIndicator) typingIndicator.classList.add('show');
-            if (sendBtn) sendBtn.disabled = true;
-            
-            const headerStatus = document.getElementById('headerStatus');
-            if (headerStatus) headerStatus.textContent = 'MindOS is thinking...';
-        } else {
-            if (typingIndicator) typingIndicator.classList.remove('show');
-            if (sendBtn) sendBtn.disabled = false;
-            
-            const headerStatus = document.getElementById('headerStatus');
-            if (headerStatus) headerStatus.textContent = 'AI Assistant Ready';
-        }
-    },
-    
+  
     // Toggle sidebar
     toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
@@ -728,7 +705,7 @@ const UI = {
         if (overlay) overlay.classList.remove('show');
     },
     
-    // Show auth screen - FIXED
+    // Show auth screen
     showAuthScreen() {
         const authScreen = document.getElementById('authScreen');
         const chatApp = document.getElementById('chatApp');
@@ -748,13 +725,13 @@ const UI = {
         }
     },
     
-    // Show card app - FIXED
+    // Show card app
     showCardApp() {
         const authScreen = document.getElementById('authScreen');
         const chatApp = document.getElementById('chatApp');
         const cardApp = document.getElementById('cardApp');
         
-        // Properly hide auth screen
+        // Hide auth screen
         if (authScreen) {
             authScreen.style.display = 'none';
             authScreen.classList.add('hidden');
@@ -776,8 +753,15 @@ const UI = {
             userName.textContent = MindOS.user.username || 'User';
         }
     },
+        
+        // Update user info
+        const userName = document.getElementById('userName');
+        if (userName) {
+            userName.textContent = MindOS.user.username || 'User';
+        }
+    },
     
-    // Show chat app - FIXED
+    // Show chat app
     showChatApp() {
         const authScreen = document.getElementById('authScreen');
         const chatApp = document.getElementById('chatApp');
