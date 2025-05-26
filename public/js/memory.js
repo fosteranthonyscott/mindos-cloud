@@ -1,4 +1,4 @@
-// Memory Management Module - FIXED CONFIRMATION FUNCTIONS
+// Memory Management Module - FIXED CONFIRMATION AND EDITING
 const Memory = {
     // Current state
     selectedMemory: null,
@@ -24,10 +24,16 @@ const Memory = {
         document.getElementById('allMemoriesCloseBtn').addEventListener('click', () => Modals.closeAllMemoriesModal());
     },
     
-    // Show memory confirmation dialog - FIXED VERSION
+    // Show memory confirmation dialog - FIXED VERSION with proper event handlers
     showMemoryConfirmation(memories, onConfirm, onDismiss) {
         const dialog = document.createElement('div');
         dialog.className = 'memory-confirmation-dialog';
+        
+        // Create unique IDs for this dialog
+        const dialogId = 'memoryConfirm_' + Date.now();
+        const dismissBtnId = dialogId + '_dismiss';
+        const confirmBtnId = dialogId + '_confirm';
+        
         dialog.innerHTML = `
             <div class="memory-confirmation-content">
                 <div class="memory-confirmation-header">
@@ -41,23 +47,25 @@ const Memory = {
                 
                 <div class="memory-preview-list">
                     ${memories.map((memory, index) => `
-                        <div class="memory-preview-item">
+                        <div class="memory-preview-item" data-memory-index="${index}">
                             <div class="memory-preview-header">
                                 <span class="memory-preview-type">${memory.type}</span>
-                                <button class="memory-preview-edit" onclick="Memory.editPendingMemory(${index})">
+                                <button class="memory-preview-edit" data-edit-index="${index}">
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </div>
                             <div class="memory-preview-content">${memory.content}</div>
+                            ${memory.additionalData.priority ? `<div class="memory-preview-meta">Priority: ${memory.additionalData.priority}</div>` : ''}
+                            ${memory.additionalData.notes ? `<div class="memory-preview-meta">Notes: ${memory.additionalData.notes}</div>` : ''}
                         </div>
                     `).join('')}
                 </div>
                 
                 <div class="memory-confirmation-actions">
-                    <button class="modal-btn secondary" onclick="Memory.dismissMemories()">
+                    <button class="modal-btn secondary" id="${dismissBtnId}">
                         <i class="fas fa-times"></i> Dismiss
                     </button>
-                    <button class="modal-btn success" onclick="Memory.confirmMemories()">
+                    <button class="modal-btn success" id="${confirmBtnId}">
                         <i class="fas fa-brain"></i> Remember All
                     </button>
                 </div>
@@ -66,45 +74,312 @@ const Memory = {
         
         document.body.appendChild(dialog);
         
-        // Store callbacks in Memory object instead of global window
-        this.currentMemoryCallbacks = { onConfirm, onDismiss };
+        // Add proper event listeners instead of onclick
+        document.getElementById(dismissBtnId).addEventListener('click', () => {
+            this.dismissMemories(dialog, onDismiss);
+        });
+        
+        document.getElementById(confirmBtnId).addEventListener('click', () => {
+            this.confirmMemories(dialog, onConfirm);
+        });
+        
+        // Add edit button listeners
+        dialog.querySelectorAll('.memory-preview-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = parseInt(btn.dataset.editIndex);
+                this.openEnhancedMemoryEditor(index, dialog, onConfirm, onDismiss);
+            });
+        });
+        
+        // Store current dialog reference
         this.currentDialog = dialog;
     },
     
-    // FIXED: Add these methods to Memory object
-    confirmMemories() {
-        if (this.currentDialog) {
-            document.body.removeChild(this.currentDialog);
+    // FIXED: Confirm memories with proper cleanup
+    confirmMemories(dialog, onConfirm) {
+        if (dialog && dialog.parentNode) {
+            document.body.removeChild(dialog);
         }
-        if (this.currentMemoryCallbacks && this.currentMemoryCallbacks.onConfirm) {
-            this.currentMemoryCallbacks.onConfirm();
+        if (onConfirm) {
+            onConfirm();
         }
-        this.cleanupMemoryConfirmation();
-    },
-    
-    dismissMemories() {
-        if (this.currentDialog) {
-            document.body.removeChild(this.currentDialog);
-        }
-        if (this.currentMemoryCallbacks && this.currentMemoryCallbacks.onDismiss) {
-            this.currentMemoryCallbacks.onDismiss();
-        }
-        this.cleanupMemoryConfirmation();
-    },
-    
-    editPendingMemory(index) {
-        if (this.currentDialog) {
-            document.body.removeChild(this.currentDialog);
-        }
-        this.openPendingMemoryEditor(index, 
-            this.currentMemoryCallbacks.onConfirm, 
-            this.currentMemoryCallbacks.onDismiss);
-        this.cleanupMemoryConfirmation();
-    },
-    
-    cleanupMemoryConfirmation() {
-        this.currentMemoryCallbacks = null;
         this.currentDialog = null;
+    },
+    
+    // FIXED: Dismiss memories with proper cleanup
+    dismissMemories(dialog, onDismiss) {
+        if (dialog && dialog.parentNode) {
+            document.body.removeChild(dialog);
+        }
+        if (onDismiss) {
+            onDismiss();
+        }
+        this.currentDialog = null;
+    },
+    
+    // ENHANCED: Open enhanced memory editor with add fields functionality
+    openEnhancedMemoryEditor(index, parentDialog, onConfirm, onDismiss) {
+        const memory = MindOS.pendingMemories[index];
+        if (!memory) return;
+        
+        // Remove parent dialog
+        if (parentDialog && parentDialog.parentNode) {
+            document.body.removeChild(parentDialog);
+        }
+        
+        const editorDialog = document.createElement('div');
+        editorDialog.className = 'memory-confirmation-dialog';
+        
+        const editorId = 'memoryEditor_' + Date.now();
+        const saveId = editorId + '_save';
+        const cancelId = editorId + '_cancel';
+        const addFieldId = editorId + '_addField';
+        
+        editorDialog.innerHTML = `
+            <div class="memory-confirmation-content" style="max-width: 700px;">
+                <div class="memory-confirmation-header">
+                    <div class="memory-confirmation-title">
+                        <i class="fas fa-edit"></i> Edit Memory
+                    </div>
+                    <div class="memory-confirmation-subtitle">
+                        Modify this memory before storing
+                    </div>
+                </div>
+                
+                <div class="memory-modal-body" id="${editorId}_body" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Memory fields will be populated here -->
+                </div>
+                
+                <div class="memory-confirmation-actions">
+                    <button class="modal-btn secondary" id="${addFieldId}">
+                        <i class="fas fa-plus"></i> Add Field
+                    </button>
+                    <button class="modal-btn secondary" id="${cancelId}">Cancel</button>
+                    <button class="modal-btn success" id="${saveId}">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(editorDialog);
+        
+        // Populate fields
+        this.populateMemoryEditor(editorId + '_body', memory);
+        
+        // Add event listeners
+        document.getElementById(cancelId).addEventListener('click', () => {
+            this.cancelMemoryEdit(editorDialog, onConfirm, onDismiss);
+        });
+        
+        document.getElementById(saveId).addEventListener('click', () => {
+            this.saveMemoryEdit(index, editorDialog, onConfirm, onDismiss);
+        });
+        
+        document.getElementById(addFieldId).addEventListener('click', () => {
+            this.showAddFieldsForEditor(editorId + '_body', memory);
+        });
+        
+        this.currentDialog = editorDialog;
+        this.currentEditIndex = index;
+        this.currentCallbacks = { onConfirm, onDismiss };
+    },
+    
+    // Populate memory editor with all current fields
+    populateMemoryEditor(containerId, memory) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        
+        // Required fields first
+        const requiredFields = ['type', 'content'];
+        requiredFields.forEach(fieldKey => {
+            if (fieldKey === 'type') {
+                container.appendChild(this.createEditorField(fieldKey, memory.type, memoryFieldDefinitions[fieldKey], true));
+            } else if (fieldKey === 'content') {
+                container.appendChild(this.createEditorField(fieldKey, memory.content, memoryFieldDefinitions[fieldKey], true));
+            }
+        });
+        
+        // Optional fields that have values
+        Object.entries(memory.additionalData).forEach(([fieldKey, value]) => {
+            if (!requiredFields.includes(fieldKey) && value !== null && value !== undefined && value !== '') {
+                const fieldDef = memoryFieldDefinitions[fieldKey];
+                if (fieldDef) {
+                    container.appendChild(this.createEditorField(fieldKey, value, fieldDef, false));
+                }
+            }
+        });
+    },
+    
+    // Create editor field element
+    createEditorField(fieldKey, value, fieldDef, isRequired) {
+        const section = document.createElement('div');
+        section.className = 'memory-detail-section';
+        section.setAttribute('data-field', fieldKey);
+        
+        const label = document.createElement('div');
+        label.className = 'memory-detail-label';
+        label.innerHTML = `
+            ${fieldDef.label} ${isRequired ? '<span style="color: red;">*</span>' : ''}
+            ${!isRequired ? `<button class="field-remove-btn" data-remove-field="${fieldKey}" title="Remove field">
+                <i class="fas fa-times"></i>
+            </button>` : ''}
+        `;
+        
+        let input;
+        if (fieldDef.type === 'textarea') {
+            input = document.createElement('textarea');
+            input.className = 'memory-detail-input large';
+            input.rows = 3;
+        } else if (fieldDef.type === 'select') {
+            input = document.createElement('select');
+            input.className = 'memory-detail-select';
+            fieldDef.options.forEach(option => {
+                const optionEl = document.createElement('option');
+                optionEl.value = option;
+                optionEl.textContent = option.charAt(0).toUpperCase() + option.slice(1);
+                if (option == value) optionEl.selected = true;
+                input.appendChild(optionEl);
+            });
+        } else {
+            input = document.createElement('input');
+            input.className = 'memory-detail-input';
+            input.type = fieldDef.type || 'text';
+            if (fieldDef.step) input.step = fieldDef.step;
+            if (fieldDef.min) input.min = fieldDef.min;
+            if (fieldDef.max) input.max = fieldDef.max;
+        }
+        
+        input.value = value || '';
+        input.setAttribute('data-field-key', fieldKey);
+        
+        section.appendChild(label);
+        section.appendChild(input);
+        
+        // Add remove button listener
+        const removeBtn = label.querySelector('.field-remove-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                section.remove();
+            });
+        }
+        
+        return section;
+    },
+    
+    // Show add fields dialog for editor
+    showAddFieldsForEditor(containerId, memory) {
+        const container = document.getElementById(containerId);
+        const currentFields = Array.from(container.querySelectorAll('[data-field]')).map(el => 
+            el.getAttribute('data-field')
+        );
+        
+        const fieldsDialog = document.createElement('div');
+        fieldsDialog.className = 'memory-confirmation-dialog';
+        fieldsDialog.style.zIndex = '2600'; // Above current dialog
+        
+        const fieldsId = 'addFields_' + Date.now();
+        
+        fieldsDialog.innerHTML = `
+            <div class="add-fields-content">
+                <div class="add-fields-header">
+                    <div class="add-fields-title">Add Memory Fields</div>
+                    <div class="add-fields-subtitle">Select additional fields to add</div>
+                </div>
+                
+                <div class="fields-grid" id="${fieldsId}_grid">
+                    <!-- Available fields will be populated here -->
+                </div>
+                
+                <div class="add-fields-actions">
+                    <button class="modal-btn secondary" id="${fieldsId}_cancel">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(fieldsDialog);
+        
+        // Populate available fields
+        const fieldsGrid = document.getElementById(fieldsId + '_grid');
+        Object.entries(memoryFieldDefinitions).forEach(([fieldKey, fieldDef]) => {
+            if (!currentFields.includes(fieldKey) && !fieldDef.required) {
+                const fieldOption = document.createElement('div');
+                fieldOption.className = 'field-option';
+                fieldOption.innerHTML = `
+                    <div class="field-option-icon">
+                        <i class="${fieldDef.icon}"></i>
+                    </div>
+                    <div class="field-option-name">${fieldDef.label}</div>
+                    <div class="field-option-desc">Add ${fieldDef.label.toLowerCase()} information</div>
+                `;
+                
+                fieldOption.addEventListener('click', () => {
+                    // Add field to editor
+                    const newField = this.createEditorField(fieldKey, '', fieldDef, false);
+                    container.appendChild(newField);
+                    
+                    // Focus new field
+                    const input = newField.querySelector('.memory-detail-input, .memory-detail-select');
+                    if (input) input.focus();
+                    
+                    // Close add fields dialog
+                    document.body.removeChild(fieldsDialog);
+                });
+                
+                fieldsGrid.appendChild(fieldOption);
+            }
+        });
+        
+        // Cancel button
+        document.getElementById(fieldsId + '_cancel').addEventListener('click', () => {
+            document.body.removeChild(fieldsDialog);
+        });
+    },
+    
+    // Cancel memory edit and return to confirmation
+    cancelMemoryEdit(dialog, onConfirm, onDismiss) {
+        if (dialog && dialog.parentNode) {
+            document.body.removeChild(dialog);
+        }
+        
+        // Show original confirmation dialog
+        this.showMemoryConfirmation(MindOS.pendingMemories, onConfirm, onDismiss);
+    },
+    
+    // Save memory edit and return to confirmation
+    saveMemoryEdit(index, dialog, onConfirm, onDismiss) {
+        const container = dialog.querySelector('.memory-modal-body');
+        const fields = container.querySelectorAll('[data-field-key]');
+        
+        // Collect all field values
+        const updatedData = {};
+        fields.forEach(field => {
+            const fieldKey = field.getAttribute('data-field-key');
+            const value = field.value.trim();
+            
+            if (fieldKey === 'type') {
+                MindOS.pendingMemories[index].type = value;
+            } else if (fieldKey === 'content') {
+                MindOS.pendingMemories[index].content = value;
+            } else {
+                updatedData[fieldKey] = value;
+            }
+        });
+        
+        // Update the memory
+        MindOS.pendingMemories[index].additionalData = {
+            ...MindOS.pendingMemories[index].additionalData,
+            ...updatedData
+        };
+        
+        if (dialog && dialog.parentNode) {
+            document.body.removeChild(dialog);
+        }
+        
+        // Show updated confirmation dialog
+        this.showMemoryConfirmation(MindOS.pendingMemories, onConfirm, onDismiss);
     },
     
     // Store pending memories
@@ -608,105 +883,6 @@ Please provide full context about this memory and help me with any modifications
         }
     },
     
-    // Edit pending memory
-    openPendingMemoryEditor(index, onConfirm, onDismiss) {
-        const memory = MindOS.pendingMemories[index];
-        if (!memory) return;
-        
-        const dialog = document.createElement('div');
-        dialog.className = 'memory-confirmation-dialog';
-        dialog.innerHTML = `
-            <div class="memory-confirmation-content">
-                <div class="memory-confirmation-header">
-                    <div class="memory-confirmation-title">
-                        <i class="fas fa-edit"></i> Edit Memory
-                    </div>
-                    <div class="memory-confirmation-subtitle">
-                        Modify this memory before storing
-                    </div>
-                </div>
-                
-                <div class="memory-modal-body" style="max-height: 400px; overflow-y: auto;">
-                    <div class="memory-detail-section">
-                        <div class="memory-detail-label">Type</div>
-                        <select class="memory-detail-select" id="editMemoryType">
-                            <option value="goal" ${memory.type === 'goal' ? 'selected' : ''}>Goal</option>
-                            <option value="routine" ${memory.type === 'routine' ? 'selected' : ''}>Routine</option>
-                            <option value="preference" ${memory.type === 'preference' ? 'selected' : ''}>Preference</option>
-                            <option value="insight" ${memory.type === 'insight' ? 'selected' : ''}>Insight</option>
-                            <option value="event" ${memory.type === 'event' ? 'selected' : ''}>Event</option>
-                            <option value="system" ${memory.type === 'system' ? 'selected' : ''}>System</option>
-                        </select>
-                    </div>
-                    
-                    <div class="memory-detail-section">
-                        <div class="memory-detail-label">Content</div>
-                        <textarea class="memory-detail-input large" id="editMemoryContent">${memory.content}</textarea>
-                    </div>
-                    
-                    <div class="memory-detail-section">
-                        <div class="memory-detail-label">Priority (1-5)</div>
-                        <select class="memory-detail-select" id="editMemoryPriority">
-                            <option value="1" ${memory.additionalData.priority == '1' ? 'selected' : ''}>1 - Low</option>
-                            <option value="2" ${memory.additionalData.priority == '2' ? 'selected' : ''}>2 - Low-Medium</option>
-                            <option value="3" ${memory.additionalData.priority == '3' ? 'selected' : ''}>3 - Medium</option>
-                            <option value="4" ${memory.additionalData.priority == '4' ? 'selected' : ''}>4 - High</option>
-                            <option value="5" ${memory.additionalData.priority == '5' ? 'selected' : ''}>5 - Critical</option>
-                        </select>
-                    </div>
-                    
-                    <div class="memory-detail-section">
-                        <div class="memory-detail-label">Notes (Optional)</div>
-                        <textarea class="memory-detail-input" id="editMemoryNotes">${memory.additionalData.notes || ''}</textarea>
-                    </div>
-                </div>
-                
-                <div class="memory-confirmation-actions">
-                    <button class="modal-btn secondary" onclick="Memory.cancelEdit()">Cancel</button>
-                    <button class="modal-btn success" onclick="Memory.saveEditedMemory(${index})">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(dialog);
-        
-        // Store references for the editor
-        this.currentDialog = dialog;
-        this.currentMemoryCallbacks = { onConfirm, onDismiss };
-    },
-    
-    // Cancel memory edit
-    cancelEdit() {
-        if (this.currentDialog) {
-            document.body.removeChild(this.currentDialog);
-        }
-        // Show original confirmation dialog again
-        this.showMemoryConfirmation(MindOS.pendingMemories, 
-            this.currentMemoryCallbacks.onConfirm, 
-            this.currentMemoryCallbacks.onDismiss);
-        this.cleanupMemoryConfirmation();
-    },
-    
-    // Save edited memory
-    saveEditedMemory(index) {
-        // Update the memory with edited values
-        MindOS.pendingMemories[index].type = document.getElementById('editMemoryType').value;
-        MindOS.pendingMemories[index].content = document.getElementById('editMemoryContent').value;
-        MindOS.pendingMemories[index].additionalData.priority = document.getElementById('editMemoryPriority').value;
-        MindOS.pendingMemories[index].additionalData.notes = document.getElementById('editMemoryNotes').value;
-        
-        if (this.currentDialog) {
-            document.body.removeChild(this.currentDialog);
-        }
-        // Show updated confirmation dialog
-        this.showMemoryConfirmation(MindOS.pendingMemories, 
-            this.currentMemoryCallbacks.onConfirm, 
-            this.currentMemoryCallbacks.onDismiss);
-        this.cleanupMemoryConfirmation();
-    },
-    
     // Reset memory state
     reset() {
         this.selectedMemory = null;
@@ -715,7 +891,9 @@ Please provide full context about this memory and help me with any modifications
             clearTimeout(this.autoSaveTimeout);
             this.autoSaveTimeout = null;
         }
-        this.cleanupMemoryConfirmation();
+        this.currentDialog = null;
+        this.currentEditIndex = null;
+        this.currentCallbacks = null;
     }
 };
 
