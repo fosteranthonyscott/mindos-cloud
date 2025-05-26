@@ -638,7 +638,7 @@ async function storeMemory(userId, type, content, additionalData = {}) {
     }
 }
 
-// ENHANCED analyzeUserInput function for better memory detection
+// FIXED analyzeUserInput function with adaptive database queries
 async function analyzeUserInput(userInput, userId) {
     try {
         // FIRST: Check if this is a config module generated input
@@ -656,11 +656,28 @@ async function analyzeUserInput(userInput, userId) {
             }
         }
 
-        // Get user's existing memories for context
-        const existingMemories = await db.query(
-            'SELECT id, type, content, content_short, routine_type, status FROM memories WHERE user_id = $1 AND status != $2 ORDER BY created_at DESC LIMIT 20',
-            [userId, 'archived']
-        );
+        // FIXED: Get user's existing memories for context with adaptive query
+        let selectColumns = ['id'];
+        if (memoriesTableColumns.includes('type')) selectColumns.push('type');
+        if (memoriesTableColumns.includes('content')) selectColumns.push('content');
+        if (memoriesTableColumns.includes('content_short')) selectColumns.push('content_short');
+        if (memoriesTableColumns.includes('routine_type')) selectColumns.push('routine_type');
+        if (memoriesTableColumns.includes('status')) selectColumns.push('status');
+
+        let query = `SELECT ${selectColumns.join(', ')} FROM memories WHERE user_id = $1`;
+        let params = [userId];
+
+        // Add status filter if status column exists
+        if (memoriesTableColumns.includes('status')) {
+            query += ' AND status != $2';
+            params.push('archived');
+        }
+
+        // Add ordering
+        const orderBy = memoriesTableColumns.includes('created_at') ? ' ORDER BY created_at DESC' : ' ORDER BY id DESC';
+        query += orderBy + ' LIMIT 20';
+
+        const existingMemories = await db.query(query, params);
 
         const analysisPrompt = `Analyze this user input for memory operations. Focus on MATHEMATICAL ACCURACY and CONSTRAINT REASONING.
 
@@ -672,7 +689,7 @@ CRITICAL CONSTRAINTS TO RESPECT:
 - Math must be accurate (if someone needs to be at work at 7 AM, they cannot leave at 9 AM)
 
 Existing Memories Context:
-${existingMemories.rows.map(m => `ID:${m.id} [${m.type}] ${m.content_short || m.content?.substring(0, 80)} (${m.status})`).join('\n')}
+${existingMemories.rows.map(m => `ID:${m.id} [${m.type || 'unknown'}] ${m.content_short || m.content?.substring(0, 80) || 'No content'} (${m.status || 'unknown'})`).join('\n')}
 
 RULES FOR ANALYSIS:
 1. If user provides detailed routine/goal information → CREATE memory operation
@@ -944,8 +961,15 @@ app.post('/api/claude', auth, async (req, res) => {
         const userMessage = messages[messages.length - 1];
         context.addMessage(userMessage);
         
-        // STEP 1: Analyze input for memory operations (with enhanced detection)
-        const memoryOperations = await analyzeUserInput(userMessage.content, userId);
+        // STEP 1: Analyze input for memory operations (with enhanced detection and error handling)
+        let memoryOperations = [];
+        try {
+            memoryOperations = await analyzeUserInput(userMessage.content, userId);
+        } catch (error) {
+            console.error('❌ Memory analysis failed, continuing without:', error.message);
+            // Continue with empty operations array
+        }
+        
         let memoryResults = [];
         
         // STEP 2: Execute memory operations
@@ -1544,4 +1568,5 @@ app.listen(PORT, () => {
     console.log('🎯 Config module input parsing enabled');
     console.log('⚡ Mathematical constraint reasoning active');
     console.log('🔍 Enhanced conversation context with constraint extraction');
+    console.log('🔧 FIXED: Database query adaptivity in analyzeUserInput');
 });
