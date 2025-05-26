@@ -1,5 +1,5 @@
-// SIMPLIFIED SERVER.JS - WORKS WITH EXISTING DATABASE SCHEMA
-// This version dynamically adapts to whatever columns exist in your memories table
+// ENHANCED SERVER.JS - Complete Version with Memory Management
+// This version includes memory management features while maintaining adaptive schema support
 
 const express = require('express');
 const jwt = require('jsonwebtoken');
@@ -92,7 +92,9 @@ When users share important information (goals, preferences, routines, significan
 - "event" - Significant occurrences or milestones
 - "system" - System settings or configurations
 
-Always reference relevant stored memories when responding to provide continuity and personalized assistance.`;
+Always reference relevant stored memories when responding to provide continuity and personalized assistance.
+
+Note: Users can view, discuss, and delete memories through the interface. If they ask about specific memories or want to modify them, provide helpful guidance and full context.`;
 
 // Helper function to get conversation session
 function getConversationSession(userId) {
@@ -492,7 +494,7 @@ Session started: ${session.startTime.toLocaleString()}`;
     }
 });
 
-// ADAPTIVE memory endpoints
+// ENHANCED memory endpoints with DELETE functionality
 app.get('/api/memories', auth, async (req, res) => {
     try {
         const { type, limit = 50 } = req.query;
@@ -545,6 +547,127 @@ app.post('/api/memories', auth, async (req, res) => {
     } catch (error) {
         console.error('Store memory error:', error);
         res.status(500).json({ error: 'Failed to store memory' });
+    }
+});
+
+// NEW: Delete memory endpoint
+app.delete('/api/memories/:id', auth, async (req, res) => {
+    try {
+        const memoryId = req.params.id;
+        const userId = req.user.userId;
+        
+        // Verify memory belongs to user before deleting
+        const checkResult = await db.query(
+            'SELECT id FROM memories WHERE id = $1 AND user_id = $2',
+            [memoryId, userId]
+        );
+        
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Memory not found or access denied' });
+        }
+        
+        // Delete the memory
+        const deleteResult = await db.query(
+            'DELETE FROM memories WHERE id = $1 AND user_id = $2',
+            [memoryId, userId]
+        );
+        
+        if (deleteResult.rowCount > 0) {
+            console.log(`🗑️ Memory deleted: ID ${memoryId} for user ${userId}`);
+            res.json({ message: 'Memory deleted successfully' });
+        } else {
+            res.status(500).json({ error: 'Failed to delete memory' });
+        }
+        
+    } catch (error) {
+        console.error('Delete memory error:', error);
+        res.status(500).json({ error: 'Failed to delete memory' });
+    }
+});
+
+// NEW: Get specific memory details
+app.get('/api/memories/:id', auth, async (req, res) => {
+    try {
+        const memoryId = req.params.id;
+        const userId = req.user.userId;
+        
+        const result = await db.query(
+            'SELECT * FROM memories WHERE id = $1 AND user_id = $2',
+            [memoryId, userId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Memory not found' });
+        }
+        
+        res.json(result.rows[0]);
+        
+    } catch (error) {
+        console.error('Get memory error:', error);
+        res.status(500).json({ error: 'Failed to get memory' });
+    }
+});
+
+// NEW: Update memory endpoint (for future editing functionality)
+app.put('/api/memories/:id', auth, async (req, res) => {
+    try {
+        const memoryId = req.params.id;
+        const userId = req.user.userId;
+        const updateData = req.body;
+        
+        // Verify memory belongs to user
+        const checkResult = await db.query(
+            'SELECT id FROM memories WHERE id = $1 AND user_id = $2',
+            [memoryId, userId]
+        );
+        
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Memory not found or access denied' });
+        }
+        
+        // Build update query dynamically based on provided fields and existing columns
+        const updateFields = [];
+        const updateValues = [];
+        let paramIndex = 1;
+        
+        Object.entries(updateData).forEach(([key, value]) => {
+            if (memoriesTableColumns.includes(key) && key !== 'id' && key !== 'user_id') {
+                updateFields.push(`${key} = $${paramIndex}`);
+                updateValues.push(value);
+                paramIndex++;
+            }
+        });
+        
+        if (updateFields.length === 0) {
+            return res.status(400).json({ error: 'No valid fields to update' });
+        }
+        
+        // Add modified timestamp if column exists
+        if (memoriesTableColumns.includes('modified')) {
+            updateFields.push(`modified = CURRENT_DATE`);
+        }
+        
+        updateValues.push(memoryId, userId);
+        
+        const query = `
+            UPDATE memories 
+            SET ${updateFields.join(', ')} 
+            WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
+            RETURNING *
+        `;
+        
+        const result = await db.query(query, updateValues);
+        
+        if (result.rowCount > 0) {
+            console.log(`✏️ Memory updated: ID ${memoryId} for user ${userId}`);
+            res.json(result.rows[0]);
+        } else {
+            res.status(500).json({ error: 'Failed to update memory' });
+        }
+        
+    } catch (error) {
+        console.error('Update memory error:', error);
+        res.status(500).json({ error: 'Failed to update memory' });
     }
 });
 
@@ -608,5 +731,6 @@ app.listen(PORT, () => {
     console.log('📊 Database: Connected');
     console.log('🤖 Claude: Ready with Adaptive Memory Management');
     console.log('🧠 Session Storage: Active');
+    console.log('🗑️ Memory Management: DELETE/UPDATE endpoints active');
     console.log(`📋 Memory table columns: ${memoriesTableColumns.length} found`);
 });
