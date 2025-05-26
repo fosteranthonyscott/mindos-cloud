@@ -1,5 +1,5 @@
-// COMPLETE SERVER.JS FILE - FULL VERSION (NOT TRUNCATED)
-// Replace your entire server.js with this corrected version
+// SIMPLIFIED SERVER.JS - WORKS WITH EXISTING DATABASE SCHEMA
+// This version dynamically adapts to whatever columns exist in your memories table
 
 const express = require('express');
 const jwt = require('jsonwebtoken');
@@ -24,7 +24,7 @@ app.use((req, res, next) => {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'mindos-jwt-secret-2025';
 
-// PostgreSQL connection with proper configuration
+// PostgreSQL connection
 const db = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -33,12 +33,39 @@ const db = new Pool({
     connectionTimeoutMillis: 2000,
 });
 
-// Test database connection
-db.connect()
-    .then(() => console.log('✅ Database connected successfully'))
-    .catch(err => console.error('❌ Database connection error:', err));
+// Test database connection and get schema info
+let memoriesTableColumns = [];
 
-// In-memory conversation storage (sessions)
+async function initializeDatabase() {
+    try {
+        await db.connect();
+        console.log('✅ Database connected successfully');
+        
+        // Get the actual column structure of memories table
+        const columnsResult = await db.query(`
+            SELECT column_name, data_type, column_default, is_nullable
+            FROM information_schema.columns 
+            WHERE table_name = 'memories'
+            ORDER BY ordinal_position;
+        `);
+        
+        memoriesTableColumns = columnsResult.rows.map(row => row.column_name);
+        
+        if (memoriesTableColumns.length > 0) {
+            console.log('📊 Found memories table with columns:', memoriesTableColumns);
+        } else {
+            console.log('⚠️ Memories table not found or has no columns');
+        }
+        
+    } catch (err) {
+        console.error('❌ Database connection error:', err);
+    }
+}
+
+// Initialize on startup
+initializeDatabase();
+
+// In-memory conversation storage
 const activeConversations = new Map();
 
 // MindOS System Prompt
@@ -67,7 +94,7 @@ When users share important information (goals, preferences, routines, significan
 
 Always reference relevant stored memories when responding to provide continuity and personalized assistance.`;
 
-// Helper function to get or create conversation session
+// Helper function to get conversation session
 function getConversationSession(userId) {
     if (!activeConversations.has(userId)) {
         activeConversations.set(userId, {
@@ -83,51 +110,73 @@ function getConversationSession(userId) {
     return session;
 }
 
-// CORRECTED buildMemoryContext function - using EXACT column names
+// ADAPTIVE buildMemoryContext function - works with any column structure
 async function buildMemoryContext(userId) {
     try {
-        const result = await db.query(
-            `SELECT type, content_short, content, priority, status, stage, mood, 
-                    location, energy_requirements, performance_streak, notes, due
-             FROM memories 
-             WHERE user_id = $1 AND status != 'archived'
-             ORDER BY priority DESC, performance_streak DESC, created_at DESC 
-             LIMIT 25`,
-            [userId]
-        );
+        // Base query with only guaranteed columns
+        let query = 'SELECT * FROM memories WHERE user_id = $1';
+        let orderBy = ' ORDER BY id DESC LIMIT 25'; // Use id as fallback ordering
+        
+        // Add better ordering if columns exist
+        if (memoriesTableColumns.includes('priority')) {
+            orderBy = ' ORDER BY priority DESC, id DESC LIMIT 25';
+        }
+        
+        const result = await db.query(query + orderBy, [userId]);
         
         if (result.rows.length === 0) {
             return "No stored memories yet.";
         }
         
-        const memoryGroups = result.rows.reduce((groups, memory) => {
-            if (!groups[memory.type]) groups[memory.type] = [];
-            groups[memory.type].push(memory);
-            return groups;
-        }, {});
-        
-        let contextText = "Stored memories by category:\n\n";
-        
-        Object.entries(memoryGroups).forEach(([type, memories]) => {
-            contextText += `${type.toUpperCase()}:\n`;
-            memories.forEach(memory => {
-                const summary = memory.content_short || memory.content.substring(0, 100);
-                const priority = memory.priority > 3 ? " (HIGH PRIORITY)" : "";
-                const streak = memory.performance_streak > 0 ? ` [${memory.performance_streak} day streak]` : "";
-                const mood = memory.mood ? ` (mood: ${memory.mood})` : "";
-                const location = memory.location ? ` @${memory.location}` : "";
-                const stage = memory.stage ? ` [${memory.stage}]` : "";
-                
-                contextText += `- ${summary}${priority}${streak}${mood}${location}${stage}\n`;
-                
-                if (memory.notes) {
-                    contextText += `  Notes: ${memory.notes}\n`;
-                }
+        // Group by type if type column exists
+        if (memoriesTableColumns.includes('type')) {
+            const memoryGroups = result.rows.reduce((groups, memory) => {
+                const type = memory.type || 'general';
+                if (!groups[type]) groups[type] = [];
+                groups[type].push(memory);
+                return groups;
+            }, {});
+            
+            let contextText = "Stored memories by category:\n\n";
+            
+            Object.entries(memoryGroups).forEach(([type, memories]) => {
+                contextText += `${type.toUpperCase()}:\n`;
+                memories.forEach(memory => {
+                    // Use content_short if available, otherwise truncate content
+                    const summary = memory.content_short || 
+                                  (memory.content ? memory.content.substring(0, 100) : 'No content');
+                    
+                    contextText += `- ${summary}`;
+                    
+                    // Add additional info if columns exist
+                    if (memory.priority && memory.priority > 3) contextText += " (HIGH PRIORITY)";
+                    if (memory.performance_streak && memory.performance_streak > 0) {
+                        contextText += ` [${memory.performance_streak} day streak]`;
+                    }
+                    if (memory.mood) contextText += ` (mood: ${memory.mood})`;
+                    if (memory.location) contextText += ` @${memory.location}`;
+                    if (memory.stage) contextText += ` [${memory.stage}]`;
+                    
+                    contextText += "\n";
+                    
+                    if (memory.notes) {
+                        contextText += `  Notes: ${memory.notes}\n`;
+                    }
+                });
+                contextText += "\n";
             });
-            contextText += "\n";
-        });
-        
-        return contextText;
+            
+            return contextText;
+        } else {
+            // Simple list if no type column
+            let contextText = "Stored memories:\n\n";
+            result.rows.forEach(memory => {
+                const summary = memory.content_short || 
+                              (memory.content ? memory.content.substring(0, 100) : 'No content');
+                contextText += `- ${summary}\n`;
+            });
+            return contextText;
+        }
         
     } catch (error) {
         console.error('Error building memory context:', error);
@@ -135,48 +184,56 @@ async function buildMemoryContext(userId) {
     }
 }
 
-// CORRECTED storeMemory function - using EXACT column names
+// ADAPTIVE storeMemory function - only uses existing columns
 async function storeMemory(userId, type, content, additionalData = {}) {
     try {
-        const {
-            content_short = content.length > 100 ? content.substring(0, 97) + "..." : content,
-            priority = 1,
-            performance_rate = null,
-            performance_streak = 0,
-            due = null,
-            stage = null,
-            trigger = null,
-            status = 'active',
-            energy_requirements = null,
-            required_time = null,
-            search_query = null,
-            success_criteria = null,
-            notes = null,
-            location = null,
-            weather = null,
-            mood = null,
-            resources = null,
-            emotion = null,
-            shoppingideas = null
-        } = additionalData;
+        if (memoriesTableColumns.length === 0) {
+            console.log('⚠️ No memory table columns found, skipping storage');
+            return false;
+        }
         
-        await db.query(
-            `INSERT INTO memories (
-                user_id, type, content, content_short, priority, performance_rate, 
-                performance_streak, due, stage, trigger, status, energy_requirements, 
-                required_time, search_query, success_criteria, notes, location, 
-                weather, mood, resources, emotion, shoppingideas
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
-            [
-                userId, type, content, content_short, priority, performance_rate,
-                performance_streak, due, stage, trigger, status, energy_requirements,
-                required_time, search_query, success_criteria, notes, location,
-                weather, mood, resources, emotion, shoppingideas
-            ]
-        );
+        // Build query dynamically based on available columns
+        const baseData = { user_id: userId };
         
-        console.log(`✅ Memory stored: [${type}] ${content_short} (Priority: ${priority})`);
+        // Add data for columns that exist
+        if (memoriesTableColumns.includes('type')) baseData.type = type;
+        if (memoriesTableColumns.includes('content')) baseData.content = content;
+        
+        // Add additional data only for existing columns
+        Object.entries(additionalData).forEach(([key, value]) => {
+            if (memoriesTableColumns.includes(key) && value !== null && value !== undefined) {
+                baseData[key] = value;
+            }
+        });
+        
+        // Generate short content if column exists but not provided
+        if (memoriesTableColumns.includes('content_short') && !baseData.content_short) {
+            baseData.content_short = content.length > 100 ? content.substring(0, 97) + "..." : content;
+        }
+        
+        // Set default values for common columns
+        if (memoriesTableColumns.includes('priority') && !baseData.priority) baseData.priority = 1;
+        if (memoriesTableColumns.includes('status') && !baseData.status) baseData.status = 'active';
+        if (memoriesTableColumns.includes('performance_streak') && !baseData.performance_streak) {
+            baseData.performance_streak = 0;
+        }
+        
+        // Build the INSERT query
+        const columns = Object.keys(baseData);
+        const placeholders = columns.map((_, index) => `$${index + 1}`);
+        const values = Object.values(baseData);
+        
+        const query = `
+            INSERT INTO memories (${columns.join(', ')}) 
+            VALUES (${placeholders.join(', ')})
+        `;
+        
+        await db.query(query, values);
+        
+        const summary = baseData.content_short || content.substring(0, 50);
+        console.log(`✅ Memory stored: [${type}] ${summary}`);
         return true;
+        
     } catch (error) {
         console.error('❌ Error storing memory:', error);
         return false;
@@ -198,7 +255,7 @@ const auth = (req, res, next) => {
     }
 };
 
-// API Routes
+// API Routes (keeping existing auth routes unchanged)
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -300,7 +357,7 @@ app.get('/api/user-status', auth, async (req, res) => {
     }
 });
 
-// CORRECTED Claude endpoint with all fixes
+// SIMPLIFIED Claude endpoint - adaptive to existing schema
 app.post('/api/claude', auth, async (req, res) => {
     try {
         const { messages } = req.body;
@@ -318,23 +375,61 @@ app.post('/api/claude', auth, async (req, res) => {
         
         const enhancedSystemPrompt = `${MINDOS_SYSTEM_PROMPT}
 
-Enhanced Memory Storage Instructions:
-When storing memories, you can include rich contextual information:
-- priority: 1-5 (5 being highest)
-- stage: current, planned, completed, paused
-- mood: user's emotional state
-- location: where this applies
-- energy_requirements: low, medium, high
-- required_time: estimated time needed
-- success_criteria: how to measure success
-- performance_streak: days of consistent progress
-- due: target completion date (YYYY-MM-DD)
-- shoppingideas: related shopping items or ideas
-
 User Context:
 ${memoryContext}
 
 Session started: ${session.startTime.toLocaleString()}`;
+        
+        // Create adaptive tool schema based on available columns
+        const toolProperties = {
+            type: {
+                type: "string",
+                enum: ["goal", "routine", "preference", "insight", "event", "system"],
+                description: "The category of memory to store"
+            },
+            content: {
+                type: "string",
+                description: "The full content of the memory"
+            }
+        };
+        
+        // Add properties for columns that exist
+        const optionalFields = [
+            'content_short', 'priority', 'performance_rate', 'performance_streak',
+            'due', 'stage', 'trigger', 'status', 'energy_requirements', 'required_time',
+            'search_query', 'success_criteria', 'notes', 'location', 'weather',
+            'mood', 'resources', 'emotion', 'shoppingideas'
+        ];
+        
+        optionalFields.forEach(field => {
+            if (memoriesTableColumns.includes(field)) {
+                switch (field) {
+                    case 'priority':
+                        toolProperties[field] = {
+                            type: "integer", minimum: 1, maximum: 5,
+                            description: "Priority level (1-5, 5 being highest)"
+                        };
+                        break;
+                    case 'performance_rate':
+                        toolProperties[field] = {
+                            type: "number", minimum: 0, maximum: 1,
+                            description: "Success rate as decimal (0.0-1.0)"
+                        };
+                        break;
+                    case 'performance_streak':
+                        toolProperties[field] = {
+                            type: "integer", minimum: 0,
+                            description: "Current streak count in days"
+                        };
+                        break;
+                    default:
+                        toolProperties[field] = {
+                            type: "string",
+                            description: `${field.replace(/_/g, ' ')}`
+                        };
+                }
+            }
+        });
         
         const claudeRequestBody = {
             model: 'claude-3-5-sonnet-20241022',
@@ -344,104 +439,10 @@ Session started: ${session.startTime.toLocaleString()}`;
             tools: [
                 {
                     name: "storeMemory",
-                    description: "Store important information as a memory with rich contextual data",
+                    description: "Store important information as a memory",
                     input_schema: {
                         type: "object",
-                        properties: {
-                            type: {
-                                type: "string",
-                                enum: ["goal", "routine", "preference", "insight", "event", "system"],
-                                description: "The category of memory to store"
-                            },
-                            content: {
-                                type: "string",
-                                description: "The full content of the memory"
-                            },
-                            content_short: {
-                                type: "string",
-                                description: "Brief summary for quick reference"
-                            },
-                            priority: {
-                                type: "integer",
-                                minimum: 1,
-                                maximum: 5,
-                                description: "Priority level (1-5, 5 being highest)"
-                            },
-                            performance_rate: {
-                                type: "number",
-                                minimum: 0,
-                                maximum: 1,
-                                description: "Success rate as decimal (0.0-1.0)"
-                            },
-                            performance_streak: {
-                                type: "integer",
-                                minimum: 0,
-                                description: "Current streak count in days"
-                            },
-                            due: {
-                                type: "string",
-                                description: "Due date in YYYY-MM-DD format"
-                            },
-                            stage: {
-                                type: "string",
-                                enum: ["current", "planned", "completed", "paused"],
-                                description: "Current stage of the goal/routine"
-                            },
-                            trigger: {
-                                type: "string",
-                                description: "What triggers this routine or goal"
-                            },
-                            status: {
-                                type: "string",
-                                enum: ["active", "completed", "paused", "archived"],
-                                description: "Current status"
-                            },
-                            energy_requirements: {
-                                type: "string",
-                                enum: ["low", "medium", "high"],
-                                description: "Energy level required"
-                            },
-                            required_time: {
-                                type: "string",
-                                description: "Estimated time needed (e.g., '30 minutes', '2 hours')"
-                            },
-                            search_query: {
-                                type: "string",
-                                description: "Search terms related to this memory"
-                            },
-                            success_criteria: {
-                                type: "string",
-                                description: "How to measure success or completion"
-                            },
-                            notes: {
-                                type: "string",
-                                description: "Additional notes or details"
-                            },
-                            location: {
-                                type: "string",
-                                description: "Location context for this memory"
-                            },
-                            weather: {
-                                type: "string",
-                                description: "Weather context when relevant"
-                            },
-                            mood: {
-                                type: "string",
-                                description: "User's mood or emotional context"
-                            },
-                            resources: {
-                                type: "string",
-                                description: "Resources needed for this goal/routine"
-                            },
-                            emotion: {
-                                type: "string",
-                                description: "Emotional context or feeling"
-                            },
-                            shoppingideas: {
-                                type: "string",
-                                description: "Shopping ideas or items related to this memory"
-                            }
-                        },
+                        properties: toolProperties,
                         required: ["type", "content"]
                     }
                 }
@@ -491,34 +492,28 @@ Session started: ${session.startTime.toLocaleString()}`;
     }
 });
 
-// Memory endpoints
+// ADAPTIVE memory endpoints
 app.get('/api/memories', auth, async (req, res) => {
     try {
-        const { type, status, priority_min, limit = 50 } = req.query;
+        const { type, limit = 50 } = req.query;
         
         let query = 'SELECT * FROM memories WHERE user_id = $1';
         let params = [req.user.userId];
         let paramIndex = 2;
         
-        if (type) {
+        if (type && memoriesTableColumns.includes('type')) {
             query += ` AND type = $${paramIndex}`;
             params.push(type);
             paramIndex++;
         }
         
-        if (status) {
-            query += ` AND status = $${paramIndex}`;
-            params.push(status);
-            paramIndex++;
+        // Order by available columns
+        if (memoriesTableColumns.includes('priority')) {
+            query += ' ORDER BY priority DESC, id DESC';
+        } else {
+            query += ' ORDER BY id DESC';
         }
         
-        if (priority_min) {
-            query += ` AND priority >= $${paramIndex}`;
-            params.push(priority_min);
-            paramIndex++;
-        }
-        
-        query += ' ORDER BY priority DESC, performance_streak DESC, created_at DESC';
         query += ` LIMIT $${paramIndex}`;
         params.push(limit);
         
@@ -553,24 +548,7 @@ app.post('/api/memories', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/memories/:id', auth, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const userId = req.user.userId;
-        
-        await db.query(
-            'DELETE FROM memories WHERE id = $1 AND user_id = $2',
-            [id, userId]
-        );
-        
-        res.json({ message: 'Memory deleted successfully' });
-    } catch (error) {
-        console.error('Delete memory error:', error);
-        res.status(500).json({ error: 'Failed to delete memory' });
-    }
-});
-
-// Session management
+// Session management (keeping existing)
 app.post('/api/clear-session', auth, (req, res) => {
     try {
         const userId = req.user.userId;
@@ -608,94 +586,18 @@ app.get('/api/session-info', auth, (req, res) => {
     }
 });
 
-// Performance tracking
-app.patch('/api/memories/:id/performance', auth, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { performance_streak, performance_rate, stage } = req.body;
-        const userId = req.user.userId;
-        
-        await db.query(
-            `UPDATE memories 
-             SET performance_streak = COALESCE($1, performance_streak),
-                 performance_rate = COALESCE($2, performance_rate),
-                 stage = COALESCE($3, stage),
-                 modified = CURRENT_DATE
-             WHERE id = $4 AND user_id = $5`,
-            [performance_streak, performance_rate, stage, id, userId]
-        );
-        
-        res.json({ message: 'Performance updated successfully' });
-    } catch (error) {
-        console.error('Update performance error:', error);
-        res.status(500).json({ error: 'Failed to update performance' });
-    }
+// Debug endpoint
+app.get('/api/debug/schema', (req, res) => {
+    res.json({
+        memoriesTableColumns,
+        totalColumns: memoriesTableColumns.length,
+        hasTypeColumn: memoriesTableColumns.includes('type'),
+        hasContentColumn: memoriesTableColumns.includes('content'),
+        hasPriorityColumn: memoriesTableColumns.includes('priority')
+    });
 });
 
-// Analytics
-app.get('/api/memories/analytics', auth, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        
-        const result = await db.query(
-            `SELECT 
-                type,
-                COUNT(*) as total_count,
-                AVG(priority) as avg_priority,
-                AVG(performance_streak) as avg_streak,
-                AVG(performance_rate) as avg_rate,
-                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_count
-             FROM memories 
-             WHERE user_id = $1 
-             GROUP BY type
-             ORDER BY total_count DESC`,
-            [userId]
-        );
-        
-        res.json(result.rows);
-    } catch (error) {
-        console.error('Analytics error:', error);
-        res.status(500).json({ error: 'Failed to get analytics' });
-    }
-});
-
-// Shopping ideas
-app.get('/api/memories/shopping', auth, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        
-        const result = await db.query(
-            `SELECT id, type, content_short, shoppingideas, priority, created_at
-             FROM memories 
-             WHERE user_id = $1 AND shoppingideas IS NOT NULL
-             ORDER BY priority DESC, created_at DESC`,
-            [userId]
-        );
-        
-        res.json(result.rows);
-    } catch (error) {
-        console.error('Shopping ideas error:', error);
-        res.status(500).json({ error: 'Failed to get shopping ideas' });
-    }
-});
-
-// Debug route
-app.get('/debug', (req, res) => {
-    const fs = require('fs');
-    try {
-        res.json({
-            files: fs.readdirSync(__dirname),
-            publicExists: fs.existsSync('./public'),
-            indexExists: fs.existsSync('./public/index.html'),
-            currentDir: __dirname,
-            activeSessions: activeConversations.size
-        });
-    } catch (error) {
-        res.json({ error: error.message });
-    }
-});
-
-// Serve index.html for all other routes
+// Serve static files
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/index.html'));
 });
@@ -704,6 +606,7 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 MindOS server running on port ${PORT}`);
     console.log('📊 Database: Connected');
-    console.log('🤖 Claude: Ready with Memory Management');
+    console.log('🤖 Claude: Ready with Adaptive Memory Management');
     console.log('🧠 Session Storage: Active');
+    console.log(`📋 Memory table columns: ${memoriesTableColumns.length} found`);
 });
