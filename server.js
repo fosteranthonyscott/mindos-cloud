@@ -1,4 +1,4 @@
-// FIXED SERVER.JS - Enhanced with better error handling and routing
+// ENHANCED MINDOS SERVER.JS - Smart Memory Operations & Conversation Chunking
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -42,6 +42,10 @@ const db = new Pool({
 // Test database connection and get schema info
 let memoriesTableColumns = [];
 let isDbConnected = false;
+
+// In-memory conversation storage
+const activeConversations = new Map();
+const conversationChunks = new Map(); // Store chunked responses by userId
 
 async function initializeDatabase() {
     try {
@@ -100,9 +104,6 @@ app.use('/api/*', (req, res, next) => {
     }
     next();
 });
-
-// In-memory conversation storage
-const activeConversations = new Map();
 
 // MindOS System Prompt (keeping your existing one)
 const MINDOS_SYSTEM_PROMPT = `You are MindOS, a personal AI assistant designed to help users manage their lives, routines, and goals. 
@@ -226,46 +227,164 @@ async function buildMemoryContext(userId) {
     }
 }
 
-// ADAPTIVE storeMemory function - only uses existing columns
-async function storeMemory(userId, type, content, additionalData = {}) {
-    if (!isDbConnected) {
-        console.log('⚠️ Database not connected, skipping memory storage');
+// NEW: Find matching memory for updates
+async function findMatchingMemory(userId, type, content, additionalData) {
+    try {
+        const contentLower = content.toLowerCase();
+        
+        // Get recent memories of same type for matching
+        const recentMemories = await db.query(`
+            SELECT * FROM memories 
+            WHERE user_id = $1 AND type = $2 AND status != 'archived'
+            ORDER BY created_at DESC LIMIT 10
+        `, [userId, type]);
+        
+        for (const memory of recentMemories.rows) {
+            // ROUTINE MATCHING LOGIC
+            if (type === 'routine') {
+                // Check for routine completion keywords
+                const completionKeywords = ['did', 'completed', 'finished', 'done'];
+                const isCompletion = completionKeywords.some(keyword => contentLower.includes(keyword));
+                
+                if (isCompletion) {
+                    // Match by routine type or content similarity
+                    if (memory.routine_type && contentLower.includes(memory.routine_type)) {
+                        return memory;
+                    }
+                    
+                    // Match by content keywords
+                    const memoryContent = (memory.content || '').toLowerCase();
+                    const routineKeywords = ['routine', 'morning', 'evening', 'workout', 'exercise'];
+                    
+                    for (const keyword of routineKeywords) {
+                        if (contentLower.includes(keyword) && memoryContent.includes(keyword)) {
+                            return memory;
+                        }
+                    }
+                }
+            }
+            
+            // GOAL MATCHING LOGIC
+            if (type === 'goal') {
+                const progressKeywords = ['achieved', 'completed', 'progress', 'working on'];
+                const isProgress = progressKeywords.some(keyword => contentLower.includes(keyword));
+                
+                if (isProgress) {
+                    const memoryContent = (memory.content || '').toLowerCase();
+                    const words = contentLower.split(' ');
+                    const matchingWords = words.filter(word => 
+                        word.length > 3 && memoryContent.includes(word)
+                    );
+                    
+                    if (matchingWords.length >= 2) {
+                        return memory;
+                    }
+                }
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Error finding matching memory:', error);
+        return null;
+    }
+}
+
+// NEW: Update existing memory
+async function updateExistingMemory(memoryId, type, content, additionalData) {
+    try {
+        // Determine what to update based on content
+        const updateData = {};
+        const contentLower = content.toLowerCase();
+        
+        // For completion/progress updates
+        if (['completed', 'finished', 'done', 'did'].some(word => contentLower.includes(word))) {
+            updateData.status = 'completed';
+            
+            // Update performance streak for routines
+            if (type === 'routine' && memoriesTableColumns.includes('performance_streak')) {
+                const currentMemory = await db.query('SELECT performance_streak FROM memories WHERE id = $1', [memoryId]);
+                const currentStreak = currentMemory.rows[0]?.performance_streak || 0;
+                updateData.performance_streak = currentStreak + 1;
+            }
+        }
+        
+        // Add notes about the update
+        if (memoriesTableColumns.includes('notes')) {
+            const timestamp = new Date().toISOString().split('T')[0];
+            updateData.notes = `Updated: ${content} [${timestamp}]`;
+        }
+        
+        // Include any additional data
+        Object.entries(additionalData).forEach(([key, value]) => {
+            if (memoriesTableColumns.includes(key) && value !== null && value !== undefined) {
+                updateData[key] = value;
+            }
+        });
+        
+        // Build update query
+        const updateFields = [];
+        const updateValues = [];
+        let paramIndex = 1;
+        
+        Object.entries(updateData).forEach(([key, value]) => {
+            updateFields.push(`${key} = $${paramIndex}`);
+            updateValues.push(value);
+            paramIndex++;
+        });
+        
+        if (memoriesTableColumns.includes('modified')) {
+            updateFields.push('modified = CURRENT_DATE');
+        }
+        
+        updateValues.push(memoryId);
+        
+        const query = `
+            UPDATE memories 
+            SET ${updateFields.join(', ')} 
+            WHERE id = $${paramIndex}
+            RETURNING *
+        `;
+        
+        const result = await db.query(query, updateValues);
+        console.log(`✅ Memory updated: ${result.rows[0].content_short || content.substring(0, 50)}`);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error updating existing memory:', error);
         return false;
     }
-    
+}
+
+// NEW: Create new memory (extracted from original storeMemory)
+async function createNewMemory(userId, type, content, additionalData) {
     try {
         if (memoriesTableColumns.length === 0) {
             console.log('⚠️ No memory table columns found, skipping storage');
             return false;
         }
         
-        // Build query dynamically based on available columns
         const baseData = { user_id: userId };
         
-        // Add data for columns that exist
         if (memoriesTableColumns.includes('type')) baseData.type = type;
         if (memoriesTableColumns.includes('content')) baseData.content = content;
         
-        // Add additional data only for existing columns
         Object.entries(additionalData).forEach(([key, value]) => {
             if (memoriesTableColumns.includes(key) && value !== null && value !== undefined) {
                 baseData[key] = value;
             }
         });
         
-        // Generate short content if column exists but not provided
         if (memoriesTableColumns.includes('content_short') && !baseData.content_short) {
             baseData.content_short = content.length > 100 ? content.substring(0, 97) + "..." : content;
         }
         
-        // Set default values for common columns
         if (memoriesTableColumns.includes('priority') && !baseData.priority) baseData.priority = 1;
         if (memoriesTableColumns.includes('status') && !baseData.status) baseData.status = 'active';
         if (memoriesTableColumns.includes('performance_streak') && !baseData.performance_streak) {
             baseData.performance_streak = 0;
         }
         
-        // Build the INSERT query
         const columns = Object.keys(baseData);
         const placeholders = columns.map((_, index) => `$${index + 1}`);
         const values = Object.values(baseData);
@@ -273,18 +392,161 @@ async function storeMemory(userId, type, content, additionalData = {}) {
         const query = `
             INSERT INTO memories (${columns.join(', ')}) 
             VALUES (${placeholders.join(', ')})
+            RETURNING *
         `;
         
         await db.query(query, values);
         
         const summary = baseData.content_short || content.substring(0, 50);
-        console.log(`✅ Memory stored: [${type}] ${summary}`);
+        console.log(`✅ New memory created: [${type}] ${summary}`);
         return true;
         
     } catch (error) {
-        console.error('❌ Error storing memory:', error);
+        console.error('❌ Error creating new memory:', error);
         return false;
     }
+}
+
+// ENHANCED storeMemory function with UPDATE detection
+async function storeMemory(userId, type, content, additionalData = {}) {
+    if (!isDbConnected) {
+        console.log('⚠️ Database not connected, skipping memory storage');
+        return false;
+    }
+    
+    try {
+        // FIRST: Check if this should UPDATE an existing memory instead of creating new one
+        const existingMemory = await findMatchingMemory(userId, type, content, additionalData);
+        
+        if (existingMemory) {
+            console.log(`🔄 Updating existing memory ID: ${existingMemory.id}`);
+            return await updateExistingMemory(existingMemory.id, type, content, additionalData);
+        }
+        
+        // SECOND: Create new memory if no match found
+        console.log('✨ Creating new memory');
+        return await createNewMemory(userId, type, content, additionalData);
+        
+    } catch (error) {
+        console.error('❌ Error in smart memory storage:', error);
+        return false;
+    }
+}
+
+// FIXED analyzeUserInput function for multi-memory detection
+async function analyzeUserInput(userInput, userId) {
+    try {
+        // Get user's existing memories for context
+        const existingMemories = await db.query(
+            'SELECT id, type, content, content_short, routine_type, status FROM memories WHERE user_id = $1 AND status != $2 ORDER BY created_at DESC LIMIT 20',
+            [userId, 'archived']
+        );
+
+        const analysisPrompt = `Analyze this user input for memory operations. Break down multiple tasks/items into separate operations:
+
+User Input: "${userInput}"
+
+Existing Memories Context:
+${existingMemories.rows.map(m => `ID:${m.id} [${m.type}] ${m.content_short || m.content?.substring(0, 80)} (${m.status})`).join('\n')}
+
+Return ONLY a JSON array of memory operations in this format:
+[
+  {
+    "operation": "update|create",
+    "existing_id": number|null,
+    "type": "goal|routine|preference|insight|event",
+    "content": "specific description",
+    "data": {"status": "active", "priority": "3", "due": "2024-05-26", "other_field": "value"},
+    "confidence": 0.8
+  }
+]
+
+IMPORTANT RULES:
+1. Break down compound sentences into separate items (e.g., "clean house, do report, sleep by 9" = 3 separate operations)
+2. Look for comma-separated items, "and" connections, multiple verbs
+3. Each task/item should be its own operation
+4. If user mentions completing/doing something that matches existing memory → "update"
+5. If user mentions new things → "create"
+6. For bedtimes/schedules → type: "routine"
+7. For work tasks/reports → type: "goal"
+8. For cleaning/chores → type: "routine"
+9. Set appropriate due dates for "today" items
+10. Only include operations with confidence > 0.6
+
+Example input: "I need to clean kitchen, work on project, sleep by 10pm"
+Example output:
+[
+  {"operation": "create", "existing_id": null, "type": "routine", "content": "Clean kitchen", "data": {"status": "active", "priority": "3", "due": "2024-05-26"}, "confidence": 0.9},
+  {"operation": "create", "existing_id": null, "type": "goal", "content": "Work on project", "data": {"status": "active", "priority": "4"}, "confidence": 0.9},
+  {"operation": "create", "existing_id": null, "type": "routine", "content": "Sleep by 10pm", "data": {"status": "active", "routine_type": "evening", "time_of_day": "night"}, "confidence": 0.8}
+]`;
+
+        const fetch = await import('node-fetch').then(m => m.default);
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-3-5-sonnet-20241022',
+                max_tokens: 1000, // Increased for multiple operations
+                messages: [{ role: 'user', content: analysisPrompt }]
+            })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            console.error('❌ Claude API error in analyzeUserInput:', data);
+            return [];
+        }
+
+        const analysisText = data.content[0].text;
+        console.log('🔍 Analysis response:', analysisText);
+        
+        // Extract JSON from response
+        const jsonMatch = analysisText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+            const operations = JSON.parse(jsonMatch[0]);
+            console.log(`🧠 Detected ${operations.length} memory operations:`, operations.map(op => `${op.operation}: ${op.content}`));
+            return operations.filter(op => op.confidence > 0.6);
+        }
+        
+        console.log('⚠️ No valid JSON found in analysis response');
+        return [];
+    } catch (error) {
+        console.error('❌ Error analyzing user input:', error);
+        return [];
+    }
+}
+
+// ENHANCED chunked response system
+function chunkResponse(text, maxChunkLength = 150) {
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const chunks = [];
+    let currentChunk = '';
+    
+    for (const sentence of sentences) {
+        const trimmed = sentence.trim();
+        if (!trimmed) continue;
+        
+        if (currentChunk.length + trimmed.length + 1 <= maxChunkLength) {
+            currentChunk += (currentChunk ? '. ' : '') + trimmed;
+        } else {
+            if (currentChunk) {
+                chunks.push(currentChunk + '.');
+            }
+            currentChunk = trimmed;
+        }
+    }
+    
+    if (currentChunk) {
+        chunks.push(currentChunk + (currentChunk.endsWith('.') ? '' : '.'));
+    }
+    
+    return chunks.length > 0 ? chunks : [text];
 }
 
 // Authentication middleware
@@ -443,12 +705,12 @@ app.get('/api/user-status', auth, async (req, res) => {
     }
 });
 
-// CLAUDE endpoint - adaptive to existing schema
+// ENHANCED CLAUDE endpoint with multi-memory and chunking
 app.post('/api/claude', auth, async (req, res) => {
-    console.log('🤖 Claude request from user:', req.user.userId);
+    console.log('🤖 Enhanced Claude request from user:', req.user.userId);
     
     try {
-        const { messages } = req.body;
+        const { messages, request_chunks = false } = req.body;
         const userId = req.user.userId;
         
         if (!messages || !Array.isArray(messages)) {
@@ -459,90 +721,83 @@ app.post('/api/claude', auth, async (req, res) => {
         const userMessage = messages[messages.length - 1];
         session.messages.push(userMessage);
         
+        // STEP 1: Analyze input for memory operations
+        const memoryOperations = await analyzeUserInput(userMessage.content, userId);
+        let memoryResults = [];
+        
+        // STEP 2: Execute memory operations
+        if (memoryOperations.length > 0) {
+            console.log(`📝 Processing ${memoryOperations.length} memory operations`);
+            
+            for (const operation of memoryOperations) {
+                if (operation.operation === 'update' && operation.existing_id) {
+                    const success = await updateExistingMemory(
+                        operation.existing_id, 
+                        operation.type, 
+                        operation.content, 
+                        operation.data || {}
+                    );
+                    memoryResults.push({ 
+                        type: 'update', 
+                        success, 
+                        content: operation.content 
+                    });
+                } else if (operation.operation === 'create') {
+                    const success = await storeMemory(
+                        userId, 
+                        operation.type, 
+                        operation.content, 
+                        operation.data || {}
+                    );
+                    memoryResults.push({ 
+                        type: 'create', 
+                        success, 
+                        content: operation.content 
+                    });
+                }
+            }
+        }
+        
+        // STEP 3: Generate contextual response
         const memoryContext = await buildMemoryContext(userId);
         
-        const enhancedSystemPrompt = `${MINDOS_SYSTEM_PROMPT}
+        // Create memory-aware system prompt
+        let systemPrompt = `${MINDOS_SYSTEM_PROMPT}
 
 User Context:
 ${memoryContext}
 
-Session started: ${session.startTime.toLocaleString()}`;
-        
-        // Create adaptive tool schema based on available columns
-        const toolProperties = {
-            type: {
-                type: "string",
-                enum: ["goal", "routine", "preference", "insight", "event", "system"],
-                description: "The category of memory to store"
-            },
-            content: {
-                type: "string",
-                description: "The full content of the memory"
+Session started: ${session.startTime.toLocaleString()}
+
+IMPORTANT INSTRUCTIONS:
+1. Keep responses conversational and concise (1-3 sentences max)
+2. Ask follow-up questions naturally
+3. Acknowledge completed tasks positively
+4. Be supportive and encouraging
+5. Don't repeat memory storage information - I handle that automatically`;
+
+        // Add memory operation context
+        if (memoryResults.length > 0) {
+            const updates = memoryResults.filter(r => r.type === 'update' && r.success);
+            const creates = memoryResults.filter(r => r.type === 'create' && r.success);
+            
+            if (updates.length > 0) {
+                systemPrompt += `\n\nI just updated ${updates.length} memory(ies) for completed tasks. Acknowledge this positively.`;
             }
-        };
-        
-        // Add properties for columns that exist
-        const optionalFields = [
-            'content_short', 'priority', 'performance_rate', 'performance_streak',
-            'due', 'stage', 'trigger', 'status', 'energy_requirements', 'required_time',
-            'search_query', 'success_criteria', 'notes', 'location', 'weather',
-            'mood', 'resources', 'emotion', 'shoppingideas'
-        ];
-        
-        optionalFields.forEach(field => {
-            if (memoriesTableColumns.includes(field)) {
-                switch (field) {
-                    case 'priority':
-                        toolProperties[field] = {
-                            type: "integer", minimum: 1, maximum: 5,
-                            description: "Priority level (1-5, 5 being highest)"
-                        };
-                        break;
-                    case 'performance_rate':
-                        toolProperties[field] = {
-                            type: "number", minimum: 0, maximum: 1,
-                            description: "Success rate as decimal (0.0-1.0)"
-                        };
-                        break;
-                    case 'performance_streak':
-                        toolProperties[field] = {
-                            type: "integer", minimum: 0,
-                            description: "Current streak count in days"
-                        };
-                        break;
-                    default:
-                        toolProperties[field] = {
-                            type: "string",
-                            description: `${field.replace(/_/g, ' ')}`
-                        };
-                }
+            if (creates.length > 0) {
+                systemPrompt += `\n\nI just stored ${creates.length} new memory(ies). Briefly acknowledge this.`;
             }
-        });
-        
-        const claudeRequestBody = {
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 1500,
-            system: enhancedSystemPrompt,
-            messages: session.messages,
-            tools: [
-                {
-                    name: "storeMemory",
-                    description: "Store important information as a memory",
-                    input_schema: {
-                        type: "object",
-                        properties: toolProperties,
-                        required: ["type", "content"]
-                    }
-                }
-            ]
-        };
-        
-        if (!process.env.CLAUDE_API_KEY) {
-            throw new Error('Claude API key not configured');
         }
         
-        const fetch = await import('node-fetch').then(m => m.default);
+        // STEP 4: Get Claude response
+        const claudeRequestBody = {
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 300, // Shorter responses
+            system: systemPrompt,
+            messages: session.messages.slice(-10) // Last 10 messages for context
+        };
         
+        const fetch = await import('node-fetch').then(m => m.default);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -560,28 +815,71 @@ Session started: ${session.startTime.toLocaleString()}`;
             return res.status(500).json({ error: 'Claude API failed' });
         }
         
-        if (data.content) {
-            for (const content of data.content) {
-                if (content.type === 'tool_use' && content.name === 'storeMemory') {
-                    const { type, content: memoryContent, ...additionalData } = content.input;
-                    await storeMemory(userId, type, memoryContent, additionalData);
-                }
+        let assistantResponse = data.content[0].text;
+        
+        // STEP 5: Handle chunking
+        if (request_chunks || assistantResponse.length > 200) {
+            const chunks = chunkResponse(assistantResponse);
+            
+            if (chunks.length > 1) {
+                // Store chunks for this user
+                conversationChunks.set(userId, chunks.slice(1)); // Store remaining chunks
+                
+                // Return first chunk with indication of more
+                return res.json({
+                    content: [{ type: 'text', text: chunks[0] }],
+                    has_more_chunks: true,
+                    total_chunks: chunks.length,
+                    memory_operations: memoryResults.length
+                });
             }
         }
         
-        const assistantMessage = { role: 'assistant', content: data.content[0].text };
+        // STEP 6: Standard response
+        const assistantMessage = { role: 'assistant', content: assistantResponse };
         session.messages.push(assistantMessage);
         
         if (session.messages.length > 20) {
             session.messages = session.messages.slice(-20);
         }
         
-        console.log('✅ Claude response sent successfully');
-        res.json(data);
+        console.log(`✅ Response sent (${memoryResults.length} memory operations processed)`);
+        res.json({
+            content: [{ type: 'text', text: assistantResponse }],
+            has_more_chunks: false,
+            memory_operations: memoryResults.length
+        });
         
     } catch (error) {
-        console.error('❌ Claude error:', error);
+        console.error('❌ Enhanced Claude error:', error);
         res.status(500).json({ error: 'Failed to communicate with Claude' });
+    }
+});
+
+// NEW: Get next conversation chunk
+app.get('/api/claude/next-chunk', auth, (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const chunks = conversationChunks.get(userId);
+        
+        if (!chunks || chunks.length === 0) {
+            return res.json({
+                content: null,
+                has_more_chunks: false
+            });
+        }
+        
+        const nextChunk = chunks.shift();
+        conversationChunks.set(userId, chunks);
+        
+        res.json({
+            content: [{ type: 'text', text: nextChunk }],
+            has_more_chunks: chunks.length > 0
+        });
+        
+    } catch (error) {
+        console.error('Error getting next chunk:', error);
+        res.status(500).json({ error: 'Failed to get next chunk' });
     }
 });
 
@@ -828,41 +1126,7 @@ app.get('/api/debug/schema', (req, res) => {
     });
 });
 
-// ===== STATIC FILES SERVING - MOVED TO END =====
-
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Catch-all route for SPA - THIS MUST BE LAST!
-app.get('*', (req, res) => {
-    console.log(`📄 Serving static file for: ${req.path}`);
-    res.sendFile(path.join(__dirname, 'public/index.html'));
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('❌ Unhandled error:', err);
-    res.status(500).json({ 
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-    });
-});
-
-// Start server
-app.listen(PORT, () => {
-    console.log(`🚀 MindOS server running on port ${PORT}`);
-    console.log(`📊 Database: ${isDbConnected ? 'Connected' : 'Disconnected'}`);
-    console.log('🤖 Claude: Ready with Adaptive Memory Management');
-    console.log('🧠 Session Storage: Active');
-    console.log('🗑️ Memory Management: DELETE/UPDATE endpoints active');
-    console.log(`📋 Memory table columns: ${memoriesTableColumns.length} found`);
-    console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
-    console.log('🌐 Health check available at /health');
-});
-
-// Enhanced API Features for Planning - Add these to your server.js
-
-// NEW: Get memories filtered by planning criteria
+// Enhanced API Features for Planning
 app.get('/api/memories/planning/:timeframe', auth, async (req, res) => {
     try {
         const { timeframe } = req.params;
@@ -930,298 +1194,7 @@ app.get('/api/memories/planning/:timeframe', auth, async (req, res) => {
     }
 });
 
-// NEW: Tag memories for planning
-app.post('/api/memories/tag-for-planning', auth, async (req, res) => {
-    try {
-        const { memoryIds, timeframe, planDate } = req.body;
-        const userId = req.user.userId;
-        
-        if (!memoryIds || !Array.isArray(memoryIds) || memoryIds.length === 0) {
-            return res.status(400).json({ error: 'Memory IDs array is required' });
-        }
-        
-        if (!timeframe || !planDate) {
-            return res.status(400).json({ error: 'Timeframe and plan date are required' });
-        }
-        
-        console.log('🏷️ Tagging memories for planning:', { 
-            memoryIds: memoryIds.length, 
-            timeframe, 
-            planDate,
-            userId 
-        });
-        
-        const planTag = timeframe === 'today' ? "today's plan" : "tomorrow's plan";
-        const updatedMemories = [];
-        
-        // Update each memory with planning information
-        for (const memoryId of memoryIds) {
-            // Verify memory belongs to user
-            const checkResult = await db.query(
-                'SELECT id, notes FROM memories WHERE id = $1 AND user_id = $2',
-                [memoryId, userId]
-            );
-            
-            if (checkResult.rows.length === 0) {
-                console.warn(`⚠️ Memory ${memoryId} not found or access denied for user ${userId}`);
-                continue;
-            }
-            
-            const currentNotes = checkResult.rows[0].notes || '';
-            const planningNote = `\n[Added to ${planTag} on ${planDate}]`;
-            
-            // Avoid duplicate tags
-            if (!currentNotes.includes(planTag)) {
-                const updatedNotes = currentNotes + planningNote;
-                
-                // Build update query dynamically based on available columns
-                const updateFields = ['notes = $2'];
-                const updateValues = [memoryId, updatedNotes];
-                let paramIndex = 3;
-                
-                if (memoriesTableColumns.includes('planning_tag')) {
-                    updateFields.push(`planning_tag = $${paramIndex}`);
-                    updateValues.push(planTag);
-                    paramIndex++;
-                }
-                
-                if (memoriesTableColumns.includes('planned_date')) {
-                    updateFields.push(`planned_date = $${paramIndex}`);
-                    updateValues.push(planDate);
-                    paramIndex++;
-                }
-                
-                if (memoriesTableColumns.includes('modified')) {
-                    updateFields.push('modified = CURRENT_DATE');
-                }
-                
-                const updateQuery = `
-                    UPDATE memories 
-                    SET ${updateFields.join(', ')} 
-                    WHERE id = $1 AND user_id = $${paramIndex}
-                    RETURNING *
-                `;
-                updateValues.push(userId);
-                
-                const updateResult = await db.query(updateQuery, updateValues);
-                
-                if (updateResult.rows.length > 0) {
-                    updatedMemories.push(updateResult.rows[0]);
-                    console.log(`✅ Tagged memory ${memoryId} for ${planTag}`);
-                }
-            } else {
-                console.log(`ℹ️ Memory ${memoryId} already tagged for ${planTag}`);
-            }
-        }
-        
-        res.json({
-            message: `Successfully tagged ${updatedMemories.length} memories for ${planTag}`,
-            updatedCount: updatedMemories.length,
-            skippedCount: memoryIds.length - updatedMemories.length,
-            updatedMemories: updatedMemories
-        });
-        
-    } catch (error) {
-        console.error('Tag memories for planning error:', error);
-        res.status(500).json({ error: 'Failed to tag memories for planning' });
-    }
-});
-
-// NEW: Get memories by planning tags
-app.get('/api/memories/by-plan/:timeframe', auth, async (req, res) => {
-    try {
-        const { timeframe } = req.params;
-        const userId = req.user.userId;
-        
-        const planTag = timeframe === 'today' ? "today's plan" : "tomorrow's plan";
-        
-        let query = 'SELECT * FROM memories WHERE user_id = $1';
-        let params = [userId];
-        
-        // Filter by planning tag if the column exists
-        if (memoriesTableColumns.includes('planning_tag')) {
-            query += ' AND planning_tag = $2';
-            params.push(planTag);
-        } else if (memoriesTableColumns.includes('notes')) {
-            // Fallback to searching in notes
-            query += ' AND notes LIKE $2';
-            params.push(`%${planTag}%`);
-        } else {
-            // If no suitable columns, return empty result
-            return res.json([]);
-        }
-        
-        // Order by priority if available
-        if (memoriesTableColumns.includes('priority')) {
-            query += ' ORDER BY priority DESC, id DESC';
-        } else {
-            query += ' ORDER BY id DESC';
-        }
-        
-        const result = await db.query(query, params);
-        
-        console.log(`📋 Found ${result.rows.length} memories for ${planTag}`);
-        res.json(result.rows);
-        
-    } catch (error) {
-        console.error('Get memories by plan error:', error);
-        res.status(500).json({ error: 'Failed to get memories by plan' });
-    }
-});
-
-// NEW: Remove planning tags from memories
-app.delete('/api/memories/planning-tags/:timeframe', auth, async (req, res) => {
-    try {
-        const { timeframe } = req.params;
-        const { memoryIds } = req.body;
-        const userId = req.user.userId;
-        
-        if (!memoryIds || !Array.isArray(memoryIds)) {
-            return res.status(400).json({ error: 'Memory IDs array is required' });
-        }
-        
-        const planTag = timeframe === 'today' ? "today's plan" : "tomorrow's plan";
-        const updatedMemories = [];
-        
-        for (const memoryId of memoryIds) {
-            // Verify memory belongs to user and get current notes
-            const checkResult = await db.query(
-                'SELECT id, notes FROM memories WHERE id = $1 AND user_id = $2',
-                [memoryId, userId]
-            );
-            
-            if (checkResult.rows.length === 0) continue;
-            
-            const currentNotes = checkResult.rows[0].notes || '';
-            
-            // Remove planning tag from notes
-            const planTagPattern = new RegExp(`\\n?\\[Added to ${planTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} on [^\\]]+\\]`, 'g');
-            const updatedNotes = currentNotes.replace(planTagPattern, '').trim();
-            
-            // Build update query
-            const updateFields = ['notes = $2'];
-            const updateValues = [memoryId, updatedNotes];
-            let paramIndex = 3;
-            
-            if (memoriesTableColumns.includes('planning_tag')) {
-                updateFields.push(`planning_tag = NULL`);
-            }
-            
-            if (memoriesTableColumns.includes('planned_date')) {
-                updateFields.push(`planned_date = NULL`);
-            }
-            
-            if (memoriesTableColumns.includes('modified')) {
-                updateFields.push('modified = CURRENT_DATE');
-            }
-            
-            const updateQuery = `
-                UPDATE memories 
-                SET ${updateFields.join(', ')} 
-                WHERE id = $1 AND user_id = $${paramIndex}
-                RETURNING *
-            `;
-            updateValues.push(userId);
-            
-            const updateResult = await db.query(updateQuery, updateValues);
-            
-            if (updateResult.rows.length > 0) {
-                updatedMemories.push(updateResult.rows[0]);
-            }
-        }
-        
-        res.json({
-            message: `Removed planning tags from ${updatedMemories.length} memories`,
-            updatedCount: updatedMemories.length,
-            updatedMemories: updatedMemories
-        });
-        
-    } catch (error) {
-        console.error('Remove planning tags error:', error);
-        res.status(500).json({ error: 'Failed to remove planning tags' });
-    }
-});
-
-// NEW: Get planning analytics
-app.get('/api/analytics/planning', auth, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        const { days = 7 } = req.query;
-        
-        // Get planning statistics for the last N days
-        const analytics = {
-            totalPlannedItems: 0,
-            completedItems: 0,
-            activeRoutines: 0,
-            highPriorityItems: 0,
-            planningFrequency: {},
-            typeDistribution: {},
-            completionRate: 0
-        };
-        
-        // Base query for memories with planning information
-        let query = 'SELECT * FROM memories WHERE user_id = $1';
-        let params = [userId];
-        
-        // Add date filter if we have the planned_date column
-        if (memoriesTableColumns.includes('planned_date')) {
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - parseInt(days));
-            query += ' AND planned_date >= $2';
-            params.push(startDate.toISOString().split('T')[0]);
-        } else if (memoriesTableColumns.includes('notes')) {
-            // Fallback to searching notes for planning information
-            query += ' AND (notes LIKE $2 OR notes LIKE $3)';
-            params.push("%today's plan%", "%tomorrow's plan%");
-        }
-        
-        const result = await db.query(query, params);
-        const memories = result.rows;
-        
-        analytics.totalPlannedItems = memories.length;
-        
-        memories.forEach(memory => {
-            // Count by type
-            const type = memory.type || 'other';
-            analytics.typeDistribution[type] = (analytics.typeDistribution[type] || 0) + 1;
-            
-            // Count high priority items
-            if (memory.priority && parseInt(memory.priority) >= 4) {
-                analytics.highPriorityItems++;
-            }
-            
-            // Count completed items
-            if (memory.status === 'completed') {
-                analytics.completedItems++;
-            }
-            
-            // Count active routines
-            if (memory.type === 'routine' && memory.status === 'active') {
-                analytics.activeRoutines++;
-            }
-            
-            // Track planning frequency by date
-            if (memory.planned_date) {
-                const date = memory.planned_date;
-                analytics.planningFrequency[date] = (analytics.planningFrequency[date] || 0) + 1;
-            }
-        });
-        
-        // Calculate completion rate
-        if (analytics.totalPlannedItems > 0) {
-            analytics.completionRate = (analytics.completedItems / analytics.totalPlannedItems).toFixed(2);
-        }
-        
-        console.log('📊 Planning analytics generated:', analytics);
-        res.json(analytics);
-        
-    } catch (error) {
-        console.error('Get planning analytics error:', error);
-        res.status(500).json({ error: 'Failed to get planning analytics' });
-    }
-});
-
-// ENHANCED: Enhanced memories endpoint with better filtering
+// Enhanced memories endpoint with better filtering
 app.get('/api/memories/enhanced', auth, async (req, res) => {
     try {
         const { 
@@ -1304,8 +1277,6 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
         // Get total count for pagination
         let countQuery = 'SELECT COUNT(*) as total FROM memories WHERE user_id = $1';
         let countParams = [req.user.userId];
-        // Add the same filters to count query (simplified version)
-        // ... (implement same filters for count if needed)
         
         const countResult = await db.query(countQuery, countParams);
         const total = parseInt(countResult.rows[0].total);
@@ -1326,4 +1297,44 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
     }
 });
 
-console.log('✅ Enhanced Planning API endpoints loaded');
+// ===== STATIC FILES SERVING =====
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Catch-all route for SPA - THIS MUST BE LAST!
+app.get('*', (req, res) => {
+    console.log(`📄 Serving static file for: ${req.path}`);
+    res.sendFile(path.join(__dirname, 'public/index.html'));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('❌ Unhandled error:', err);
+    res.status(500).json({ 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    });
+});
+
+// Clean up conversation chunks periodically
+setInterval(() => {
+    for (const [userId, chunks] of conversationChunks.entries()) {
+        if (chunks.length === 0) {
+            conversationChunks.delete(userId);
+        }
+    }
+}, 60000); // Clean up every minute
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`🚀 MindOS server running on port ${PORT}`);
+    console.log(`📊 Database: ${isDbConnected ? 'Connected' : 'Disconnected'}`);
+    console.log('🤖 Claude: Ready with Enhanced Multi-Memory Detection');
+    console.log('🧠 Session Storage: Active with Conversation Chunking');
+    console.log('🗑️ Memory Management: Enhanced UPDATE/CREATE detection');
+    console.log(`📋 Memory table columns: ${memoriesTableColumns.length} found`);
+    console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
+    console.log('🌐 Health check available at /health');
+    console.log('✅ Multi-memory operation parsing enabled');
+});
