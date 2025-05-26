@@ -1917,3 +1917,426 @@
         transform: scale(1);
     }
 }
+/* Enhanced Memory Operations CSS - ADD TO YOUR modals.css */
+
+/* Enhanced Memory Preview Items */
+.memory-preview-item {
+    background: #f8f9ff;
+    border: 1px solid #e0e6ff;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.memory-preview-item.update {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    border-color: #ff9800;
+    border-left: 4px solid #ff9800;
+}
+
+.memory-preview-item.create {
+    background: linear-gradient(135deg, #f0f8f0 0%, #c8e6c9 100%);
+    border-color: #4CAF50;
+    border-left: 4px solid #4CAF50;
+}
+
+.memory-preview-item:last-child {
+    margin-bottom: 0;
+}
+
+.memory-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.memory-operation-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.memory-operation-type {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.memory-preview-item.update .memory-operation-badge {
+    background: rgba(255, 152, 0, 0.1);
+    color: #e65100;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.memory-preview-item.create .memory-operation-badge {
+    background: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.memory-preview-edit {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.memory-preview-edit:hover {
+    background: rgba(102, 126, 234, 0.1);
+    transform: scale(1.1);
+}
+
+.memory-preview-content {
+    color: #333;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.memory-preview-reason {
+    font-size: 0.8rem;
+    color: #666;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 4px;
+    border-left: 2px solid #667eea;
+}
+
+.memory-preview-meta {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.memory-preview-meta:last-child {
+    margin-bottom: 0;
+}
+
+/* Enhanced Continuation Notice */
+.continuation-notice {
+    background: linear-gradient(135deg, #f0f8ff 0%, #e8f5e8 100%);
+    border: 1px solid #667eea;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.continuation-notice strong {
+    color: #333;
+}
+
+/* Enhanced Memory Config Hint */
+.memory-config-hint {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: #666;
+    padding: 0.5rem;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 6px;
+    border: 1px dashed rgba(102, 126, 234, 0.2);
+}
+
+.memory-config-hint i {
+    margin-right: 0.25rem;
+    color: #667eea;
+}
+
+/* Memory Confirmation Actions Enhanced */
+.memory-confirmation-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    background: rgba(248, 249, 255, 0.5);
+    border-radius: 0 0 12px 12px;
+}
+
+.memory-confirmation-actions .modal-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.memory-confirmation-actions .modal-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.memory-confirmation-actions .modal-btn:hover::before {
+    left: 100%;
+}
+
+/* Smart Operation Summary */
+.operation-summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.operation-summary-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.operation-summary-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.operation-summary-text {
+    flex: 1;
+}
+
+.operation-summary-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.operation-summary-details {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.operation-summary-stats {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+}
+
+.operation-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+/* Memory Operation Status Indicators */
+.memory-operation-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin: 0.5rem 0;
+    animation: slideInLeft 0.3s ease-out;
+}
+
+.memory-operation-status.success {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+
+.memory-operation-status.pending {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+}
+
+.memory-operation-status.error {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: white;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Enhanced Memory Type Indicators */
+.memory-type-indicator {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 0.5rem;
+}
+
+.memory-type-indicator.routine {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+}
+
+.memory-type-indicator.goal {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+
+.memory-type-indicator.preference {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    color: white;
+}
+
+.memory-type-indicator.insight {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+    color: white;
+}
+
+.memory-type-indicator.event {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: white;
+}
+
+/* Responsive Design for Memory Operations */
+@media (max-width: 768px) {
+    .memory-preview-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .memory-operation-badge {
+        align-self: flex-start;
+    }
+    
+    .memory-confirmation-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .operation-summary {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .operation-summary-stats {
+        justify-content: center;
+    }
+    
+    .memory-operation-status {
+        justify-content: center;
+        text-align: center;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    body:not(.light-mode) .memory-preview-item {
+        background: #2d2d2d;
+        border-color: #404040;
+        color: #e0e0e0;
+    }
+    
+    body:not(.light-mode) .memory-preview-item.update {
+        background: linear-gradient(135deg, #3e2723 0%, #5d4037 100%);
+        border-color: #ff9800;
+    }
+    
+    body:not(.light-mode) .memory-preview-item.create {
+        background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+        border-color: #4CAF50;
+    }
+    
+    body:not(.light-mode) .memory-preview-content {
+        color: #e0e0e0;
+    }
+    
+    body:not(.light-mode) .memory-preview-reason,
+    body:not(.light-mode) .memory-preview-meta {
+        color: #b0b0b0;
+    }
+    
+    body:not(.light-mode) .continuation-notice {
+        background: linear-gradient(135deg, #263238 0%, #37474f 100%);
+        border-color: #546e7a;
+        color: #e0e0e0;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .memory-preview-item {
+        border-width: 2px;
+    }
+    
+    .memory-operation-badge {
+        border-width: 2px;
+        font-weight: 700;
+    }
+    
+    .memory-preview-item.update {
+        border-color: #ff9800;
+        background: #fff;
+    }
+    
+    .memory-preview-item.create {
+        border-color: #4CAF50;
+        background: #fff;
+    }
+    
+    .memory-operation-status {
+        border: 2px solid currentColor;
+        font-weight: 600;
+    }
+    
+}
+
+/* Print Styles */
+@media print {
+    .memory-preview-edit,
+    .memory-confirmation-actions,
+    .memory-config-hint,
+    .operation-summary-stats {
+        display: none !important;
+    }
+    
+    .memory-preview-item {
+        break-inside: avoid;
+        margin-bottom: 1rem;
+        border: 1px solid #333;
+    }
+    
+    .continuation-notice {
+        border: 1px solid #333;
+        background: #f9f9f9;
+    }
+}
