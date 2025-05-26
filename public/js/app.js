@@ -198,7 +198,74 @@ const memoryFieldDefinitions = {
         type: 'textarea',
         placeholder: 'Items to buy or purchase ideas related to this'
     },
-    // API Helper Object - Add this to app.js before the UI object
+    
+    // ADDITIONAL ROUTINE AND PRODUCTIVITY FIELDS
+    difficulty: {
+        label: 'Difficulty Level',
+        icon: 'fas fa-chart-line',
+        type: 'select',
+        options: ['very-easy', 'easy', 'medium', 'hard', 'very-hard'],
+        placeholder: 'How challenging is this?'
+    },
+    environment: {
+        label: 'Environment',
+        icon: 'fas fa-home',
+        type: 'select',
+        options: ['home', 'office', 'gym', 'outdoor', 'anywhere', 'quiet', 'social'],
+        placeholder: 'What environment works best?'
+    },
+    time_of_day: {
+        label: 'Best Time',
+        icon: 'fas fa-clock',
+        type: 'select',
+        options: ['early-morning', 'morning', 'afternoon', 'evening', 'night', 'flexible'],
+        placeholder: 'When is the best time for this?'
+    },
+    dependencies: {
+        label: 'Dependencies',
+        icon: 'fas fa-link',
+        type: 'textarea',
+        placeholder: 'What needs to happen before this? (other routines, conditions, etc.)'
+    },
+    rewards: {
+        label: 'Rewards',
+        icon: 'fas fa-gift',
+        type: 'textarea',
+        placeholder: 'How do you celebrate or reward completion?'
+    },
+    obstacles: {
+        label: 'Common Obstacles',
+        icon: 'fas fa-exclamation-triangle',
+        type: 'textarea',
+        placeholder: 'What typically gets in the way of this routine?'
+    },
+    backup_plan: {
+        label: 'Backup Plan',
+        icon: 'fas fa-redo',
+        type: 'textarea',
+        placeholder: 'What to do if the main plan fails? (shorter version, alternative)'
+    },
+    tracking_method: {
+        label: 'Tracking Method',
+        icon: 'fas fa-clipboard-check',
+        type: 'text',
+        placeholder: 'How do you track completion? (app, journal, habit tracker)'
+    },
+    duration_target: {
+        label: 'Target Duration',
+        icon: 'fas fa-stopwatch',
+        type: 'text',
+        placeholder: 'How long should you spend on this? (exact time goal)'
+    },
+    repetitions: {
+        label: 'Repetitions/Sets',
+        icon: 'fas fa-redo-alt',
+        type: 'text',
+        placeholder: 'Number of repetitions, sets, or cycles (for exercise/practice)'
+    }
+};
+
+// API Helper Object
 const API = {
     // Base request method with authentication and error handling
     async request(url, options = {}) {
@@ -303,72 +370,6 @@ const API = {
         }
     }
 };
-    
-    // ADDITIONAL ROUTINE AND PRODUCTIVITY FIELDS
-    difficulty: {
-        label: 'Difficulty Level',
-        icon: 'fas fa-chart-line',
-        type: 'select',
-        options: ['very-easy', 'easy', 'medium', 'hard', 'very-hard'],
-        placeholder: 'How challenging is this?'
-    },
-    environment: {
-        label: 'Environment',
-        icon: 'fas fa-home',
-        type: 'select',
-        options: ['home', 'office', 'gym', 'outdoor', 'anywhere', 'quiet', 'social'],
-        placeholder: 'What environment works best?'
-    },
-    time_of_day: {
-        label: 'Best Time',
-        icon: 'fas fa-clock',
-        type: 'select',
-        options: ['early-morning', 'morning', 'afternoon', 'evening', 'night', 'flexible'],
-        placeholder: 'When is the best time for this?'
-    },
-    dependencies: {
-        label: 'Dependencies',
-        icon: 'fas fa-link',
-        type: 'textarea',
-        placeholder: 'What needs to happen before this? (other routines, conditions, etc.)'
-    },
-    rewards: {
-        label: 'Rewards',
-        icon: 'fas fa-gift',
-        type: 'textarea',
-        placeholder: 'How do you celebrate or reward completion?'
-    },
-    obstacles: {
-        label: 'Common Obstacles',
-        icon: 'fas fa-exclamation-triangle',
-        type: 'textarea',
-        placeholder: 'What typically gets in the way of this routine?'
-    },
-    backup_plan: {
-        label: 'Backup Plan',
-        icon: 'fas fa-redo',
-        type: 'textarea',
-        placeholder: 'What to do if the main plan fails? (shorter version, alternative)'
-    },
-    tracking_method: {
-        label: 'Tracking Method',
-        icon: 'fas fa-clipboard-check',
-        type: 'text',
-        placeholder: 'How do you track completion? (app, journal, habit tracker)'
-    },
-    duration_target: {
-        label: 'Target Duration',
-        icon: 'fas fa-stopwatch',
-        type: 'text',
-        placeholder: 'How long should you spend on this? (exact time goal)'
-    },
-    repetitions: {
-        label: 'Repetitions/Sets',
-        icon: 'fas fa-redo-alt',
-        type: 'text',
-        placeholder: 'Number of repetitions, sets, or cycles (for exercise/practice)'
-    }
-};
 
 // Utility Functions
 const Utils = {
@@ -379,9 +380,10 @@ const Utils = {
         alertDiv.textContent = message;
         
         const authAlert = document.getElementById('authAlert');
-        authAlert.appendChild(alertDiv);
-        
-        setTimeout(() => alertDiv.remove(), duration);
+        if (authAlert) {
+            authAlert.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), duration);
+        }
     },
     
     // Format date for display
@@ -526,7 +528,7 @@ const MemorySettings = {
     }
 };
 
-// UI Helper Functions - MERGED VERSION
+// UI Helper Functions
 const UI = {
     // Show loading state
     setLoading(loading) {
@@ -549,32 +551,123 @@ const UI = {
         }
     },
     
-    // GET request
-    get(url) {
-        return this.request(url);
+    // Toggle sidebar
+    toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        if (sidebar && overlay) {
+            if (sidebar.classList.contains('open')) {
+                UI.closeSidebar();
+            } else {
+                sidebar.classList.add('open');
+                overlay.classList.add('show');
+            }
+        }
     },
     
-    // POST request
-    post(url, data) {
-        return this.request(url, {
-            method: 'POST',
-            body: data
-        });
+    // Close sidebar
+    closeSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        if (sidebar) sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('show');
     },
     
-    // PUT request
-    put(url, data) {
-        return this.request(url, {
-            method: 'PUT',
-            body: data
-        });
+    // Show auth screen
+    showAuthScreen() {
+        const authScreen = document.getElementById('authScreen');
+        const chatApp = document.getElementById('chatApp');
+        const cardApp = document.getElementById('cardApp');
+        
+        if (authScreen) {
+            authScreen.style.display = 'flex';
+            authScreen.classList.remove('hidden');
+        }
+        if (chatApp) {
+            chatApp.style.display = 'none';
+            chatApp.classList.add('hidden');
+        }
+        if (cardApp) {
+            cardApp.style.display = 'none';
+            cardApp.classList.add('hidden');
+        }
     },
     
-    // DELETE request
-    delete(url) {
-        return this.request(url, {
-            method: 'DELETE'
-        });
+    // Show card app
+    showCardApp() {
+        const authScreen = document.getElementById('authScreen');
+        const chatApp = document.getElementById('chatApp');
+        const cardApp = document.getElementById('cardApp');
+        
+        // Hide auth screen
+        if (authScreen) {
+            authScreen.style.display = 'none';
+            authScreen.classList.add('hidden');
+        }
+        // Hide chat app
+        if (chatApp) {
+            chatApp.style.display = 'none';
+            chatApp.classList.add('hidden');
+        }
+        // Show card app
+        if (cardApp) {
+            cardApp.style.display = 'flex';
+            cardApp.classList.remove('hidden');
+        }
+        
+        // Update user info
+        const userName = document.getElementById('userName');
+        if (userName) {
+            userName.textContent = MindOS.user.username || 'User';
+        }
+    },
+    
+    // Show chat app
+    showChatApp() {
+        const authScreen = document.getElementById('authScreen');
+        const chatApp = document.getElementById('chatApp');
+        const cardApp = document.getElementById('cardApp');
+        
+        // Hide auth screen
+        if (authScreen) {
+            authScreen.style.display = 'none';
+            authScreen.classList.add('hidden');
+        }
+        // Hide card app
+        if (cardApp) {
+            cardApp.style.display = 'none';
+            cardApp.classList.add('hidden');
+        }
+        // Show chat app
+        if (chatApp) {
+            chatApp.style.display = 'flex';
+            chatApp.classList.remove('hidden');
+        }
+        
+        // Update user info
+        const sidebarUsername = document.getElementById('sidebarUsername');
+        if (sidebarUsername) {
+            sidebarUsername.textContent = MindOS.user.username || 'User';
+        }
+    },
+    
+    // Update session display
+    updateSessionDisplay() {
+        const messagesCount = MindOS.sessionInfo.messageCount || 0;
+        const sessionMessages = document.getElementById('sessionMessages');
+        if (sessionMessages) {
+            sessionMessages.textContent = `${messagesCount} messages`;
+        }
+    },
+    
+    // Update memory count display
+    updateMemoryDisplay() {
+        const memoryCount = document.getElementById('memoryCount');
+        if (memoryCount) {
+            memoryCount.textContent = `${MindOS.userMemories.length} memories`;
+        }
     }
 };
 
@@ -785,133 +878,6 @@ const EventHandlers = {
         });
     }
 };
-  
-    // Toggle sidebar
-    toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        
-        if (sidebar && overlay) {
-            if (sidebar.classList.contains('open')) {
-                UI.closeSidebar();
-            } else {
-                sidebar.classList.add('open');
-                overlay.classList.add('show');
-            }
-        }
-    },
-    
-    // Close sidebar
-    closeSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        
-        if (sidebar) sidebar.classList.remove('open');
-        if (overlay) overlay.classList.remove('show');
-    },
-    
-    // Show auth screen
-    showAuthScreen() {
-        const authScreen = document.getElementById('authScreen');
-        const chatApp = document.getElementById('chatApp');
-        const cardApp = document.getElementById('cardApp');
-        
-        if (authScreen) {
-            authScreen.style.display = 'flex';
-            authScreen.classList.remove('hidden');
-        }
-        if (chatApp) {
-            chatApp.style.display = 'none';
-            chatApp.classList.add('hidden');
-        }
-        if (cardApp) {
-            cardApp.style.display = 'none';
-            cardApp.classList.add('hidden');
-        }
-    },
-    
-    // Show card app
-    showCardApp() {
-        const authScreen = document.getElementById('authScreen');
-        const chatApp = document.getElementById('chatApp');
-        const cardApp = document.getElementById('cardApp');
-        
-        // Hide auth screen
-        if (authScreen) {
-            authScreen.style.display = 'none';
-            authScreen.classList.add('hidden');
-        }
-        // Hide chat app
-        if (chatApp) {
-            chatApp.style.display = 'none';
-            chatApp.classList.add('hidden');
-        }
-        // Show card app
-        if (cardApp) {
-            cardApp.style.display = 'flex';
-            cardApp.classList.remove('hidden');
-        }
-        
-        // Update user info
-        const userName = document.getElementById('userName');
-        if (userName) {
-            userName.textContent = MindOS.user.username || 'User';
-        }
-    },
-        
-        // Update user info
-        const userName = document.getElementById('userName');
-        if (userName) {
-            userName.textContent = MindOS.user.username || 'User';
-        }
-    },
-    
-    // Show chat app
-    showChatApp() {
-        const authScreen = document.getElementById('authScreen');
-        const chatApp = document.getElementById('chatApp');
-        const cardApp = document.getElementById('cardApp');
-        
-        // Hide auth screen
-        if (authScreen) {
-            authScreen.style.display = 'none';
-            authScreen.classList.add('hidden');
-        }
-        // Hide card app
-        if (cardApp) {
-            cardApp.style.display = 'none';
-            cardApp.classList.add('hidden');
-        }
-        // Show chat app
-        if (chatApp) {
-            chatApp.style.display = 'flex';
-            chatApp.classList.remove('hidden');
-        }
-        
-        // Update user info
-        const sidebarUsername = document.getElementById('sidebarUsername');
-        if (sidebarUsername) {
-            sidebarUsername.textContent = MindOS.user.username || 'User';
-        }
-    },
-    
-    // Update session display
-    updateSessionDisplay() {
-        const messagesCount = MindOS.sessionInfo.messageCount || 0;
-        const sessionMessages = document.getElementById('sessionMessages');
-        if (sessionMessages) {
-            sessionMessages.textContent = `${messagesCount} messages`;
-        }
-    },
-    
-    // Update memory count display
-    updateMemoryDisplay() {
-        const memoryCount = document.getElementById('memoryCount');
-        if (memoryCount) {
-            memoryCount.textContent = `${MindOS.userMemories.length} memories`;
-        }
-    }
-};
 
 // Application Initialization
 const App = {
@@ -958,7 +924,7 @@ const App = {
         }
     },
     
-    // Show main app and load data - FIXED VERSION
+    // Show main app and load data
     async showChatApp() {
         // Show the card interface (function name kept for compatibility)
         UI.showCardApp();
