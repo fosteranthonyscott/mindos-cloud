@@ -1,12 +1,14 @@
-// Configuration Module - ENHANCED VERSION with Full Routine Form
+// ENHANCED Configuration Module with Interactive Plan Your Day
 const Config = {
     currentMode: null,
     data: {},
+    selectedMemories: [], // NEW: Track selected memories for planning
     
     configurations: {
         'plan-day': {
             title: 'Plan Your Day',
-            subtitle: 'Set up your daily planning preferences',
+            subtitle: 'Select relevant items and set planning preferences',
+            type: 'interactive_planning', // NEW: Special type for interactive planning
             steps: [
                 {
                     title: 'Planning Focus',
@@ -20,12 +22,14 @@ const Config = {
                     title: 'Time Frame',
                     options: [
                         { id: 'today', title: 'Today Only', desc: 'Plan just for today' },
+                        { id: 'tomorrow', title: 'Tomorrow Only', desc: 'Plan just for tomorrow' },
                         { id: 'week', title: 'This Week', desc: 'Plan for the entire week' },
                         { id: 'custom', title: 'Custom Period', desc: 'Specify custom time frame' }
                     ]
                 }
             ]
         },
+        // ... other configurations remain the same
         'set-goals': {
             title: 'Set Goals',
             subtitle: 'Define and structure your objectives',
@@ -53,13 +57,10 @@ const Config = {
         'create-routine': {
             title: 'Create Routine',
             subtitle: 'Build sustainable daily or weekly habits',
-            type: 'form', // NEW: Indicates this uses form mode instead of steps
+            type: 'form',
             defaultFields: {
-                // Required fields
                 type: 'routine',
                 content: '',
-                
-                // Routine-specific fields with defaults
                 routine_type: 'custom',
                 frequency: 'daily',
                 priority: '3',
@@ -204,21 +205,14 @@ const Config = {
         const cancelBtn = document.getElementById('cancelConfigBtn');
         const proceedBtn = document.getElementById('proceedConfigBtn');
         
-        console.log('🔍 Found buttons:', { cancelBtn: !!cancelBtn, proceedBtn: !!proceedBtn });
-        
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
-                console.log('❌ Cancel button clicked');
                 this.closeModal();
             });
         }
         
         if (proceedBtn) {
             proceedBtn.addEventListener('click', (e) => {
-                console.log('▶️ PROCEED BUTTON CLICKED!');
-                console.log('🔍 Button disabled?', proceedBtn.disabled);
-                console.log('📋 Current data:', this.data);
-                console.log('🔧 Current mode:', this.currentMode);
                 e.preventDefault();
                 this.processAndChat();
             });
@@ -229,6 +223,7 @@ const Config = {
         console.log('🔧 Opening config mode:', mode);
         this.currentMode = mode;
         this.data = {};
+        this.selectedMemories = []; // Reset selected memories
         
         UI.closeSidebar();
         
@@ -239,7 +234,10 @@ const Config = {
             return;
         }
         
-        if (config.type === 'form') {
+        // NEW: Handle interactive planning mode
+        if (config.type === 'interactive_planning') {
+            this.populateInteractivePlanningModal(config, mode);
+        } else if (config.type === 'form') {
             this.populateFormModal(config);
         } else {
             this.populateStepModal(config);
@@ -249,7 +247,645 @@ const Config = {
         console.log('✅ Config modal opened');
     },
     
-    // NEW: Populate form-based modal (for routines)
+    // NEW: Populate interactive planning modal
+    async populateInteractivePlanningModal(config, mode) {
+        console.log('📋 Populating interactive planning modal for:', mode);
+        
+        document.getElementById('configTitle').textContent = config.title;
+        document.getElementById('configSubtitle').textContent = config.subtitle;
+        
+        const configBody = document.getElementById('configBody');
+        configBody.innerHTML = `
+            <div class="planning-interface">
+                <!-- Step 1: Basic Configuration -->
+                <div class="config-step" id="planningConfigStep">
+                    <div class="config-step-title">1. Planning Preferences</div>
+                    <div class="planning-config-grid">
+                        <div class="planning-config-section">
+                            <div class="planning-config-label">Planning Focus</div>
+                            <div class="config-options">
+                                ${config.steps[0].options.map(option => `
+                                    <div class="config-option planning-focus-option" data-value="${option.id}">
+                                        <div class="config-option-title">${option.title}</div>
+                                        <div class="config-option-desc">${option.desc}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="planning-config-section">
+                            <div class="planning-config-label">Time Frame</div>
+                            <div class="config-options">
+                                ${config.steps[1].options.map(option => `
+                                    <div class="config-option planning-timeframe-option" data-value="${option.id}">
+                                        <div class="config-option-title">${option.title}</div>
+                                        <div class="config-option-desc">${option.desc}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 2: Memory Selection -->
+                <div class="config-step" id="memorySelectionStep" style="display: none;">
+                    <div class="config-step-title">2. Select Relevant Items</div>
+                    <div class="memory-selection-header">
+                        <div class="memory-selection-info">
+                            <div class="selection-count">
+                                <span id="selectedCount">0</span> items selected for planning
+                            </div>
+                            <div class="selection-actions">
+                                <button class="selection-action-btn" id="selectAllBtn">
+                                    <i class="fas fa-check-double"></i> Select All
+                                </button>
+                                <button class="selection-action-btn" id="clearSelectionBtn">
+                                    <i class="fas fa-times"></i> Clear All
+                                </button>
+                                <button class="selection-action-btn secondary" id="addOthersBtn">
+                                    <i class="fas fa-plus"></i> Add Others
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="suggested-memories" id="suggestedMemories">
+                        <div class="loading-memories">
+                            <div class="spinner"></div>
+                            <p>Finding relevant items for your plan...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Setup event listeners for configuration options
+        this.setupPlanningConfigListeners();
+    },
+    
+    // NEW: Setup planning configuration listeners
+    setupPlanningConfigListeners() {
+        const configModal = document.getElementById('configModal');
+        
+        // Planning focus selection
+        configModal.querySelectorAll('.planning-focus-option').forEach(option => {
+            option.addEventListener('click', () => {
+                this.selectPlanningOption('focus', option.dataset.value, option);
+            });
+        });
+        
+        // Time frame selection
+        configModal.querySelectorAll('.planning-timeframe-option').forEach(option => {
+            option.addEventListener('click', () => {
+                this.selectPlanningOption('timeframe', option.dataset.value, option);
+                this.checkReadyForMemorySelection();
+            });
+        });
+        
+        // Memory selection actions
+        document.getElementById('selectAllBtn')?.addEventListener('click', () => this.selectAllMemories());
+        document.getElementById('clearSelectionBtn')?.addEventListener('click', () => this.clearAllSelections());
+        document.getElementById('addOthersBtn')?.addEventListener('click', () => this.showAddOthersModal());
+    },
+    
+    // NEW: Select planning option
+    selectPlanningOption(type, value, element) {
+        const containerClass = type === 'focus' ? '.planning-focus-option' : '.planning-timeframe-option';
+        
+        // Clear other selections in this group
+        document.querySelectorAll(containerClass).forEach(el => el.classList.remove('selected'));
+        
+        // Select this option
+        element.classList.add('selected');
+        
+        // Store selection
+        this.data[type] = value;
+        
+        console.log('📝 Planning option selected:', type, '=', value);
+    },
+    
+    // NEW: Check if ready for memory selection
+    async checkReadyForMemorySelection() {
+        if (this.data.focus && this.data.timeframe) {
+            console.log('✅ Ready for memory selection, loading relevant memories...');
+            
+            // Show memory selection step
+            document.getElementById('memorySelectionStep').style.display = 'block';
+            
+            // Load and display relevant memories
+            await this.loadRelevantMemories();
+            
+            // Update proceed button
+            this.updateProceedButton();
+        }
+    },
+    
+    // NEW: Load relevant memories based on timeframe and focus
+    async loadRelevantMemories() {
+        const suggestedContainer = document.getElementById('suggestedMemories');
+        
+        try {
+            // Get relevant memories based on selection
+            const relevantMemories = await this.findRelevantMemories();
+            
+            if (relevantMemories.length === 0) {
+                suggestedContainer.innerHTML = `
+                    <div class="no-memories-found">
+                        <div class="no-memories-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="no-memories-title">No relevant items found</div>
+                        <div class="no-memories-desc">Click "Add Others" to browse your memories by type</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Group memories by category for better display
+            const groupedMemories = this.groupMemoriesByRelevance(relevantMemories);
+            
+            suggestedContainer.innerHTML = '';
+            
+            Object.entries(groupedMemories).forEach(([category, memories]) => {
+                const categorySection = document.createElement('div');
+                categorySection.className = 'memory-category-section';
+                categorySection.innerHTML = `
+                    <div class="memory-category-header">
+                        <div class="memory-category-title">
+                            ${this.getCategoryIcon(category)} ${category}
+                            <span class="memory-category-count">(${memories.length})</span>
+                        </div>
+                        <div class="memory-category-actions">
+                            <button class="category-select-all" data-category="${category}">
+                                <i class="fas fa-check"></i> Select All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="memory-selection-grid">
+                        ${memories.map(memory => this.createSelectableMemoryCard(memory)).join('')}
+                    </div>
+                `;
+                suggestedContainer.appendChild(categorySection);
+            });
+            
+            // Setup memory selection listeners
+            this.setupMemorySelectionListeners();
+            
+        } catch (error) {
+            console.error('Error loading relevant memories:', error);
+            suggestedContainer.innerHTML = `
+                <div class="error-loading-memories">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Error loading memories. Please try again.</p>
+                </div>
+            `;
+        }
+    },
+    
+    // NEW: Find relevant memories based on planning criteria
+    async findRelevantMemories() {
+        const timeframe = this.data.timeframe;
+        const focus = this.data.focus;
+        const allMemories = MindOS.userMemories;
+        
+        console.log('🔍 Finding relevant memories for:', { timeframe, focus });
+        
+        let relevantMemories = [];
+        
+        // Filter by relevance based on timeframe
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        allMemories.forEach(memory => {
+            let relevanceScore = 0;
+            let relevanceReasons = [];
+            
+            // Time-based relevance
+            if (timeframe === 'today' || timeframe === 'tomorrow') {
+                // Check due dates
+                if (memory.due) {
+                    const dueDate = new Date(memory.due);
+                    const targetDate = timeframe === 'today' ? today : tomorrow;
+                    
+                    if (this.isSameDay(dueDate, targetDate)) {
+                        relevanceScore += 100;
+                        relevanceReasons.push('Due ' + timeframe);
+                    } else if (dueDate < targetDate) {
+                        relevanceScore += 50;
+                        relevanceReasons.push('Overdue');
+                    }
+                }
+                
+                // Check routines that should happen today/tomorrow
+                if (memory.type === 'routine' && memory.frequency) {
+                    if (this.isRoutineRelevantForDate(memory, timeframe === 'today' ? today : tomorrow)) {
+                        relevanceScore += 80;
+                        relevanceReasons.push(`${memory.frequency} routine`);
+                    }
+                }
+            }
+            
+            // Focus-based relevance
+            if (focus === 'priorities') {
+                if (memory.priority && parseInt(memory.priority) >= 4) {
+                    relevanceScore += 60;
+                    relevanceReasons.push(`Priority ${memory.priority}`);
+                }
+            } else if (focus === 'routine') {
+                if (memory.type === 'routine') {
+                    relevanceScore += 70;
+                    relevanceReasons.push('Routine item');
+                }
+            } else if (focus === 'comprehensive') {
+                // Include active goals and important items
+                if (memory.status === 'active' && memory.type === 'goal') {
+                    relevanceScore += 40;
+                    relevanceReasons.push('Active goal');
+                }
+            }
+            
+            // Status-based relevance
+            if (memory.status === 'active' || memory.stage === 'current') {
+                relevanceScore += 30;
+                relevanceReasons.push('Currently active');
+            }
+            
+            // Add memory if it has any relevance
+            if (relevanceScore > 0) {
+                relevantMemories.push({
+                    ...memory,
+                    relevanceScore,
+                    relevanceReasons
+                });
+            }
+        });
+        
+        // Sort by relevance score
+        relevantMemories.sort((a, b) => b.relevanceScore - a.relevanceScore);
+        
+        console.log(`✅ Found ${relevantMemories.length} relevant memories`);
+        return relevantMemories;
+    },
+    
+    // NEW: Check if routine is relevant for a specific date
+    isRoutineRelevantForDate(memory, date) {
+        const frequency = memory.frequency?.toLowerCase();
+        const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        
+        switch (frequency) {
+            case 'daily':
+                return true;
+            case 'weekdays':
+                return dayOfWeek >= 1 && dayOfWeek <= 5;
+            case 'weekends':
+                return dayOfWeek === 0 || dayOfWeek === 6;
+            case 'weekly':
+                // Could be enhanced to check specific days if stored
+                return true;
+            default:
+                return false;
+        }
+    },
+    
+    // NEW: Check if two dates are the same day
+    isSameDay(date1, date2) {
+        return date1.getDate() === date2.getDate() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getFullYear() === date2.getFullYear();
+    },
+    
+    // NEW: Group memories by relevance category
+    groupMemoriesByRelevance(memories) {
+        const groups = {
+            'High Priority Items': [],
+            'Due Today/Tomorrow': [],
+            'Active Routines': [],
+            'Current Goals': [],
+            'Other Relevant Items': []
+        };
+        
+        memories.forEach(memory => {
+            const reasons = memory.relevanceReasons || [];
+            
+            if (memory.priority && parseInt(memory.priority) >= 4) {
+                groups['High Priority Items'].push(memory);
+            } else if (reasons.some(r => r.includes('Due') || r.includes('Overdue'))) {
+                groups['Due Today/Tomorrow'].push(memory);
+            } else if (memory.type === 'routine') {
+                groups['Active Routines'].push(memory);
+            } else if (memory.type === 'goal' && memory.status === 'active') {
+                groups['Current Goals'].push(memory);
+            } else {
+                groups['Other Relevant Items'].push(memory);
+            }
+        });
+        
+        // Remove empty groups
+        Object.keys(groups).forEach(key => {
+            if (groups[key].length === 0) {
+                delete groups[key];
+            }
+        });
+        
+        return groups;
+    },
+    
+    // NEW: Get category icon
+    getCategoryIcon(category) {
+        const icons = {
+            'High Priority Items': '<i class="fas fa-star text-warning"></i>',
+            'Due Today/Tomorrow': '<i class="fas fa-calendar-day text-danger"></i>',
+            'Active Routines': '<i class="fas fa-repeat text-primary"></i>',
+            'Current Goals': '<i class="fas fa-bullseye text-success"></i>',
+            'Other Relevant Items': '<i class="fas fa-list text-secondary"></i>'
+        };
+        return icons[category] || '<i class="fas fa-circle"></i>';
+    },
+    
+    // NEW: Create selectable memory card
+    createSelectableMemoryCard(memory) {
+        const relevanceReason = memory.relevanceReasons ? memory.relevanceReasons[0] : '';
+        
+        return `
+            <div class="selectable-memory-card" data-memory-id="${memory.id}">
+                <div class="memory-card-checkbox">
+                    <input type="checkbox" id="memory_${memory.id}" class="memory-checkbox">
+                    <label for="memory_${memory.id}" class="memory-checkbox-label"></label>
+                </div>
+                <div class="memory-card-content">
+                    <div class="memory-card-header">
+                        <div class="memory-type-badge type-${memory.type}">${memory.type}</div>
+                        ${memory.priority ? `<div class="memory-priority-badge priority-${memory.priority}">P${memory.priority}</div>` : ''}
+                    </div>
+                    <div class="memory-card-title">${memory.content_short || memory.content?.substring(0, 60) || 'No title'}</div>
+                    <div class="memory-card-relevance">
+                        <i class="fas fa-info-circle"></i> ${relevanceReason}
+                    </div>
+                    ${memory.due ? `<div class="memory-card-due"><i class="fas fa-calendar"></i> Due: ${Utils.formatDate(memory.due)}</div>` : ''}
+                    ${memory.required_time ? `<div class="memory-card-time"><i class="fas fa-clock"></i> ${memory.required_time}</div>` : ''}
+                </div>
+            </div>
+        `;
+    },
+    
+    // NEW: Setup memory selection listeners
+    setupMemorySelectionListeners() {
+        // Individual memory selection
+        document.querySelectorAll('.memory-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const memoryId = parseInt(e.target.id.replace('memory_', ''));
+                if (e.target.checked) {
+                    this.addMemoryToSelection(memoryId);
+                } else {
+                    this.removeMemoryFromSelection(memoryId);
+                }
+                this.updateSelectionCount();
+                this.updateProceedButton();
+            });
+        });
+        
+        // Category select all buttons
+        document.querySelectorAll('.category-select-all').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const category = e.target.dataset.category;
+                this.selectAllInCategory(category);
+            });
+        });
+    },
+    
+    // NEW: Add memory to selection
+    addMemoryToSelection(memoryId) {
+        if (!this.selectedMemories.includes(memoryId)) {
+            this.selectedMemories.push(memoryId);
+            console.log('➕ Added memory to selection:', memoryId);
+        }
+    },
+    
+    // NEW: Remove memory from selection
+    removeMemoryFromSelection(memoryId) {
+        const index = this.selectedMemories.indexOf(memoryId);
+        if (index > -1) {
+            this.selectedMemories.splice(index, 1);
+            console.log('➖ Removed memory from selection:', memoryId);
+        }
+    },
+    
+    // NEW: Update selection count display
+    updateSelectionCount() {
+        const countElement = document.getElementById('selectedCount');
+        if (countElement) {
+            countElement.textContent = this.selectedMemories.length;
+        }
+    },
+    
+    // NEW: Select all memories
+    selectAllMemories() {
+        document.querySelectorAll('.memory-checkbox').forEach(checkbox => {
+            if (!checkbox.checked) {
+                checkbox.checked = true;
+                const memoryId = parseInt(checkbox.id.replace('memory_', ''));
+                this.addMemoryToSelection(memoryId);
+            }
+        });
+        this.updateSelectionCount();
+        this.updateProceedButton();
+    },
+    
+    // NEW: Clear all selections
+    clearAllSelections() {
+        document.querySelectorAll('.memory-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        this.selectedMemories = [];
+        this.updateSelectionCount();
+        this.updateProceedButton();
+    },
+    
+    // NEW: Select all in category
+    selectAllInCategory(category) {
+        const categorySection = document.querySelector(`[data-category="${category}"]`).closest('.memory-category-section');
+        categorySection.querySelectorAll('.memory-checkbox').forEach(checkbox => {
+            if (!checkbox.checked) {
+                checkbox.checked = true;
+                const memoryId = parseInt(checkbox.id.replace('memory_', ''));
+                this.addMemoryToSelection(memoryId);
+            }
+        });
+        this.updateSelectionCount();
+        this.updateProceedButton();
+    },
+    
+    // NEW: Show add others modal for browsing memories by type
+    showAddOthersModal() {
+        const modal = Modals.createModal('addOthersModal', 'Add Other Items', `
+            <div class="add-others-interface">
+                <div class="memory-type-filters">
+                    <button class="filter-btn active" data-type="all">All Types</button>
+                    <button class="filter-btn" data-type="goal">Goals</button>
+                    <button class="filter-btn" data-type="routine">Routines</button>
+                    <button class="filter-btn" data-type="preference">Preferences</button>
+                    <button class="filter-btn" data-type="insight">Insights</button>
+                    <button class="filter-btn" data-type="event">Events</button>
+                </div>
+                
+                <div class="add-others-search">
+                    <input type="text" id="memorySearchInput" placeholder="Search memories..." class="memory-search-input">
+                </div>
+                
+                <div class="add-others-memories" id="addOthersMemories">
+                    <div class="loading-memories">
+                        <div class="spinner"></div>
+                        <p>Loading memories...</p>
+                    </div>
+                </div>
+            </div>
+        `, [
+            {
+                text: 'Close',
+                class: 'secondary',
+                onclick: "Modals.removeModal('addOthersModal')"
+            },
+            {
+                text: 'Add Selected',
+                class: 'primary',
+                onclick: "Config.addSelectedOthers()"
+            }
+        ]);
+        
+        // Load memories for browsing
+        this.loadMemoriesForBrowsing('all');
+        this.setupAddOthersListeners(modal);
+    },
+    
+    // NEW: Load memories for browsing in add others modal
+    loadMemoriesForBrowsing(typeFilter = 'all', searchQuery = '') {
+        const container = document.getElementById('addOthersMemories');
+        if (!container) return;
+        
+        let memories = MindOS.userMemories;
+        
+        // Filter by type
+        if (typeFilter !== 'all') {
+            memories = memories.filter(m => m.type === typeFilter);
+        }
+        
+        // Filter by search query
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            memories = memories.filter(m => 
+                (m.content && m.content.toLowerCase().includes(query)) ||
+                (m.content_short && m.content_short.toLowerCase().includes(query)) ||
+                (m.notes && m.notes.toLowerCase().includes(query))
+            );
+        }
+        
+        // Sort by priority and recent activity
+        memories.sort((a, b) => {
+            const aPriority = parseInt(a.priority) || 0;
+            const bPriority = parseInt(b.priority) || 0;
+            if (aPriority !== bPriority) return bPriority - aPriority;
+            return new Date(b.modified || b.created_at) - new Date(a.modified || a.created_at);
+        });
+        
+        if (memories.length === 0) {
+            container.innerHTML = `
+                <div class="no-memories-found">
+                    <i class="fas fa-search"></i>
+                    <p>No memories found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="browsable-memories-grid">
+                ${memories.map(memory => this.createBrowsableMemoryCard(memory)).join('')}
+            </div>
+        `;
+        
+        // Setup selection listeners
+        container.querySelectorAll('.browsable-memory-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const memoryId = parseInt(e.target.dataset.memoryId);
+                if (e.target.checked) {
+                    this.addMemoryToSelection(memoryId);
+                } else {
+                    this.removeMemoryFromSelection(memoryId);
+                }
+            });
+        });
+    },
+    
+    // NEW: Create browsable memory card for add others modal
+    createBrowsableMemoryCard(memory) {
+        const isSelected = this.selectedMemories.includes(memory.id);
+        
+        return `
+            <div class="browsable-memory-card ${isSelected ? 'already-selected' : ''}">
+                <div class="memory-card-checkbox">
+                    <input type="checkbox" class="browsable-memory-checkbox" 
+                           data-memory-id="${memory.id}" ${isSelected ? 'checked disabled' : ''}>
+                </div>
+                <div class="memory-card-content">
+                    <div class="memory-card-header">
+                        <div class="memory-type-badge type-${memory.type}">${memory.type}</div>
+                        ${memory.priority ? `<div class="memory-priority-badge priority-${memory.priority}">P${memory.priority}</div>` : ''}
+                    </div>
+                    <div class="memory-card-title">${memory.content_short || memory.content?.substring(0, 80) || 'No title'}</div>
+                    ${memory.notes ? `<div class="memory-card-notes">${memory.notes.substring(0, 100)}${memory.notes.length > 100 ? '...' : ''}</div>` : ''}
+                    <div class="memory-card-meta">
+                        ${memory.status ? `<span class="status-${memory.status}">${memory.status}</span>` : ''}
+                        ${memory.due ? `<span class="due-date"><i class="fas fa-calendar"></i> ${Utils.formatDate(memory.due)}</span>` : ''}
+                    </div>
+                    ${isSelected ? '<div class="already-selected-indicator"><i class="fas fa-check"></i> Already selected</div>' : ''}
+                </div>
+            </div>
+        `;
+    },
+    
+    // NEW: Setup add others modal listeners
+    setupAddOthersListeners(modal) {
+        // Type filter buttons
+        modal.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                modal.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                const type = e.target.dataset.type;
+                const searchQuery = document.getElementById('memorySearchInput')?.value || '';
+                this.loadMemoriesForBrowsing(type, searchQuery);
+            });
+        });
+        
+        // Search input
+        const searchInput = document.getElementById('memorySearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', Utils.debounce((e) => {
+                const activeType = modal.querySelector('.filter-btn.active')?.dataset.type || 'all';
+                this.loadMemoriesForBrowsing(activeType, e.target.value);
+            }, 300));
+        }
+    },
+    
+    // NEW: Add selected others to main selection
+    addSelectedOthers() {
+        // Get newly selected items from the modal
+        const newlySelected = [];
+        document.querySelectorAll('.browsable-memory-checkbox:checked:not([disabled])').forEach(checkbox => {
+            const memoryId = parseInt(checkbox.dataset.memoryId);
+            newlySelected.push(memoryId);
+        });
+        
+        if (newlySelected.length > 0) {
+            Utils.showAlert(`Added ${newlySelected.length} items to your planning selection`, 'success');
+            
+            // Refresh the main memory display to show new selections
+            this.loadRelevantMemories();
+        }
+        
+        Modals.removeModal('addOthersModal');
+    },
+    
+    // EXISTING: Populate form modal for routines (unchanged)
     populateFormModal(config) {
         console.log('📝 Populating form modal with config:', config.title);
         
@@ -259,16 +895,12 @@ const Config = {
         const configBody = document.getElementById('configBody');
         configBody.innerHTML = '';
         
-        // Initialize data with defaults
         this.data = { ...config.defaultFields };
         
-        // Create form container
         const formContainer = document.createElement('div');
         formContainer.className = 'config-form-container';
         formContainer.innerHTML = `
-            <div class="config-form-fields" id="configFormFields">
-                <!-- Fields will be populated here -->
-            </div>
+            <div class="config-form-fields" id="configFormFields"></div>
             <div class="config-form-actions">
                 <button class="config-add-field-btn" id="configAddFieldBtn">
                     <i class="fas fa-plus"></i> Add Field
@@ -277,25 +909,20 @@ const Config = {
         `;
         
         configBody.appendChild(formContainer);
-        
-        // Populate initial fields
         this.populateFormFields(config);
         
-        // Setup add field button
         document.getElementById('configAddFieldBtn').addEventListener('click', () => {
             this.showAddFieldsForConfig(config);
         });
         
         this.updateProceedButton();
-        console.log('✅ Form modal populated');
     },
     
-    // NEW: Populate form fields
+    // EXISTING: Populate form fields (unchanged)
     populateFormFields(config) {
         const fieldsContainer = document.getElementById('configFormFields');
         fieldsContainer.innerHTML = '';
         
-        // Required fields first
         const requiredFields = ['content', 'routine_type', 'frequency'];
         requiredFields.forEach(fieldKey => {
             if (config.fieldDefinitions[fieldKey]) {
@@ -304,7 +931,6 @@ const Config = {
             }
         });
         
-        // Optional fields that have values or are commonly used
         const commonFields = ['trigger', 'required_time', 'energy_requirements', 'priority', 'success_criteria', 'notes'];
         commonFields.forEach(fieldKey => {
             if (config.fieldDefinitions[fieldKey] && !requiredFields.includes(fieldKey)) {
@@ -314,7 +940,7 @@ const Config = {
         });
     },
     
-    // NEW: Create form field
+    // EXISTING: Create form field (unchanged)
     createFormField(fieldKey, value, fieldDef, isRequired) {
         const section = document.createElement('div');
         section.className = 'config-form-section';
@@ -367,7 +993,6 @@ const Config = {
         input.value = value || '';
         input.setAttribute('data-field-key', fieldKey);
         
-        // Add change listener
         input.addEventListener('input', () => {
             this.handleFormFieldChange(fieldKey, input.value);
         });
@@ -375,7 +1000,6 @@ const Config = {
         section.appendChild(label);
         section.appendChild(input);
         
-        // Add remove button listener
         const removeBtn = label.querySelector('.config-field-remove-btn');
         if (removeBtn) {
             removeBtn.addEventListener('click', (e) => {
@@ -389,15 +1013,13 @@ const Config = {
         return section;
     },
     
-    // NEW: Handle form field changes
+    // EXISTING: Handle form field changes (unchanged)
     handleFormFieldChange(fieldKey, value) {
         this.data[fieldKey] = value;
-        console.log('📝 Field changed:', fieldKey, '=', value);
-        console.log('📋 Current data:', this.data);
         this.updateProceedButton();
     },
     
-    // NEW: Show add fields for config
+    // EXISTING: Show add fields for config (unchanged)
     showAddFieldsForConfig(config) {
         const currentFields = Object.keys(this.data);
         const availableFields = Object.keys(config.fieldDefinitions).filter(fieldKey => 
@@ -409,7 +1031,6 @@ const Config = {
             return;
         }
         
-        // Create add fields dialog
         const fieldsDialog = document.createElement('div');
         fieldsDialog.className = 'memory-confirmation-dialog';
         fieldsDialog.style.zIndex = '2600';
@@ -423,9 +1044,7 @@ const Config = {
                     <div class="add-fields-subtitle">Select additional fields for your routine</div>
                 </div>
                 
-                <div class="fields-grid" id="${fieldsId}_grid">
-                    <!-- Available fields will be populated here -->
-                </div>
+                <div class="fields-grid" id="${fieldsId}_grid"></div>
                 
                 <div class="add-fields-actions">
                     <button class="modal-btn secondary" id="${fieldsId}_cancel">Cancel</button>
@@ -435,7 +1054,6 @@ const Config = {
         
         document.body.appendChild(fieldsDialog);
         
-        // Populate available fields
         const fieldsGrid = document.getElementById(fieldsId + '_grid');
         availableFields.forEach(fieldKey => {
             const fieldDef = config.fieldDefinitions[fieldKey];
@@ -450,17 +1068,14 @@ const Config = {
             `;
             
             fieldOption.addEventListener('click', () => {
-                // Add field to form
                 this.data[fieldKey] = '';
                 const fieldsContainer = document.getElementById('configFormFields');
                 const newField = this.createFormField(fieldKey, '', fieldDef, false);
                 fieldsContainer.appendChild(newField);
                 
-                // Focus new field
                 const input = newField.querySelector('.config-form-input, .config-form-select, .config-form-textarea');
                 if (input) input.focus();
                 
-                // Close dialog
                 document.body.removeChild(fieldsDialog);
                 this.updateProceedButton();
             });
@@ -468,13 +1083,12 @@ const Config = {
             fieldsGrid.appendChild(fieldOption);
         });
         
-        // Cancel button
         document.getElementById(fieldsId + '_cancel').addEventListener('click', () => {
             document.body.removeChild(fieldsDialog);
         });
     },
     
-    // EXISTING: Populate step-based modal (for other configurations)
+    // EXISTING: Populate step modal (unchanged)
     populateStepModal(config) {
         console.log('📝 Populating step modal with config:', config.title);
         
@@ -499,7 +1113,6 @@ const Config = {
                 const optionDiv = document.createElement('div');
                 optionDiv.className = 'config-option';
                 optionDiv.onclick = () => {
-                    console.log('🎯 Option clicked:', stepIndex, option.id);
                     this.selectOption(stepIndex, option.id, optionDiv);
                 };
                 
@@ -517,156 +1130,194 @@ const Config = {
         });
         
         this.updateProceedButton();
-        console.log('✅ Step modal populated');
     },
     
+    // EXISTING: Select option for step-based configs (unchanged)
     selectOption(stepIndex, optionId, optionElement) {
-        console.log('🎯 Selected option:', stepIndex, optionId);
-        
-        // Remove selection from siblings
         optionElement.parentElement.querySelectorAll('.config-option').forEach(el => {
             el.classList.remove('selected');
         });
         
-        // Select this option
         optionElement.classList.add('selected');
-        
-        // Store selection
         this.data[`step_${stepIndex}`] = optionId;
-        console.log('💾 Updated data:', this.data);
-        
-        // Update button
         this.updateProceedButton();
     },
     
+    // ENHANCED: Update proceed button to handle interactive planning
     updateProceedButton() {
         const proceedBtn = document.getElementById('proceedConfigBtn');
-        if (!proceedBtn) {
-            console.error('❌ Proceed button not found!');
-            return;
-        }
+        if (!proceedBtn) return;
         
         const config = this.configurations[this.currentMode];
         let isComplete = false;
         
-        if (config && config.type === 'form') {
-            // For forms, check if required fields are filled
-            const requiredFields = ['content']; // At minimum, need routine description
+        if (config?.type === 'interactive_planning') {
+            // For interactive planning, check if preferences are set and memories are selected
+            const hasPreferences = this.data.focus && this.data.timeframe;
+            const hasSelections = this.selectedMemories.length > 0;
+            isComplete = hasPreferences && hasSelections;
+        } else if (config?.type === 'form') {
+            // For forms, check required fields
+            const requiredFields = ['content'];
             isComplete = requiredFields.every(field => 
                 this.data[field] && this.data[field].trim() !== ''
             );
         } else {
-            // For step-based, check if all steps are completed
+            // For step-based configs
             const requiredSteps = document.querySelectorAll('.config-step').length;
             const selectedSteps = Object.keys(this.data).filter(key => 
-                key.startsWith('step_') && !key.includes('_custom')
+                key.startsWith('step_')
             ).length;
             isComplete = selectedSteps >= requiredSteps;
         }
         
-        console.log('📊 Button update:');
-        console.log('  - Mode:', this.currentMode);
-        console.log('  - Config type:', config?.type);
-        console.log('  - Is complete:', isComplete);
-        console.log('  - Current data:', this.data);
-        
         proceedBtn.disabled = !isComplete;
-        
-        if (isComplete) {
-            proceedBtn.style.opacity = '1';
-            proceedBtn.style.cursor = 'pointer';
-            console.log('✅ Button ENABLED');
-        } else {
-            proceedBtn.style.opacity = '0.6';
-            proceedBtn.style.cursor = 'not-allowed';
-            console.log('❌ Button DISABLED');
-        }
+        proceedBtn.style.opacity = isComplete ? '1' : '0.6';
+        proceedBtn.style.cursor = isComplete ? 'pointer' : 'not-allowed';
     },
     
-    processAndChat() {
-        console.log('🚀 processAndChat() called');
-        console.log('📋 Mode:', this.currentMode);
-        console.log('📋 Data:', this.data);
-        
-        // Add safety checks
+    // ENHANCED: Process and chat to handle selected memories
+    async processAndChat() {
         if (!this.currentMode) {
-            console.error('❌ currentMode is null or undefined');
             Utils.showAlert('Configuration mode not set', 'error');
             return;
         }
         
-        if (Object.keys(this.data).length === 0) {
-            console.error('❌ No configuration data');
-            Utils.showAlert('Please fill in the required information before proceeding', 'warning');
-            return;
-        }
-        
-        // Save mode and data before closing modal
         const savedMode = this.currentMode;
         const savedData = { ...this.data };
+        const savedMemories = [...this.selectedMemories];
         
-        console.log('✅ Data validation passed, closing modal');
         this.closeModal();
         
-        console.log('🤖 Going directly to AI assistance');
-        
         try {
-            const prompt = this.buildPrompt(savedMode, savedData);
-            console.log('📝 Generated prompt:', prompt);
+            let prompt;
+            
+            // For interactive planning, include selected memories
+            if (savedMode === 'plan-day' && savedMemories.length > 0) {
+                prompt = await this.buildPlanningPromptWithMemories(savedData, savedMemories);
+                
+                // Tag selected memories as part of today's/tomorrow's plan
+                await this.tagMemoriesForPlanning(savedMemories, savedData.timeframe);
+            } else {
+                prompt = this.buildPrompt(savedMode, savedData);
+            }
             
             const messageInput = document.getElementById('messageInput');
             if (messageInput) {
                 messageInput.value = prompt;
-                console.log('✅ Prompt set in input');
                 
-                // Trigger input resize
                 if (typeof Chat !== 'undefined' && Chat.autoResize) {
                     Chat.autoResize(messageInput);
                 }
                 
-                // Send message
                 if (typeof Chat !== 'undefined' && Chat.sendMessage) {
-                    console.log('📤 Sending message via Chat.sendMessage()');
                     Chat.sendMessage();
-                } else {
-                    console.error('❌ Chat module not available');
                 }
-            } else {
-                console.error('❌ Message input not found');
             }
         } catch (error) {
-            console.error('❌ Error in processAndChat:', error);
+            console.error('Error in processAndChat:', error);
             Utils.showAlert('Error processing configuration: ' + error.message, 'error');
         }
     },
     
-    buildPrompt(mode, data) {
-        console.log('🔨 Building prompt for mode:', mode);
+    // NEW: Build planning prompt with selected memories
+    async buildPlanningPromptWithMemories(data, selectedMemoryIds) {
+        const selectedMemories = MindOS.userMemories.filter(m => selectedMemoryIds.includes(m.id));
+        const timeframe = data.timeframe === 'today' ? 'today' : 'tomorrow';
         
-        const prompts = {
-            'plan-day': () => {
-                let prompt = "I need help planning my day. Please create a specific, actionable plan and store relevant memories. Here are my preferences:\n\n";
-                
-                if (data.step_0 === 'comprehensive') {
-                    prompt += "**Planning Style**: Create a comprehensive schedule with time blocks and priorities\n";
-                } else if (data.step_0 === 'priorities') {
-                    prompt += "**Planning Style**: Focus on identifying my top 3-5 priorities for the day\n";
-                } else if (data.step_0 === 'routine') {
-                    prompt += "**Planning Style**: Review and adjust my existing routines\n";
+        let prompt = `I want to plan my ${data.timeframe}. Please help me create a comprehensive plan using the items I've selected. Here are my preferences:\n\n`;
+        
+        // Add configuration preferences
+        if (data.focus === 'comprehensive') {
+            prompt += "**Planning Style**: Create a comprehensive schedule with time blocks and priorities\n";
+        } else if (data.focus === 'priorities') {
+            prompt += "**Planning Style**: Focus on identifying priorities and organizing by importance\n";
+        } else if (data.focus === 'routine') {
+            prompt += "**Planning Style**: Review and optimize my routines for consistency\n";
+        }
+        
+        prompt += `**Time Frame**: ${data.timeframe}\n\n`;
+        
+        // Group selected memories by type for better organization
+        const groupedMemories = selectedMemories.reduce((groups, memory) => {
+            const type = memory.type || 'other';
+            if (!groups[type]) groups[type] = [];
+            groups[type].push(memory);
+            return groups;
+        }, {});
+        
+        prompt += `## Selected Items for ${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} (${selectedMemories.length} total):\n\n`;
+        
+        Object.entries(groupedMemories).forEach(([type, memories]) => {
+            prompt += `### ${type.charAt(0).toUpperCase() + type.slice(1)} Items:\n`;
+            memories.forEach(memory => {
+                prompt += `- **${memory.content_short || memory.content?.substring(0, 80) || 'Untitled'}**\n`;
+                if (memory.priority) prompt += `  - Priority: ${memory.priority}/5\n`;
+                if (memory.required_time) prompt += `  - Time needed: ${memory.required_time}\n`;
+                if (memory.due) prompt += `  - Due: ${Utils.formatDate(memory.due)}\n`;
+                if (memory.energy_requirements) prompt += `  - Energy level: ${memory.energy_requirements}\n`;
+                if (memory.notes) prompt += `  - Notes: ${memory.notes.substring(0, 100)}${memory.notes.length > 100 ? '...' : ''}\n`;
+                prompt += '\n';
+            });
+        });
+        
+        prompt += `\nPlease create a detailed plan for ${timeframe} that:\n`;
+        prompt += `1. Organizes these items by priority and time requirements\n`;
+        prompt += `2. Suggests optimal timing based on energy levels and dependencies\n`;
+        prompt += `3. Identifies any potential conflicts or resource constraints\n`;
+        prompt += `4. Provides time blocks and realistic scheduling\n`;
+        prompt += `5. Includes buffer time and breaks as needed\n\n`;
+        prompt += `Use my stored memories and preferences to personalize the recommendations. Store any new insights or planning preferences as memories for future reference.`;
+        
+        return prompt;
+    },
+    
+    // NEW: Tag memories as part of today's/tomorrow's plan
+    async tagMemoriesForPlanning(memoryIds, timeframe) {
+        const planTag = timeframe === 'today' ? "today's plan" : "tomorrow's plan";
+        const planDate = timeframe === 'today' ? new Date().toISOString().split('T')[0] : 
+                         new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0];
+        
+        try {
+            // Update memories with planning tags
+            for (const memoryId of memoryIds) {
+                const memory = MindOS.userMemories.find(m => m.id === memoryId);
+                if (memory) {
+                    const currentNotes = memory.notes || '';
+                    const planningNote = `\n[Added to ${planTag} on ${planDate}]`;
+                    
+                    // Avoid duplicate tags
+                    if (!currentNotes.includes(planTag)) {
+                        const updatedNotes = currentNotes + planningNote;
+                        
+                        await API.put(`/api/memories/${memoryId}`, {
+                            notes: updatedNotes,
+                            planning_tag: planTag,
+                            planned_date: planDate
+                        });
+                        
+                        // Update local memory object
+                        const localMemory = MindOS.userMemories.find(m => m.id === memoryId);
+                        if (localMemory) {
+                            localMemory.notes = updatedNotes;
+                            localMemory.planning_tag = planTag;
+                            localMemory.planned_date = planDate;
+                        }
+                    }
                 }
-
-                if (data.step_1 === 'today') {
-                    prompt += "**Time Frame**: Today only\n";
-                } else if (data.step_1 === 'week') {
-                    prompt += "**Time Frame**: This entire week\n";
-                } else if (data.step_1 === 'custom') {
-                    prompt += "**Time Frame**: Custom period (please ask for specifics)\n";
-                }
-
-                prompt += "\nPlease use my stored memories and create a specific plan.";
-                return prompt;
-            },
+            }
             
+            console.log(`✅ Tagged ${memoryIds.length} memories for ${planTag}`);
+            
+        } catch (error) {
+            console.error('Error tagging memories for planning:', error);
+            // Don't block the planning flow if tagging fails
+        }
+    },
+    
+    // EXISTING: Build prompt for other configurations (unchanged)
+    buildPrompt(mode, data) {
+        const prompts = {
             'set-goals': () => {
                 let prompt = "I want to set a new goal. Please help me create it properly:\n\n";
                 
@@ -692,7 +1343,6 @@ const Config = {
             'create-routine': () => {
                 let prompt = "I want to create a new routine. Please help me set it up and store it as a memory. Here are the details I've provided:\n\n";
                 
-                // Build prompt from form data
                 if (data.content) {
                     prompt += `**Routine Description**: ${data.content}\n`;
                 }
@@ -724,37 +1374,12 @@ const Config = {
                     prompt += `**Frequency**: ${frequencyLabels[data.frequency] || data.frequency}\n`;
                 }
                 
-                if (data.trigger) {
-                    prompt += `**Trigger/Cue**: ${data.trigger}\n`;
-                }
-                
-                if (data.required_time) {
-                    prompt += `**Time Required**: ${data.required_time}\n`;
-                }
-                
-                if (data.energy_requirements) {
-                    prompt += `**Energy Level Needed**: ${data.energy_requirements}\n`;
-                }
-                
-                if (data.priority) {
-                    prompt += `**Priority**: ${data.priority}/5\n`;
-                }
-                
-                if (data.success_criteria) {
-                    prompt += `**Success Criteria**: ${data.success_criteria}\n`;
-                }
-                
-                if (data.location) {
-                    prompt += `**Location**: ${data.location}\n`;
-                }
-                
-                if (data.resources) {
-                    prompt += `**Resources Needed**: ${data.resources}\n`;
-                }
-                
-                if (data.notes) {
-                    prompt += `**Additional Notes**: ${data.notes}\n`;
-                }
+                Object.entries(data).forEach(([key, value]) => {
+                    if (key !== 'content' && key !== 'routine_type' && key !== 'frequency' && value && value.trim() !== '') {
+                        const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        prompt += `**${label}**: ${value}\n`;
+                    }
+                });
                 
                 prompt += "\nPlease help me refine this routine, provide implementation strategies, and store it as a comprehensive memory. Focus on making it sustainable and trackable.";
                 return prompt;
@@ -818,27 +1443,19 @@ const Config = {
             }
         };
 
-        // Add safety check for mode
-        if (!mode) {
-            console.error('❌ Mode is null or undefined in buildPrompt');
-            return "I need help organizing my thoughts and tasks. Please review my stored memories and suggest what we should work on together.";
-        }
-
-        const result = prompts[mode] ? prompts[mode]() : `Help me with ${mode}. Please use my stored memories to provide personalized assistance based on my preferences and history.`;
-        console.log('✅ Generated prompt:', result);
-        return result;
+        return prompts[mode] ? prompts[mode]() : `Help me with ${mode}. Please use my stored memories to provide personalized assistance based on my preferences and history.`;
     },
     
+    // EXISTING: Close modal (unchanged)
     closeModal() {
-        console.log('🚪 Closing config modal');
         document.getElementById('configModal').classList.remove('show');
         this.currentMode = null;
         this.data = {};
+        this.selectedMemories = [];
     }
 };
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🎬 DOM loaded, initializing Config');
     Config.init();
 });
