@@ -624,3 +624,471 @@ html, body {
     visibility: visible !important;
     opacity: 1 !important;
 }
+
+/* Enhanced Conversational UI Styles - ADD TO YOUR main.css */
+
+/* Memory Operation Indicators */
+.memory-operation-indicator {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    animation: fadeInScale 0.4s ease-out;
+}
+
+.memory-operation-indicator.stored {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+
+.memory-operation-indicator.updated {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+}
+
+.memory-operation-indicator.processed {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.memory-operation-indicator i {
+    margin-right: 0.25rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* Quick Response Buttons */
+.quick-responses {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+    animation: slideInUp 0.3s ease-out;
+}
+
+.quick-response-btn {
+    padding: 0.4rem 0.8rem;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 16px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.quick-response-btn:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Enhanced Message Spacing for Conversational Flow */
+.message.assistant + .message.assistant {
+    margin-top: 0.5rem; /* Closer spacing for chunked responses */
+}
+
+.message.assistant:not(:first-child) .message-content {
+    animation: typeIn 0.6s ease-out;
+}
+
+@keyframes typeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Enhanced Typing Indicator for Chunks */
+.typing-indicator.chunk-waiting {
+    background: linear-gradient(135deg, #f8f9ff 0%, #e0e6ff 100%);
+    border-radius: 16px;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+}
+
+.typing-indicator.chunk-waiting .typing-dots {
+    background: transparent;
+    box-shadow: none;
+}
+
+.typing-indicator.chunk-waiting .typing-dot {
+    background: #667eea;
+    animation: chunkTyping 1.2s infinite;
+}
+
+.typing-indicator.chunk-waiting .typing-dot:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.typing-indicator.chunk-waiting .typing-dot:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes chunkTyping {
+    0%, 60%, 100% { 
+        transform: translateY(0); 
+        opacity: 0.4;
+        background: #667eea;
+    }
+    30% { 
+        transform: translateY(-8px); 
+        opacity: 1;
+        background: #5a6fd8;
+    }
+}
+
+/* Conversation Flow Indicators */
+.conversation-flow-indicator {
+    text-align: center;
+    padding: 0.5rem;
+    margin: 1rem 0;
+    font-size: 0.75rem;
+    color: #888;
+    font-style: italic;
+    position: relative;
+}
+
+.conversation-flow-indicator::before,
+.conversation-flow-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 30px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #ddd, transparent);
+}
+
+.conversation-flow-indicator::before {
+    left: 20px;
+}
+
+.conversation-flow-indicator::after {
+    right: 20px;
+}
+
+/* Message Continuation Hint */
+.message-continuation-hint {
+    margin-top: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    text-align: center;
+    font-style: italic;
+    animation: breathe 2s infinite;
+}
+
+@keyframes breathe {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Enhanced Memory Indicators */
+.memory-stored-indicator,
+.memory-deleted-indicator,
+.memory-updated-indicator,
+.memory-processed-indicator {
+    display: inline-block;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.memory-stored-indicator {
+    background: #4CAF50;
+    color: white;
+}
+
+.memory-updated-indicator {
+    background: #ff9800;
+    color: white;
+}
+
+.memory-processed-indicator {
+    background: #667eea;
+    color: white;
+}
+
+.memory-deleted-indicator {
+    background: #e74c3c;
+    color: white;
+}
+
+/* Add subtle animation to memory indicators */
+.memory-stored-indicator::before,
+.memory-updated-indicator::before,
+.memory-processed-indicator::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Conversational Status Indicator */
+.conversation-status {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    transition: all 0.2s;
+    display: none; /* Hidden by default */
+}
+
+.conversation-status.active {
+    display: block;
+    color: #4CAF50;
+}
+
+.conversation-status.processing {
+    display: block;
+    color: #ff9800;
+    animation: spin 1s linear infinite;
+}
+
+.conversation-status.waiting {
+    display: block;
+    color: #667eea;
+    animation: pulse 1.5s infinite;
+}
+
+/* Message Actions (for future enhancements) */
+.message-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.message:hover .message-actions {
+    opacity: 1;
+}
+
+.message-action-btn {
+    padding: 0.2rem 0.4rem;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.message-action-btn:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* Responsive Enhancements for Conversational Flow */
+@media (max-width: 768px) {
+    .quick-responses {
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+    
+    .quick-response-btn {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    .memory-operation-indicator {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .conversation-flow-indicator {
+        font-size: 0.7rem;
+        margin: 0.5rem 0;
+    }
+    
+    .conversation-flow-indicator::before,
+    .conversation-flow-indicator::after {
+        width: 20px;
+    }
+    
+    .conversation-flow-indicator::before {
+        left: 10px;
+    }
+    
+    .conversation-flow-indicator::after {
+        right: 10px;
+    }
+}
+
+/* Dark Mode Support for New Elements */
+@media (prefers-color-scheme: dark) {
+    body:not(.light-mode) .quick-response-btn {
+        background: rgba(102, 126, 234, 0.2);
+        border-color: rgba(102, 126, 234, 0.4);
+        color: #8fa3ff;
+    }
+    
+    body:not(.light-mode) .conversation-flow-indicator {
+        color: #aaa;
+    }
+    
+    body:not(.light-mode) .conversation-flow-indicator::before,
+    body:not(.light-mode) .conversation-flow-indicator::after {
+        background: linear-gradient(to right, transparent, #555, transparent);
+    }
+    
+    body:not(.light-mode) .message-continuation-hint {
+        background: rgba(102, 126, 234, 0.2);
+        color: #8fa3ff;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .memory-operation-indicator {
+        border: 2px solid currentColor;
+        font-weight: 700;
+    }
+    
+    .quick-response-btn {
+        border-width: 2px;
+        font-weight: 600;
+    }
+    
+    .memory-operation-indicator.stored {
+        background: #000;
+        color: #fff;
+        border-color: #4CAF50;
+    }
+    
+    .memory-operation-indicator.updated {
+        background: #000;
+        color: #fff;
+        border-color: #ff9800;
+    }
+    
+    .memory-operation-indicator.processed {
+        background: #000;
+        color: #fff;
+        border-color: #667eea;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .memory-operation-indicator,
+    .quick-responses,
+    .message-continuation-hint {
+        animation: none;
+    }
+    
+    .memory-operation-indicator i {
+        animation: none;
+    }
+    
+    .typing-indicator.chunk-waiting .typing-dot {
+        animation: none;
+    }
+    
+    .conversation-status.processing {
+        animation: none;
+    }
+    
+    .message.assistant:not(:first-child) .message-content {
+        animation: none;
+    }
+    
+    .memory-stored-indicator::before,
+    .memory-updated-indicator::before,
+    .memory-processed-indicator::before {
+        animation: none;
+    }
+}
+
+/* Focus Management for Accessibility */
+.quick-response-btn:focus,
+.message-action-btn:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Print Styles for Conversation Export */
+@media print {
+    .memory-operation-indicator,
+    .quick-responses,
+    .message-actions,
+    .conversation-status,
+    .typing-indicator {
+        display: none !important;
+    }
+    
+    .message-continuation-hint {
+        display: none !important;
+    }
+    
+    .conversation-flow-indicator {
+        color: #666 !important;
+        page-break-inside: avoid;
+    }
+}
