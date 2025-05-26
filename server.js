@@ -1639,3 +1639,32 @@ app.listen(PORT, () => {
     console.log('🔧 FIXED: Message cleaning for Claude API compatibility');
     console.log('📱 Card interface endpoint: /api/memories/today active');
 });
+// Add this temporary debug endpoint to your server.js (after the health check endpoint)
+app.get('/api/debug/files', (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+        const rootFiles = fs.readdirSync(__dirname);
+        const publicExists = fs.existsSync(path.join(__dirname, 'public'));
+        let publicFiles = [];
+        
+        if (publicExists) {
+            publicFiles = fs.readdirSync(path.join(__dirname, 'public'));
+        }
+        
+        res.json({
+            serverPath: __dirname,
+            rootFiles: rootFiles,
+            publicDirectoryExists: publicExists,
+            publicFiles: publicFiles,
+            nodeEnv: process.env.NODE_ENV,
+            port: process.env.PORT
+        });
+    } catch (error) {
+        res.json({
+            error: error.message,
+            serverPath: __dirname
+        });
+    }
+});
