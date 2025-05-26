@@ -325,58 +325,151 @@ const Config = {
         }
     },
     
-    buildPrompt(mode, data) {
-        console.log('🔨 Building prompt for mode:', mode);
-        
-        const prompts = {
-            'plan-day': () => {
-                let prompt = "I need help planning my day. Please create a specific, actionable plan and store relevant memories. Here are my preferences:\n\n";
-                
-                if (data.step_0 === 'comprehensive') {
-                    prompt += "**Planning Style**: Create a comprehensive schedule with time blocks and priorities\n";
-                } else if (data.step_0 === 'priorities') {
-                    prompt += "**Planning Style**: Focus on identifying my top 3-5 priorities for the day\n";
-                } else if (data.step_0 === 'routine') {
-                    prompt += "**Planning Style**: Review and adjust my existing routines\n";
-                }
-
-                if (data.step_1 === 'today') {
-                    prompt += "**Time Frame**: Today only\n";
-                } else if (data.step_1 === 'week') {
-                    prompt += "**Time Frame**: This entire week\n";
-                }
-
-                prompt += "\nPlease use my stored memories and create a specific plan.";
-                return prompt;
-            },
-            'set-goals': () => {
-                let prompt = "I want to set a new goal. Please help me create it properly:\n\n";
-                
-                const goalTypes = {
-                    'short-term': 'Short-term goal (achievable within days/weeks)',
-                    'long-term': 'Long-term goal (taking months/years)',
-                    'habit': 'Habit-building goal',
-                    'project': 'Project-based goal with milestones'
-                };
-                
-                if (data.step_0) {
-                    prompt += `**Goal Type**: ${goalTypes[data.step_0]}\n`;
-                }
-
-                if (data.step_1) {
-                    prompt += `**Priority Level**: ${data.step_1}/5 priority\n`;
-                }
-
-                prompt += "\nPlease help me define this goal with SMART criteria and store it as a memory.";
-                return prompt;
-            }
-        };
-
-        const result = prompts[mode] ? prompts[mode]() : `Help me with ${mode} based on my preferences.`;
-        console.log('✅ Generated prompt:', result);
-        return result;
-    },
+  buildPrompt(mode, data) {
+    console.log('🔨 Building prompt for mode:', mode);
     
+    const prompts = {
+        'plan-day': () => {
+            let prompt = "I need help planning my day. Please create a specific, actionable plan and store relevant memories. Here are my preferences:\n\n";
+            
+            if (data.step_0 === 'comprehensive') {
+                prompt += "**Planning Style**: Create a comprehensive schedule with time blocks and priorities\n";
+            } else if (data.step_0 === 'priorities') {
+                prompt += "**Planning Style**: Focus on identifying my top 3-5 priorities for the day\n";
+            } else if (data.step_0 === 'routine') {
+                prompt += "**Planning Style**: Review and adjust my existing routines\n";
+            }
+
+            if (data.step_1 === 'today') {
+                prompt += "**Time Frame**: Today only\n";
+            } else if (data.step_1 === 'week') {
+                prompt += "**Time Frame**: This entire week\n";
+            }
+
+            prompt += "\nPlease use my stored memories and create a specific plan.";
+            return prompt;
+        },
+        
+        'set-goals': () => {
+            let prompt = "I want to set a new goal. Please help me create it properly:\n\n";
+            
+            const goalTypes = {
+                'short-term': 'Short-term goal (achievable within days/weeks)',
+                'long-term': 'Long-term goal (taking months/years)',
+                'habit': 'Habit-building goal',
+                'project': 'Project-based goal with milestones'
+            };
+            
+            if (data.step_0) {
+                prompt += `**Goal Type**: ${goalTypes[data.step_0]}\n`;
+            }
+
+            if (data.step_1) {
+                prompt += `**Priority Level**: ${data.step_1}/5 priority\n`;
+            }
+
+            prompt += "\nPlease help me define this goal with SMART criteria and store it as a memory.";
+            return prompt;
+        },
+        
+        'create-routine': () => {
+            let prompt = "I want to create a new routine. Please help me design it effectively:\n\n";
+            
+            const routineTypes = {
+                'morning': 'Morning routine to start the day with purpose',
+                'evening': 'Evening routine to wind down and prepare for tomorrow',
+                'work': 'Work routine for productivity during work hours',
+                'exercise': 'Exercise routine for physical fitness and health',
+                'custom': 'Custom routine for a specific activity or habit'
+            };
+            
+            const frequencies = {
+                'daily': 'Every day without exception',
+                'weekdays': 'Monday through Friday only',
+                'weekly': 'Specific days of the week',
+                'flexible': 'Target frequency with flexibility'
+            };
+            
+            if (data.step_0) {
+                prompt += `**Routine Type**: ${routineTypes[data.step_0]}\n`;
+            }
+            
+            if (data.step_1) {
+                prompt += `**Frequency**: ${frequencies[data.step_1]}\n`;
+            }
+            
+            prompt += "\nPlease help me create a sustainable routine with specific steps, timing, and success criteria. Store it as a memory when complete.";
+            return prompt;
+        },
+        
+        'create-task': () => {
+            let prompt = "I need to create a new task. Please help me structure it properly:\n\n";
+            
+            const priorities = {
+                '5': 'Urgent - must be done today',
+                '4': 'High priority - important and due soon',
+                '3': 'Medium priority - normal importance',
+                '2': 'Low priority - when time allows'
+            };
+            
+            const dueDates = {
+                'today': 'Due today',
+                'tomorrow': 'Due tomorrow',
+                'this_week': 'Due within 7 days',
+                'custom': 'Custom specific date'
+            };
+            
+            if (data.step_0) {
+                prompt += `**Priority**: ${priorities[data.step_0]}\n`;
+            }
+            
+            if (data.step_1) {
+                prompt += `**Due Date**: ${dueDates[data.step_1]}\n`;
+            }
+            
+            prompt += "\nPlease help me define this task with clear objectives, time estimates, and resources needed. Store it as a memory when complete.";
+            return prompt;
+        },
+        
+        'daily-review': () => {
+            let prompt = "I want to do my daily review. Please guide me through reflection and planning:\n\n";
+            
+            const focuses = {
+                'goals': 'Review progress on my goals',
+                'routines': 'Assess routine completion and consistency',
+                'overall': 'General reflection on the entire day',
+                'planning': 'Focus on planning tomorrow'
+            };
+            
+            const depths = {
+                'quick': '5-10 minute brief review',
+                'standard': '15-20 minute thorough review',
+                'detailed': '30+ minute deep reflection'
+            };
+            
+            if (data.step_0) {
+                prompt += `**Review Focus**: ${focuses[data.step_0]}\n`;
+            }
+            
+            if (data.step_1) {
+                prompt += `**Review Depth**: ${depths[data.step_1]}\n`;
+            }
+            
+            prompt += "\nPlease use my stored memories to guide this review and help me identify patterns, celebrate wins, and plan improvements.";
+            return prompt;
+        }
+    };
+
+    // Add safety check for mode
+    if (!mode) {
+        console.error('❌ Mode is null or undefined in buildPrompt');
+        return "I need help organizing my thoughts and tasks. Please review my stored memories and suggest what we should work on together.";
+    }
+
+    const result = prompts[mode] ? prompts[mode]() : `Help me with ${mode}. Please use my stored memories to provide personalized assistance based on my preferences and history.`;
+    console.log('✅ Generated prompt:', result);
+    return result;
+}
     closeModal() {
         console.log('🚪 Closing config modal');
         document.getElementById('configModal').classList.remove('show');
