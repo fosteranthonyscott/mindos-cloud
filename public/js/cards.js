@@ -1,10 +1,10 @@
-// ScrollCards Interface Management
+// Enhanced Cards Interface Management
 const Cards = {
     // Current state
     cards: [],
+    filteredCards: [],
     selectedCard: null,
-    currentCardIndex: 0,
-    isScrolling: false,
+    currentFilter: 'all',
     scrollCards: null,
     
     // Initialize card system
@@ -16,12 +16,47 @@ const Cards = {
     
     // Setup event listeners
     setupEventListeners() {
-        // Modal controls
-        document.getElementById('cardModalClose')?.addEventListener('click', this.closeCardModal.bind(this));
+        // Creation buttons
+        document.querySelectorAll('.create-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.currentTarget.dataset.type;
+                this.openCreationModal(type);
+            });
+        });
+        
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const filter = e.currentTarget.dataset.filter;
+                this.applyFilter(filter);
+                
+                // Update active state
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+            });
+        });
+        
+        // Creation modal controls
+        document.getElementById('creationModalClose')?.addEventListener('click', this.closeCreationModal.bind(this));
+        document.getElementById('creationModalCancel')?.addEventListener('click', this.closeCreationModal.bind(this));
+        document.getElementById('creationModalSave')?.addEventListener('click', this.saveCreatedItem.bind(this));
+        
+        // Chat modal controls
+        document.getElementById('chatModalClose')?.addEventListener('click', this.closeCardModal.bind(this));
+        
+        // Header actions
+        document.getElementById('settingsBtn')?.addEventListener('click', () => {
+            MemorySettings.showSettingsModal();
+        });
+        
+        document.getElementById('logoutBtn')?.addEventListener('click', () => {
+            Auth.logout();
+        });
         
         // Close modals on overlay click
         document.addEventListener('click', (e) => {
             if (e.target.id === 'chatModal') this.closeCardModal();
+            if (e.target.id === 'creationModal') this.closeCreationModal();
         });
     },
     
@@ -33,6 +68,7 @@ const Cards = {
             // Get today's important items
             const response = await API.get('/api/memories/today');
             this.cards = response || [];
+            this.filteredCards = [...this.cards];
             
             this.renderScrollCards();
             this.updateMemoryCount();
@@ -45,12 +81,314 @@ const Cards = {
         }
     },
     
+    // Apply filter to cards
+    applyFilter(filter) {
+        this.currentFilter = filter;
+        
+        if (filter === 'all') {
+            this.filteredCards = [...this.cards];
+        } else if (filter === 'priority') {
+            this.filteredCards = this.cards.filter(card => (card.priority || 1) >= 4);
+        } else {
+            this.filteredCards = this.cards.filter(card => card.type === filter);
+        }
+        
+        this.renderScrollCards();
+        this.updateMemoryCount();
+    },
+    
+    // Open creation modal for specific type
+    openCreationModal(type) {
+        const modal = document.getElementById('creationModal');
+        const title = document.getElementById('creationModalTitle');
+        const body = document.getElementById('creationModalBody');
+        
+        title.textContent = `Create ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+        body.innerHTML = this.generateCreationForm(type);
+        
+        modal.classList.add('show');
+        modal.dataset.currentType = type;
+    },
+    
+    // Generate creation form based on type
+    generateCreationForm(type) {
+        const forms = {
+            routine: `
+                <div class="form-group">
+                    <label>Routine Name *</label>
+                    <input type="text" id="itemTitle" placeholder="e.g., Morning workout" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="itemDescription" placeholder="Describe your routine..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Routine Type</label>
+                    <select id="routineType">
+                        <option value="morning">Morning</option>
+                        <option value="evening">Evening</option>
+                        <option value="work">Work</option>
+                        <option value="exercise">Exercise</option>
+                        <option value="health">Health</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Frequency</label>
+                    <select id="frequency">
+                        <option value="daily">Daily</option>
+                        <option value="weekdays">Weekdays</option>
+                        <option value="weekends">Weekends</option>
+                        <option value="weekly">Weekly</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Time Required</label>
+                    <input type="text" id="requiredTime" placeholder="e.g., 30 minutes">
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="priority">
+                        <option value="3">Normal</option>
+                        <option value="4">High</option>
+                        <option value="5">Urgent</option>
+                        <option value="2">Low</option>
+                        <option value="1">Optional</option>
+                    </select>
+                </div>
+            `,
+            task: `
+                <div class="form-group">
+                    <label>Task Title *</label>
+                    <input type="text" id="itemTitle" placeholder="What needs to be done?" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="itemDescription" placeholder="Task details..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Due Date</label>
+                    <input type="date" id="dueDate">
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="priority">
+                        <option value="3">Normal</option>
+                        <option value="4">High</option>
+                        <option value="5">Urgent</option>
+                        <option value="2">Low</option>
+                        <option value="1">Optional</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estimated Time</label>
+                    <input type="text" id="requiredTime" placeholder="e.g., 2 hours">
+                </div>
+            `,
+            goal: `
+                <div class="form-group">
+                    <label>Goal Title *</label>
+                    <input type="text" id="itemTitle" placeholder="What do you want to achieve?" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="itemDescription" placeholder="Describe your goal in detail..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Goal Type</label>
+                    <select id="goalType">
+                        <option value="short-term">Short-term</option>
+                        <option value="long-term">Long-term</option>
+                        <option value="habit">Habit</option>
+                        <option value="project">Project</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Target Date</label>
+                    <input type="date" id="dueDate">
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="priority">
+                        <option value="4">High</option>
+                        <option value="5">Urgent</option>
+                        <option value="3">Normal</option>
+                        <option value="2">Low</option>
+                    </select>
+                </div>
+            `,
+            habit: `
+                <div class="form-group">
+                    <label>Habit Name *</label>
+                    <input type="text" id="itemTitle" placeholder="e.g., Read for 30 minutes" required>
+                </div>
+                <div class="form-group">
+                    <label>Habit Type</label>
+                    <select id="habitType">
+                        <option value="create">Create new habit</option>
+                        <option value="break">Break bad habit</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="itemDescription" placeholder="Why is this habit important?"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Frequency</label>
+                    <select id="frequency">
+                        <option value="daily">Daily</option>
+                        <option value="weekdays">Weekdays</option>
+                        <option value="weekly">Weekly</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Trigger/Cue</label>
+                    <input type="text" id="trigger" placeholder="What will remind you?">
+                </div>
+            `,
+            event: `
+                <div class="form-group">
+                    <label>Event Title *</label>
+                    <input type="text" id="itemTitle" placeholder="Meeting, appointment, etc." required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="itemDescription" placeholder="Event details..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Date *</label>
+                    <input type="date" id="dueDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Time</label>
+                    <input type="time" id="eventTime">
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="location" placeholder="Where is this event?">
+                </div>
+            `,
+            memory: `
+                <div class="form-group">
+                    <label>Memory Title *</label>
+                    <input type="text" id="itemTitle" placeholder="What do you want to remember?" required>
+                </div>
+                <div class="form-group">
+                    <label>Memory Type</label>
+                    <select id="memoryType">
+                        <option value="insight">Insight</option>
+                        <option value="preference">Preference</option>
+                        <option value="event">Important Event</option>
+                        <option value="system">System Note</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Details</label>
+                    <textarea id="itemDescription" placeholder="Describe this memory in detail..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Context/Location</label>
+                    <input type="text" id="location" placeholder="Where or when did this happen?">
+                </div>
+            `
+        };
+        
+        return forms[type] || forms.task;
+    },
+    
+    // Save created item
+    async saveCreatedItem() {
+        const modal = document.getElementById('creationModal');
+        const type = modal.dataset.currentType;
+        
+        const title = document.getElementById('itemTitle')?.value.trim();
+        if (!title) {
+            this.showFeedback('Please enter a title', 'error');
+            return;
+        }
+        
+        try {
+            const itemData = this.collectFormData(type);
+            itemData.type = type;
+            itemData.content = title;
+            itemData.status = 'active';
+            
+            await API.post('/api/memories', itemData);
+            
+            this.closeCreationModal();
+            this.loadTodaysCards(); // Refresh cards
+            this.showFeedback(`${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`, 'success');
+            
+        } catch (error) {
+            this.showFeedback('Failed to create item', 'error');
+        }
+    },
+    
+    // Collect form data based on type
+    collectFormData(type) {
+        const data = {};
+        
+        // Common fields
+        const description = document.getElementById('itemDescription')?.value;
+        const priority = document.getElementById('priority')?.value;
+        const dueDate = document.getElementById('dueDate')?.value;
+        const requiredTime = document.getElementById('requiredTime')?.value;
+        const location = document.getElementById('location')?.value;
+        
+        if (description) data.notes = description;
+        if (priority) data.priority = priority;
+        if (dueDate) data.due = dueDate;
+        if (requiredTime) data.required_time = requiredTime;
+        if (location) data.location = location;
+        
+        // Type-specific fields
+        switch (type) {
+            case 'routine':
+                const routineType = document.getElementById('routineType')?.value;
+                const frequency = document.getElementById('frequency')?.value;
+                if (routineType) data.routine_type = routineType;
+                if (frequency) data.frequency = frequency;
+                break;
+                
+            case 'goal':
+                const goalType = document.getElementById('goalType')?.value;
+                if (goalType) data.goal_type = goalType;
+                break;
+                
+            case 'habit':
+                const habitType = document.getElementById('habitType')?.value;
+                const habitFreq = document.getElementById('frequency')?.value;
+                const trigger = document.getElementById('trigger')?.value;
+                if (habitType) data.habit_type = habitType;
+                if (habitFreq) data.frequency = habitFreq;
+                if (trigger) data.trigger = trigger;
+                break;
+                
+            case 'event':
+                const eventTime = document.getElementById('eventTime')?.value;
+                if (eventTime) data.event_time = eventTime;
+                break;
+                
+            case 'memory':
+                const memoryType = document.getElementById('memoryType')?.value;
+                if (memoryType) data.memory_type = memoryType;
+                break;
+        }
+        
+        return data;
+    },
+    
+    // Close creation modal
+    closeCreationModal() {
+        document.getElementById('creationModal').classList.remove('show');
+    },
+    
     // Render cards in ScrollCards format
     renderScrollCards() {
         const viewport = document.getElementById('cardsViewport');
         const emptyState = document.getElementById('emptyState');
         
-        if (this.cards.length === 0) {
+        if (this.filteredCards.length === 0) {
             viewport.innerHTML = '';
             emptyState?.classList.add('show');
             return;
@@ -59,7 +397,7 @@ const Cards = {
         emptyState?.classList.remove('show');
         
         // Sort by priority and due date
-        const sortedCards = this.cards.sort((a, b) => {
+        const sortedCards = this.filteredCards.sort((a, b) => {
             const priorityDiff = (b.priority || 1) - (a.priority || 1);
             if (priorityDiff !== 0) return priorityDiff;
             
@@ -176,7 +514,7 @@ const Cards = {
     
     // Handle card actions
     async handleCardAction(memoryId, action) {
-        const memory = this.cards.find(c => c.id === memoryId);
+        const memory = this.filteredCards.find(c => c.id === memoryId) || this.cards.find(c => c.id === memoryId);
         if (!memory) return;
         
         switch (action) {
@@ -205,7 +543,7 @@ const Cards = {
             
             // Remove from current view
             this.cards = this.cards.filter(c => c.id !== memoryId);
-            this.renderScrollCards();
+            this.applyFilter(this.currentFilter); // Reapply current filter
             this.updateMemoryCount();
             
             this.showFeedback('Item completed! 🎉', 'success');
@@ -217,7 +555,7 @@ const Cards = {
     
     // Open card chat modal
     openCardChat(memoryId) {
-        const memory = this.cards.find(c => c.id === memoryId);
+        const memory = this.filteredCards.find(c => c.id === memoryId) || this.cards.find(c => c.id === memoryId);
         if (!memory) return;
         
         this.selectedCard = memory;
@@ -293,10 +631,9 @@ const Cards = {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     },
     
-    // Edit card
+    // Edit card (placeholder)
     editCard(memoryId) {
-        this.showFeedback('Edit modal would open here', 'info');
-        // TODO: Implement edit modal
+        this.showFeedback('Edit functionality coming soon', 'info');
     },
     
     // Delete card
@@ -307,7 +644,7 @@ const Cards = {
                 
                 // Remove from current view
                 this.cards = this.cards.filter(c => c.id !== memoryId);
-                this.renderScrollCards();
+                this.applyFilter(this.currentFilter);
                 this.updateMemoryCount();
                 
                 this.showFeedback('Card deleted', 'success');
@@ -327,14 +664,12 @@ const Cards = {
     // Show/hide loading state
     showLoading(show) {
         const loading = document.getElementById('loadingState');
-        const container = document.getElementById('cardsContainer');
+        const container = document.getElementById('cardsViewport');
         
         if (show) {
             loading?.classList.add('show');
-            if (container) container.style.display = 'none';
         } else {
             loading?.classList.remove('show');
-            if (container) container.style.display = 'block';
         }
     },
     
@@ -347,13 +682,19 @@ const Cards = {
     updateMemoryCount() {
         const countEl = document.getElementById('memoryCount');
         if (countEl) {
-            countEl.textContent = `${this.cards.length} items today`;
+            const filteredCount = this.filteredCards.length;
+            const totalCount = this.cards.length;
+            
+            if (this.currentFilter === 'all') {
+                countEl.textContent = `${totalCount} items today`;
+            } else {
+                countEl.textContent = `${filteredCount} of ${totalCount} items`;
+            }
         }
     },
     
     // Show feedback message
     showFeedback(message, type = 'info') {
-        // Create temporary feedback element
         const feedback = document.createElement('div');
         feedback.style.cssText = `
             position: fixed;
@@ -373,10 +714,7 @@ const Cards = {
         
         document.body.appendChild(feedback);
         
-        // Show feedback
         setTimeout(() => feedback.style.opacity = '1', 10);
-        
-        // Remove feedback
         setTimeout(() => {
             feedback.style.opacity = '0';
             setTimeout(() => document.body.removeChild(feedback), 300);
@@ -384,7 +722,7 @@ const Cards = {
     }
 };
 
-// ScrollCards Class for handling the scroll interface
+// ScrollCards Class (unchanged but enhanced)
 class ScrollCards {
     constructor() {
         this.currentCardIndex = 0;
@@ -405,11 +743,9 @@ class ScrollCards {
         const viewport = document.getElementById('cardsViewport');
         
         if (viewport) {
-            // Set up scroll snap and handle scroll events
             viewport.addEventListener('scroll', this.handleScroll.bind(this));
         }
         
-        // Keyboard navigation
         document.addEventListener('keydown', this.handleKeyboard.bind(this));
     }
     
@@ -419,7 +755,6 @@ class ScrollCards {
     }
 
     setupNavigation() {
-        // Touch/swipe support
         let startY = 0;
         let startTime = 0;
         const viewport = document.getElementById('cardsViewport');
@@ -437,7 +772,6 @@ class ScrollCards {
             const deltaY = startY - endY;
             const deltaTime = endTime - startTime;
 
-            // Swipe detection
             if (Math.abs(deltaY) > 50 && deltaTime < 300) {
                 if (deltaY > 0) {
                     this.nextCard();
@@ -476,7 +810,7 @@ class ScrollCards {
         if (!viewport) return;
         
         const scrollTop = viewport.scrollTop;
-        const cardHeight = window.innerHeight - 70; // Minus header height
+        const cardHeight = window.innerHeight - 70;
         
         this.currentCardIndex = Math.round(scrollTop / cardHeight);
         this.updateNavigationDots();
@@ -534,6 +868,7 @@ class ScrollCards {
                 break;
             case 'Escape':
                 document.getElementById('chatModal')?.classList.remove('show');
+                document.getElementById('creationModal')?.classList.remove('show');
                 break;
         }
     }
