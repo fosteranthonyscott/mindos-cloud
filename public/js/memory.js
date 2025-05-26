@@ -901,3 +901,148 @@ Please provide full context about this memory and help me with any modifications
 document.addEventListener('DOMContentLoaded', () => {
     Memory.init();
 });
+
+// Add these functions at the END of memory.js
+
+// Enhanced memory confirmation with continuation support
+showMemoryConfirmationWithContinuation(memories, assistantMessage, onConfirm, onDismiss) {
+    const dialog = document.createElement('div');
+    dialog.className = 'memory-confirmation-dialog';
+    
+    const dialogId = 'memoryConfirm_' + Date.now();
+    const dismissBtnId = dialogId + '_dismiss';
+    const confirmBtnId = dialogId + '_confirm';
+    const confirmContinueBtnId = dialogId + '_confirmContinue';
+    
+    dialog.innerHTML = `
+        <div class="memory-confirmation-content">
+            <div class="memory-confirmation-header">
+                <div class="memory-confirmation-title">
+                    <i class="fas fa-brain"></i> Store Memories?
+                </div>
+                <div class="memory-confirmation-subtitle">
+                    I've identified ${memories.length} memory${memories.length > 1 ? 'ies' : ''} to store
+                </div>
+            </div>
+            
+            <div class="memory-preview-list">
+                ${memories.map((memory, index) => `
+                    <div class="memory-preview-item" data-memory-index="${index}">
+                        <div class="memory-preview-header">
+                            <span class="memory-preview-type">${memory.type}</span>
+                            <button class="memory-preview-edit" data-edit-index="${index}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                        <div class="memory-preview-content">${memory.content}</div>
+                        ${memory.additionalData.priority ? `<div class="memory-preview-meta">Priority: ${memory.additionalData.priority}</div>` : ''}
+                        ${memory.additionalData.notes ? `<div class="memory-preview-meta">Notes: ${memory.additionalData.notes}</div>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="continuation-notice" style="background: #f0f8ff; border: 1px solid #667eea; border-radius: 8px; padding: 1rem; margin: 1rem 0; font-size: 0.9rem;">
+                <i class="fas fa-info-circle" style="color: #667eea; margin-right: 0.5rem;"></i>
+                <strong>Conversation Continuation:</strong> I have more to share about your planning. Choose how to proceed.
+            </div>
+            
+            <div class="memory-confirmation-actions">
+                <button class="modal-btn secondary" id="${dismissBtnId}">
+                    <i class="fas fa-times"></i> Dismiss & Continue
+                </button>
+                <button class="modal-btn primary" id="${confirmBtnId}">
+                    <i class="fas fa-brain"></i> Remember Only
+                </button>
+                <button class="modal-btn success" id="${confirmContinueBtnId}">
+                    <i class="fas fa-brain"></i> Remember & Continue
+                </button>
+            </div>
+            
+            <div class="memory-config-hint" style="text-align: center; margin-top: 1rem; font-size: 0.8rem; color: #666;">
+                <i class="fas fa-cog"></i> Change this behavior in Settings
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    // Event listeners
+    document.getElementById(dismissBtnId).addEventListener('click', () => {
+        this.handleMemoryAction(dialog, 'dismiss', assistantMessage, memories, onDismiss);
+    });
+    
+    document.getElementById(confirmBtnId).addEventListener('click', () => {
+        this.handleMemoryAction(dialog, 'confirm', assistantMessage, memories, onConfirm);
+    });
+    
+    document.getElementById(confirmContinueBtnId).addEventListener('click', () => {
+        this.handleMemoryAction(dialog, 'confirmContinue', assistantMessage, memories, onConfirm);
+    });
+    
+    // Edit button listeners
+    dialog.querySelectorAll('.memory-preview-edit').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const index = parseInt(btn.dataset.editIndex);
+            this.openEnhancedMemoryEditor(index, dialog, onConfirm, onDismiss);
+        });
+    });
+    
+    this.currentDialog = dialog;
+},
+
+// Handle memory action with continuation support
+async handleMemoryAction(dialog, action, assistantMessage, memories, callback) {
+    // Remove dialog
+    if (dialog && dialog.parentNode) {
+        document.body.removeChild(dialog);
+    }
+    
+    let shouldContinue = false;
+    
+    switch (action) {
+        case 'dismiss':
+            // Just show message, don't store memories
+            Chat.addMessage('assistant', assistantMessage);
+            shouldContinue = true;
+            break;
+            
+        case 'confirm':
+            // Store memories and show message, no continuation
+            await this.storePendingMemories();
+            Chat.addMessage('assistant', assistantMessage);
+            Chat.addMemoryIndicator(memories.length, 'stored');
+            break;
+            
+        case 'confirmContinue':
+            // Store memories, show message, and continue conversation
+            await this.storePendingMemories();
+            Chat.addMessage('assistant', assistantMessage);
+            Chat.addMemoryIndicator(memories.length, 'stored');
+            shouldContinue = true;
+            break;
+    }
+    
+    // Continue conversation if requested
+    if (shouldContinue) {
+        setTimeout(() => {
+            this.continueConversation();
+        }, 1500);
+    }
+    
+    // Clear state
+    this.currentDialog = null;
+    MindOS.pendingMemories = [];
+    
+    if (callback) callback();
+},
+
+// Continue conversation function
+continueConversation() {
+    console.log('🔄 Continuing conversation...');
+    
+    const continuationPrompt = "Please continue with your previous response. You were in the middle of helping me and I'd like you to pick up where you left off.";
+    
+    Chat.addMessage('user', continuationPrompt);
+    Chat.sendContinuationMessage(continuationPrompt);
+}
