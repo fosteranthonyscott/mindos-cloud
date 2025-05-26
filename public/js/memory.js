@@ -1,4 +1,4 @@
-// Memory Management Module
+// Memory Management Module - FIXED CONFIRMATION FUNCTIONS
 const Memory = {
     // Current state
     selectedMemory: null,
@@ -22,6 +22,102 @@ const Memory = {
         
         // All memories modal
         document.getElementById('allMemoriesCloseBtn').addEventListener('click', () => Modals.closeAllMemoriesModal());
+    },
+    
+    // Show memory confirmation dialog - FIXED VERSION
+    showMemoryConfirmation(memories, onConfirm, onDismiss) {
+        const dialog = document.createElement('div');
+        dialog.className = 'memory-confirmation-dialog';
+        dialog.innerHTML = `
+            <div class="memory-confirmation-content">
+                <div class="memory-confirmation-header">
+                    <div class="memory-confirmation-title">
+                        <i class="fas fa-brain"></i> Store Memories?
+                    </div>
+                    <div class="memory-confirmation-subtitle">
+                        I've identified ${memories.length} memory${memories.length > 1 ? 'ies' : ''} to store
+                    </div>
+                </div>
+                
+                <div class="memory-preview-list">
+                    ${memories.map((memory, index) => `
+                        <div class="memory-preview-item">
+                            <div class="memory-preview-header">
+                                <span class="memory-preview-type">${memory.type}</span>
+                                <button class="memory-preview-edit" onclick="Memory.editPendingMemory(${index})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                            <div class="memory-preview-content">${memory.content}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="memory-confirmation-actions">
+                    <button class="modal-btn secondary" onclick="Memory.dismissMemories()">
+                        <i class="fas fa-times"></i> Dismiss
+                    </button>
+                    <button class="modal-btn success" onclick="Memory.confirmMemories()">
+                        <i class="fas fa-brain"></i> Remember All
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        // Store callbacks in Memory object instead of global window
+        this.currentMemoryCallbacks = { onConfirm, onDismiss };
+        this.currentDialog = dialog;
+    },
+    
+    // FIXED: Add these methods to Memory object
+    confirmMemories() {
+        if (this.currentDialog) {
+            document.body.removeChild(this.currentDialog);
+        }
+        if (this.currentMemoryCallbacks && this.currentMemoryCallbacks.onConfirm) {
+            this.currentMemoryCallbacks.onConfirm();
+        }
+        this.cleanupMemoryConfirmation();
+    },
+    
+    dismissMemories() {
+        if (this.currentDialog) {
+            document.body.removeChild(this.currentDialog);
+        }
+        if (this.currentMemoryCallbacks && this.currentMemoryCallbacks.onDismiss) {
+            this.currentMemoryCallbacks.onDismiss();
+        }
+        this.cleanupMemoryConfirmation();
+    },
+    
+    editPendingMemory(index) {
+        if (this.currentDialog) {
+            document.body.removeChild(this.currentDialog);
+        }
+        this.openPendingMemoryEditor(index, 
+            this.currentMemoryCallbacks.onConfirm, 
+            this.currentMemoryCallbacks.onDismiss);
+        this.cleanupMemoryConfirmation();
+    },
+    
+    cleanupMemoryConfirmation() {
+        this.currentMemoryCallbacks = null;
+        this.currentDialog = null;
+    },
+    
+    // Store pending memories
+    async storePendingMemories() {
+        for (const memory of MindOS.pendingMemories) {
+            await this.storeMemory(MindOS.user.userId, memory.type, memory.content, memory.additionalData);
+        }
+        
+        // Refresh memories and show indicator
+        await this.loadMemories();
+        Chat.addMemoryIndicator(MindOS.pendingMemories.length, 'stored');
+        
+        MindOS.pendingMemories = [];
     },
     
     // Load memories from server
@@ -99,134 +195,6 @@ const Memory = {
             
             recentMemoriesDiv.appendChild(memoryDiv);
         });
-    },
-    
-    // Open all memories modal
-    openAllMemoriesModal() {
-        UI.closeSidebar();
-        this.populateAllMemoriesModal();
-        document.getElementById('allMemoriesModal').classList.add('show');
-    },
-    
-    // Populate all memories modal
-    populateAllMemoriesModal() {
-        // Group memories by type
-        const memoryGroups = {};
-        MindOS.userMemories.forEach(memory => {
-            const type = memory.type || 'general';
-            if (!memoryGroups[type]) memoryGroups[type] = [];
-            memoryGroups[type].push(memory);
-        });
-
-        // Create filter buttons
-        const filtersDiv = document.getElementById('memoryTypeFilters');
-        filtersDiv.innerHTML = '<button class="filter-btn active" onclick="Memory.filterMemories(\'all\')">All</button>';
-        
-        Object.keys(memoryGroups).forEach(type => {
-            const btn = document.createElement('button');
-            btn.className = 'filter-btn';
-            btn.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} (${memoryGroups[type].length})`;
-            btn.onclick = () => this.filterMemories(type);
-            filtersDiv.appendChild(btn);
-        });
-
-        // Display all memories
-        this.displayMemoriesGrid(memoryGroups);
-    },
-    
-    // Filter memories by type
-    filterMemories(filterType) {
-        // Update filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-
-        // Filter memories
-        const memoryGroups = {};
-        MindOS.userMemories.forEach(memory => {
-            const type = memory.type || 'general';
-            if (filterType === 'all' || type === filterType) {
-                if (!memoryGroups[type]) memoryGroups[type] = [];
-                memoryGroups[type].push(memory);
-            }
-        });
-
-        this.displayMemoriesGrid(memoryGroups);
-    },
-    
-    // Display memories grid
-    displayMemoriesGrid(memoryGroups) {
-        const gridDiv = document.getElementById('memoriesGrid');
-        gridDiv.innerHTML = '';
-
-        if (Object.keys(memoryGroups).length === 0) {
-            gridDiv.innerHTML = '<div style="text-align: center; padding: 3rem; color: #888;">No memories found</div>';
-            return;
-        }
-
-        Object.entries(memoryGroups).forEach(([type, memories]) => {
-            const section = document.createElement('div');
-            section.className = 'memory-type-section';
-            
-            const header = document.createElement('div');
-            header.className = 'memory-type-header';
-            header.textContent = `${type} (${memories.length})`;
-            section.appendChild(header);
-
-            const grid = document.createElement('div');
-            grid.className = 'memory-grid';
-            
-            memories.forEach(memory => {
-                const card = this.createMemoryCard(memory);
-                grid.appendChild(card);
-            });
-
-            section.appendChild(grid);
-            gridDiv.appendChild(section);
-        });
-    },
-    
-    // Create memory card element
-    createMemoryCard(memory) {
-        const card = document.createElement('div');
-        card.className = 'memory-card';
-        card.onclick = (e) => {
-            if (!e.target.closest('.memory-card-actions')) {
-                this.viewDetails(memory.id);
-                Modals.closeAllMemoriesModal();
-            }
-        };
-
-        let metadata = [];
-        if (memory.performance_streak && memory.performance_streak > 0) {
-            metadata.push(`<div class="meta-item"><i class="fas fa-fire"></i> ${memory.performance_streak} days</div>`);
-        }
-        if (memory.stage) {
-            metadata.push(`<div class="meta-item"><i class="fas fa-layer-group"></i> ${memory.stage}</div>`);
-        }
-        if (memory.location) {
-            metadata.push(`<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>`);
-        }
-        if (memory.mood) {
-            metadata.push(`<div class="meta-item"><i class="fas fa-smile"></i> ${memory.mood}</div>`);
-        }
-
-        card.innerHTML = `
-            <div class="memory-card-header">
-                ${memory.priority ? `<div class="memory-card-priority priority-${memory.priority}">Priority ${memory.priority}</div>` : '<div></div>'}
-                <div class="memory-card-actions">
-                    <button class="memory-action-btn" onclick="Memory.viewDetails(${memory.id}); Modals.closeAllMemoriesModal();" title="View Details">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="memory-action-btn delete" onclick="Memory.confirmDeleteDirect(${memory.id})" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="memory-card-content">${memory.content_short || memory.content?.substring(0, 120) || 'No content'}</div>
-            ${metadata.length > 0 ? `<div class="memory-card-meta">${metadata.join('')}</div>` : ''}
-        `;
-
-        return card;
     },
     
     // View memory details
@@ -425,6 +393,145 @@ const Memory = {
         this.updateSaveStatus('unsaved');
     },
     
+    // Store memory on frontend
+    async storeMemory(userId, type, content, additionalData) {
+        try {
+            await API.post('/api/memories', { type, content, ...additionalData });
+            return true;
+        } catch (error) {
+            console.error('Store memory error:', error);
+            return false;
+        }
+    },
+    
+    // Open all memories modal
+    openAllMemoriesModal() {
+        UI.closeSidebar();
+        this.populateAllMemoriesModal();
+        document.getElementById('allMemoriesModal').classList.add('show');
+    },
+    
+    // Populate all memories modal
+    populateAllMemoriesModal() {
+        // Group memories by type
+        const memoryGroups = {};
+        MindOS.userMemories.forEach(memory => {
+            const type = memory.type || 'general';
+            if (!memoryGroups[type]) memoryGroups[type] = [];
+            memoryGroups[type].push(memory);
+        });
+
+        // Create filter buttons
+        const filtersDiv = document.getElementById('memoryTypeFilters');
+        filtersDiv.innerHTML = '<button class="filter-btn active" onclick="Memory.filterMemories(\'all\')">All</button>';
+        
+        Object.keys(memoryGroups).forEach(type => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} (${memoryGroups[type].length})`;
+            btn.onclick = () => this.filterMemories(type);
+            filtersDiv.appendChild(btn);
+        });
+
+        // Display all memories
+        this.displayMemoriesGrid(memoryGroups);
+    },
+    
+    // Filter memories by type
+    filterMemories(filterType) {
+        // Update filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // Filter memories
+        const memoryGroups = {};
+        MindOS.userMemories.forEach(memory => {
+            const type = memory.type || 'general';
+            if (filterType === 'all' || type === filterType) {
+                if (!memoryGroups[type]) memoryGroups[type] = [];
+                memoryGroups[type].push(memory);
+            }
+        });
+
+        this.displayMemoriesGrid(memoryGroups);
+    },
+    
+    // Display memories grid
+    displayMemoriesGrid(memoryGroups) {
+        const gridDiv = document.getElementById('memoriesGrid');
+        gridDiv.innerHTML = '';
+
+        if (Object.keys(memoryGroups).length === 0) {
+            gridDiv.innerHTML = '<div style="text-align: center; padding: 3rem; color: #888;">No memories found</div>';
+            return;
+        }
+
+        Object.entries(memoryGroups).forEach(([type, memories]) => {
+            const section = document.createElement('div');
+            section.className = 'memory-type-section';
+            
+            const header = document.createElement('div');
+            header.className = 'memory-type-header';
+            header.textContent = `${type} (${memories.length})`;
+            section.appendChild(header);
+
+            const grid = document.createElement('div');
+            grid.className = 'memory-grid';
+            
+            memories.forEach(memory => {
+                const card = this.createMemoryCard(memory);
+                grid.appendChild(card);
+            });
+
+            section.appendChild(grid);
+            gridDiv.appendChild(section);
+        });
+    },
+    
+    // Create memory card element
+    createMemoryCard(memory) {
+        const card = document.createElement('div');
+        card.className = 'memory-card';
+        card.onclick = (e) => {
+            if (!e.target.closest('.memory-card-actions')) {
+                this.viewDetails(memory.id);
+                Modals.closeAllMemoriesModal();
+            }
+        };
+
+        let metadata = [];
+        if (memory.performance_streak && memory.performance_streak > 0) {
+            metadata.push(`<div class="meta-item"><i class="fas fa-fire"></i> ${memory.performance_streak} days</div>`);
+        }
+        if (memory.stage) {
+            metadata.push(`<div class="meta-item"><i class="fas fa-layer-group"></i> ${memory.stage}</div>`);
+        }
+        if (memory.location) {
+            metadata.push(`<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>`);
+        }
+        if (memory.mood) {
+            metadata.push(`<div class="meta-item"><i class="fas fa-smile"></i> ${memory.mood}</div>`);
+        }
+
+        card.innerHTML = `
+            <div class="memory-card-header">
+                ${memory.priority ? `<div class="memory-card-priority priority-${memory.priority}">Priority ${memory.priority}</div>` : '<div></div>'}
+                <div class="memory-card-actions">
+                    <button class="memory-action-btn" onclick="Memory.viewDetails(${memory.id}); Modals.closeAllMemoriesModal();" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="memory-action-btn delete" onclick="Memory.confirmDeleteDirect(${memory.id})" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="memory-card-content">${memory.content_short || memory.content?.substring(0, 120) || 'No content'}</div>
+            ${metadata.length > 0 ? `<div class="memory-card-meta">${metadata.join('')}</div>` : ''}
+        `;
+
+        return card;
+    },
+    
     // Open chat about specific memory
     openMemoryChat() {
         if (!this.selectedMemory) return;
@@ -501,89 +608,6 @@ Please provide full context about this memory and help me with any modifications
         }
     },
     
-    // Store memory on frontend
-    async storeMemory(userId, type, content, additionalData) {
-        try {
-            await API.post('/api/memories', { type, content, ...additionalData });
-            return true;
-        } catch (error) {
-            console.error('Store memory error:', error);
-            return false;
-        }
-    },
-    
-    // Show memory confirmation dialog
-    showMemoryConfirmation(memories, onConfirm, onDismiss) {
-        const dialog = document.createElement('div');
-        dialog.className = 'memory-confirmation-dialog';
-        dialog.innerHTML = `
-            <div class="memory-confirmation-content">
-                <div class="memory-confirmation-header">
-                    <div class="memory-confirmation-title">
-                        <i class="fas fa-brain"></i> Store Memories?
-                    </div>
-                    <div class="memory-confirmation-subtitle">
-                        I've identified ${memories.length} memory${memories.length > 1 ? 'ies' : ''} to store
-                    </div>
-                </div>
-                
-                <div class="memory-preview-list">
-                    ${memories.map((memory, index) => `
-                        <div class="memory-preview-item">
-                            <div class="memory-preview-header">
-                                <span class="memory-preview-type">${memory.type}</span>
-                                <button class="memory-preview-edit" onclick="Memory.editPendingMemory(${index})">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            </div>
-                            <div class="memory-preview-content">${memory.content}</div>
-                        </div>
-                    `).join('')}
-                </div>
-                
-                <div class="memory-confirmation-actions">
-                    <button class="modal-btn secondary" onclick="Memory.dismissMemories()">
-                        <i class="fas fa-times"></i> Dismiss
-                    </button>
-                    <button class="modal-btn success" onclick="Memory.confirmMemories()">
-                        <i class="fas fa-brain"></i> Remember All
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(dialog);
-        
-        // Store callbacks globally for button handlers
-        window.currentMemoryCallbacks = { onConfirm, onDismiss };
-        
-        window.confirmMemories = () => {
-            document.body.removeChild(dialog);
-            onConfirm();
-            this.cleanup();
-        };
-        
-        window.dismissMemories = () => {
-            document.body.removeChild(dialog);
-            onDismiss();
-            this.cleanup();
-        };
-        
-        window.editPendingMemory = (index) => {
-            document.body.removeChild(dialog);
-            this.openPendingMemoryEditor(index, onConfirm, onDismiss);
-            this.cleanup();
-        };
-    },
-    
-    // Cleanup memory confirmation handlers
-    cleanup() {
-        delete window.currentMemoryCallbacks;
-        delete window.confirmMemories;
-        delete window.dismissMemories;
-        delete window.editPendingMemory;
-    },
-    
     // Edit pending memory
     openPendingMemoryEditor(index, onConfirm, onDismiss) {
         const memory = MindOS.pendingMemories[index];
@@ -648,38 +672,39 @@ Please provide full context about this memory and help me with any modifications
         
         document.body.appendChild(dialog);
         
-        window.cancelEdit = () => {
-            document.body.removeChild(dialog);
-            // Show original confirmation dialog again
-            this.showMemoryConfirmation(MindOS.pendingMemories, onConfirm, onDismiss);
-            this.cleanup();
-        };
-        
-        window.saveEditedMemory = (index) => {
-            // Update the memory with edited values
-            MindOS.pendingMemories[index].type = document.getElementById('editMemoryType').value;
-            MindOS.pendingMemories[index].content = document.getElementById('editMemoryContent').value;
-            MindOS.pendingMemories[index].additionalData.priority = document.getElementById('editMemoryPriority').value;
-            MindOS.pendingMemories[index].additionalData.notes = document.getElementById('editMemoryNotes').value;
-            
-            document.body.removeChild(dialog);
-            // Show updated confirmation dialog
-            this.showMemoryConfirmation(MindOS.pendingMemories, onConfirm, onDismiss);
-            this.cleanup();
-        };
+        // Store references for the editor
+        this.currentDialog = dialog;
+        this.currentMemoryCallbacks = { onConfirm, onDismiss };
     },
     
-    // Store pending memories
-    async storePendingMemories() {
-        for (const memory of MindOS.pendingMemories) {
-            await this.storeMemory(MindOS.user.userId, memory.type, memory.content, memory.additionalData);
+    // Cancel memory edit
+    cancelEdit() {
+        if (this.currentDialog) {
+            document.body.removeChild(this.currentDialog);
         }
+        // Show original confirmation dialog again
+        this.showMemoryConfirmation(MindOS.pendingMemories, 
+            this.currentMemoryCallbacks.onConfirm, 
+            this.currentMemoryCallbacks.onDismiss);
+        this.cleanupMemoryConfirmation();
+    },
+    
+    // Save edited memory
+    saveEditedMemory(index) {
+        // Update the memory with edited values
+        MindOS.pendingMemories[index].type = document.getElementById('editMemoryType').value;
+        MindOS.pendingMemories[index].content = document.getElementById('editMemoryContent').value;
+        MindOS.pendingMemories[index].additionalData.priority = document.getElementById('editMemoryPriority').value;
+        MindOS.pendingMemories[index].additionalData.notes = document.getElementById('editMemoryNotes').value;
         
-        // Refresh memories and show indicator
-        await this.loadMemories();
-        Chat.addMemoryIndicator(MindOS.pendingMemories.length, 'stored');
-        
-        MindOS.pendingMemories = [];
+        if (this.currentDialog) {
+            document.body.removeChild(this.currentDialog);
+        }
+        // Show updated confirmation dialog
+        this.showMemoryConfirmation(MindOS.pendingMemories, 
+            this.currentMemoryCallbacks.onConfirm, 
+            this.currentMemoryCallbacks.onDismiss);
+        this.cleanupMemoryConfirmation();
     },
     
     // Reset memory state
@@ -690,6 +715,7 @@ Please provide full context about this memory and help me with any modifications
             clearTimeout(this.autoSaveTimeout);
             this.autoSaveTimeout = null;
         }
+        this.cleanupMemoryConfirmation();
     }
 };
 
