@@ -705,7 +705,7 @@ const ActionButtons = {
     }
 };
 
-// UI Helper Functions
+// FIXED UI Helper Functions
 const UI = {
     // Show loading state
     setLoading(loading) {
@@ -752,82 +752,92 @@ const UI = {
         if (overlay) overlay.classList.remove('show');
     },
     
-    // Show auth screen
+    // FIXED: Show auth screen - ensure all screens are properly hidden/shown
     showAuthScreen() {
-        const authScreen = document.getElementById('authScreen');
-        const chatApp = document.getElementById('chatApp');
-        const cardApp = document.getElementById('cardApp');
+        console.log('🔐 Showing auth screen');
         
+        // Force hide all other screens first
+        this.hideAllScreens();
+        
+        const authScreen = document.getElementById('authScreen');
         if (authScreen) {
             authScreen.style.display = 'flex';
             authScreen.classList.remove('hidden');
+            // Force visibility
+            authScreen.style.visibility = 'visible';
+            authScreen.style.opacity = '1';
+            authScreen.style.zIndex = '1000';
         }
-        if (chatApp) {
-            chatApp.style.display = 'none';
-            chatApp.classList.add('hidden');
-        }
-        if (cardApp) {
-            cardApp.style.display = 'none';
-            cardApp.classList.add('hidden');
-        }
+        
+        console.log('✅ Auth screen displayed');
     },
     
-    // Show card app
+    // FIXED: Show card app - ensure proper display
     showCardApp() {
-        const authScreen = document.getElementById('authScreen');
-        const chatApp = document.getElementById('chatApp');
-        const cardApp = document.getElementById('cardApp');
+        console.log('🃏 Showing card app');
         
-        // Hide auth screen
-        if (authScreen) {
-            authScreen.style.display = 'none';
-            authScreen.classList.add('hidden');
-        }
-        // Hide chat app
-        if (chatApp) {
-            chatApp.style.display = 'none';
-            chatApp.classList.add('hidden');
-        }
-        // Show card app
+        // Force hide all other screens first
+        this.hideAllScreens();
+        
+        const cardApp = document.getElementById('cardApp');
         if (cardApp) {
             cardApp.style.display = 'flex';
             cardApp.classList.remove('hidden');
+            // Force visibility
+            cardApp.style.visibility = 'visible';
+            cardApp.style.opacity = '1';
+            cardApp.style.zIndex = '1';
         }
         
         // Update user info
         const userName = document.getElementById('userName');
-        if (userName) {
+        if (userName && MindOS.user) {
             userName.textContent = MindOS.user.username || 'User';
         }
+        
+        console.log('✅ Card app displayed');
     },
     
     // Show chat app
     showChatApp() {
-        const authScreen = document.getElementById('authScreen');
-        const chatApp = document.getElementById('chatApp');
-        const cardApp = document.getElementById('cardApp');
+        console.log('💬 Showing chat app');
         
-        // Hide auth screen
-        if (authScreen) {
-            authScreen.style.display = 'none';
-            authScreen.classList.add('hidden');
-        }
-        // Hide card app
-        if (cardApp) {
-            cardApp.style.display = 'none';
-            cardApp.classList.add('hidden');
-        }
-        // Show chat app
+        // Force hide all other screens first
+        this.hideAllScreens();
+        
+        const chatApp = document.getElementById('chatApp');
         if (chatApp) {
             chatApp.style.display = 'flex';
             chatApp.classList.remove('hidden');
+            // Force visibility
+            chatApp.style.visibility = 'visible';
+            chatApp.style.opacity = '1';
+            chatApp.style.zIndex = '1';
         }
         
         // Update user info
         const sidebarUsername = document.getElementById('sidebarUsername');
-        if (sidebarUsername) {
+        if (sidebarUsername && MindOS.user) {
             sidebarUsername.textContent = MindOS.user.username || 'User';
         }
+        
+        console.log('✅ Chat app displayed');
+    },
+    
+    // NEW: Helper to hide all screens properly
+    hideAllScreens() {
+        const screens = ['authScreen', 'chatApp', 'cardApp'];
+        
+        screens.forEach(screenId => {
+            const screen = document.getElementById(screenId);
+            if (screen) {
+                screen.style.display = 'none';
+                screen.classList.add('hidden');
+                screen.style.visibility = 'hidden';
+                screen.style.opacity = '0';
+                screen.style.zIndex = '-1';
+            }
+        });
     },
     
     // Update session display
@@ -1067,57 +1077,77 @@ const EventHandlers = {
     }
 };
 
-// Application Initialization
+// FIXED Application Initialization
 const App = {
     // Initialize the application
     async init() {
         console.log('🚀 Initializing MindOS...');
         
         try {
+            // FIXED: Force hide all screens at start
+            UI.hideAllScreens();
+            
             // Initialize Chrome fixes first
             ChromeFixes.init();
             
             // Setup event handlers
             EventHandlers.init();
             
-            // Check authentication
-            if (MindOS.token && MindOS.token !== 'null' && MindOS.token !== 'undefined') {
+            // Check authentication - CRITICAL FIX: proper token validation
+            const token = MindOS.token;
+            const hasValidToken = token && 
+                                 token !== 'null' && 
+                                 token !== 'undefined' && 
+                                 token.length > 10; // Basic validation
+            
+            if (hasValidToken) {
+                console.log('🔑 Valid token found, attempting auto-login...');
                 await this.attemptAutoLogin();
             } else {
+                console.log('🔐 No valid token, showing auth screen...');
                 UI.showAuthScreen();
             }
             
             console.log('✅ MindOS initialized successfully');
         } catch (error) {
             console.error('❌ Failed to initialize MindOS:', error);
+            // FIXED: Show auth screen on any init error
+            UI.showAuthScreen();
             Utils.showAlert('Failed to initialize application', 'error');
         }
     },
     
-    // Attempt auto-login with stored token
+    // FIXED: Attempt auto-login with better error handling
     async attemptAutoLogin() {
         try {
+            console.log('🔍 Validating user session...');
             const response = await API.get('/api/user-status');
-            if (response.user) {
+            
+            if (response && response.user) {
+                console.log('✅ User session valid:', response.user.username);
                 MindOS.user = response.user;
-                await this.showChatApp();
+                await this.showCardApp(); // Use card interface
             } else {
+                console.log('❌ Invalid user session, clearing auth...');
                 this.clearAuth();
                 UI.showAuthScreen();
             }
         } catch (error) {
-            console.log('Auto-login failed:', error);
+            console.log('❌ Auto-login failed:', error.message);
             this.clearAuth();
             UI.showAuthScreen();
         }
     },
     
-    // Updated showChatApp to use card interface
-    async showChatApp() {
-        // Show the card interface
+    // FIXED: Show card app instead of chat app
+    async showCardApp() {
+        console.log('🃏 Initializing card interface...');
+        
+        // Show the card interface immediately
         UI.showCardApp();
         
         try {
+            // Load data in parallel
             await Promise.all([
                 this.loadSessionInfo(),
                 this.loadMemories()
@@ -1125,12 +1155,13 @@ const App = {
             
             // Initialize Cards module
             if (typeof Cards !== 'undefined') {
+                console.log('🎴 Initializing Cards module...');
                 if (typeof Cards.init === 'function') {
                     Cards.init();
                 }
                 await Cards.loadTodaysCards();
             } else {
-                console.warn('Cards module not loaded');
+                console.warn('⚠️ Cards module not loaded, showing empty state');
                 const emptyState = document.getElementById('emptyState');
                 if (emptyState) {
                     emptyState.style.display = 'flex';
@@ -1142,6 +1173,12 @@ const App = {
         } catch (error) {
             console.error('❌ Error initializing card app:', error);
             Utils.showAlert('Failed to load your items', 'error');
+            
+            // Show empty state on error
+            const emptyState = document.getElementById('emptyState');
+            const loadingState = document.getElementById('loadingState');
+            if (loadingState) loadingState.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'flex';
         }
     },
     
@@ -1152,6 +1189,7 @@ const App = {
             UI.updateSessionDisplay();
         } catch (error) {
             console.log('Failed to load session info:', error);
+            // Don't throw - this isn't critical
         }
     },
     
@@ -1165,6 +1203,7 @@ const App = {
             }
         } catch (error) {
             console.log('Failed to load memories:', error);
+            // Don't throw - this isn't critical for initial load
         }
     },
     
@@ -1174,17 +1213,29 @@ const App = {
         localStorage.removeItem('mindos_user');
         MindOS.token = null;
         MindOS.user = {};
+        console.log('🔐 Authentication data cleared');
     }
 };
 
-// Initialize when DOM is ready
+// FIXED: Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    App.init();
+    console.log('📄 DOM Content Loaded, starting MindOS...');
     
-    // Initialize Cards module if available
-    if (typeof Cards !== 'undefined') {
-        Cards.init();
-    } else {
-        console.warn('Cards module not loaded');
-    }
+    // Add small delay to ensure all resources are loaded
+    setTimeout(() => {
+        App.init();
+    }, 100);
+    
+    // Initialize Cards module if available with error handling
+    setTimeout(() => {
+        if (typeof Cards !== 'undefined') {
+            try {
+                Cards.init();
+            } catch (error) {
+                console.warn('Cards module initialization failed:', error);
+            }
+        } else {
+            console.warn('Cards module not loaded');
+        }
+    }, 200);
 });
