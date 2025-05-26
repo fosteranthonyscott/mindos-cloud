@@ -1,3 +1,23 @@
+/* Card App Base Styles - Added at top for proper initialization */
+.card-app {
+    display: none;
+    height: 100vh;
+    flex-direction: column;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
+}
+
+.card-app.show,
+.card-app:not(.hidden) {
+    display: flex;
+}
+
+/* Spinner Animation for Loading States */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Card App Layout */
 .card-app {
     display: none;
