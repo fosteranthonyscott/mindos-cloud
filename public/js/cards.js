@@ -1,13 +1,12 @@
-// Cards Module - Updated for Scrolling
+// Cards Module - Fixed for Real Data Loading and Working Action Buttons
 const Cards = {
-    currentCard: 0,
     memories: [],
     isLoading: false,
     
     init() {
         console.log('🃏 Cards module initializing...');
         this.setupEventListeners();
-        this.loadTodaysCards();
+        // Don't load data here - let App.js handle it after auth
     },
     
     setupEventListeners() {
@@ -20,32 +19,77 @@ const Cards = {
         }
         
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => Auth.logout());
-        }
-        
-        // Chat modal
-        const chatModalClose = document.getElementById('chatModalClose');
-        const chatSendBtn = document.getElementById('chatSendBtn');
-        const chatInput = document.getElementById('chatInput');
-        
-        if (chatModalClose) {
-            chatModalClose.addEventListener('click', () => this.closeChatModal());
-        }
-        
-        if (chatSendBtn) {
-            chatSendBtn.addEventListener('click', () => this.sendChatMessage());
-        }
-        
-        if (chatInput) {
-            chatInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    this.sendChatMessage();
+            logoutBtn.addEventListener('click', () => {
+                if (typeof Auth !== 'undefined') {
+                    Auth.logout();
                 }
             });
         }
         
-        // Scroll gestures and navigation
-        this.setupScrollNavigation();
+        // Action buttons - Fixed integration with Config system
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = btn.dataset.action;
+                
+                // Visual feedback
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => btn.style.transform = '', 150);
+                
+                // Handle the action
+                this.handleActionButton(action);
+            });
+        });
+        
+        // Chat modal
+        this.setupChatModal();
+    },
+    
+    handleActionButton(action) {
+        console.log(`🎯 Action button clicked: ${action}`);
+        
+        switch(action) {
+            case 'add-task':
+                if (typeof Config !== 'undefined') {
+                    Config.openConfigMode('create-task');
+                } else {
+                    Utils.showAlert('Task creation not available', 'error');
+                }
+                break;
+                
+            case 'add-routine':
+                if (typeof Config !== 'undefined') {
+                    Config.openConfigMode('create-routine');
+                } else {
+                    Utils.showAlert('Routine creation not available', 'error');
+                }
+                break;
+                
+            case 'add-goal':
+                if (typeof Config !== 'undefined') {
+                    Config.openConfigMode('set-goals');
+                } else {
+                    Utils.showAlert('Goal creation not available', 'error');
+                }
+                break;
+                
+            case 'add-event':
+                this.showQuickCreateDialog('event');
+                break;
+                
+            case 'add-memory':
+                this.showQuickCreateDialog('memory');
+                break;
+                
+            case 'show-all':
+                if (typeof Memory !== 'undefined') {
+                    // Open all memories modal
+                    this.openAllMemoriesModal();
+                } else {
+                    Utils.showAlert('Memory management not available', 'error');
+                }
+                break;
+        }
     },
     
     async loadTodaysCards() {
@@ -53,6 +97,13 @@ const Cards = {
         this.showLoading(true);
         
         try {
+            // Check if user is authenticated
+            if (!MindOS.token) {
+                console.log('No auth token, skipping card load');
+                this.showEmptyState();
+                return;
+            }
+            
             const response = await API.get('/api/memories/today');
             this.memories = response || [];
             
@@ -61,9 +112,11 @@ const Cards = {
             if (this.memories.length === 0) {
                 this.showEmptyState();
             } else {
-                this.renderScrollableCards();
-                this.updateMemoryCount();
+                this.renderCards();
             }
+            
+            this.updateMemoryCount();
+            
         } catch (error) {
             console.error('❌ Failed to load today\'s cards:', error);
             this.showError('Failed to load your items for today');
@@ -72,199 +125,34 @@ const Cards = {
         }
     },
     
-    renderScrollableCards() {
-        const viewport = document.getElementById('cardsViewport');
-        const navigation = document.getElementById('cardNavigation');
-        
-        if (!viewport) {
-            console.error('Cards viewport not found');
+    renderCards() {
+        const cardsFeed = document.getElementById('cardsFeed');
+        if (!cardsFeed) {
+            console.error('Cards feed container not found');
             return;
         }
         
-        // Hide empty state
-        this.hideEmptyState();
+        // Hide loading and empty states
+        this.hideLoadingAndEmpty();
         
-        // Clear existing content
-        viewport.innerHTML = '';
-        if (navigation) navigation.innerHTML = '';
+        // Clear existing cards
+        cardsFeed.innerHTML = '';
         
-        // Add scroll indicators
-        viewport.innerHTML = `
-            <div class="scroll-indicator left" id="scrollLeft">
-                <i class="fas fa-chevron-left"></i>
-            </div>
-            <div class="scroll-indicator right" id="scrollRight">
-                <i class="fas fa-chevron-right"></i>
-            </div>
-        `;
-        
-        // Render each card
-        this.memories.forEach((memory, index) => {
-            const cardHTML = this.createScrollCardHTML(memory);
-            viewport.innerHTML += cardHTML;
-            
-            // Add navigation dot
-            if (navigation) {
-                const dot = document.createElement('div');
-                dot.className = `nav-dot ${index === 0 ? 'active' : ''}`;
-                dot.addEventListener('click', () => this.scrollToCard(index));
-                navigation.appendChild(dot);
-            }
+        // Render each memory as a card
+        this.memories.forEach(memory => {
+            const cardHTML = this.createCardHTML(memory);
+            cardsFeed.innerHTML += cardHTML;
         });
         
-        // Setup card controls
-        this.setupCardControls();
+        // Setup card action handlers
+        this.setupCardActions();
         
-        // Setup scroll navigation
-        this.setupScrollControls();
-        
-        // Initialize scroll position
-        this.currentCard = 0;
-        this.updateScrollIndicators();
+        console.log(`✅ Rendered ${this.memories.length} cards`);
     },
     
-    setupScrollNavigation() {
-        const viewport = document.getElementById('cardsViewport');
-        if (!viewport) return;
-        
-        let isScrolling = false;
-        
-        // Touch/swipe gestures
-        let startX = 0;
-        let currentX = 0;
-        let isDragging = false;
-        
-        viewport.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            isDragging = true;
-        });
-        
-        viewport.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            currentX = e.touches[0].clientX;
-        });
-        
-        viewport.addEventListener('touchend', () => {
-            if (!isDragging) return;
-            isDragging = false;
-            
-            const diffX = startX - currentX;
-            
-            if (Math.abs(diffX) > 50) {
-                if (diffX > 0) {
-                    this.scrollNext();
-                } else {
-                    this.scrollPrev();
-                }
-            }
-        });
-        
-        // Scroll event listener for navigation updates
-        viewport.addEventListener('scroll', () => {
-            if (isScrolling) return;
-            
-            clearTimeout(this.scrollTimeout);
-            this.scrollTimeout = setTimeout(() => {
-                this.updateCurrentCardFromScroll();
-            }, 100);
-        });
-    },
-    
-    setupScrollControls() {
-        const scrollLeft = document.getElementById('scrollLeft');
-        const scrollRight = document.getElementById('scrollRight');
-        
-        if (scrollLeft) {
-            scrollLeft.addEventListener('click', () => this.scrollPrev());
-        }
-        
-        if (scrollRight) {
-            scrollRight.addEventListener('click', () => this.scrollNext());
-        }
-    },
-    
-    scrollToCard(index) {
-        const viewport = document.getElementById('cardsViewport');
-        const cards = viewport.querySelectorAll('.memory-card');
-        
-        if (index >= 0 && index < cards.length) {
-            const card = cards[index];
-            const scrollLeft = card.offsetLeft - (viewport.offsetWidth - card.offsetWidth) / 2;
-            
-            viewport.scrollTo({
-                left: scrollLeft,
-                behavior: 'smooth'
-            });
-            
-            this.currentCard = index;
-            this.updateNavigation();
-            this.updateScrollIndicators();
-        }
-    },
-    
-    scrollNext() {
-        if (this.currentCard < this.memories.length - 1) {
-            this.scrollToCard(this.currentCard + 1);
-        }
-    },
-    
-    scrollPrev() {
-        if (this.currentCard > 0) {
-            this.scrollToCard(this.currentCard - 1);
-        }
-    },
-    
-    updateCurrentCardFromScroll() {
-        const viewport = document.getElementById('cardsViewport');
-        const cards = viewport.querySelectorAll('.memory-card');
-        
-        let closestIndex = 0;
-        let closestDistance = Infinity;
-        
-        cards.forEach((card, index) => {
-            const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-            const viewportCenter = viewport.scrollLeft + viewport.offsetWidth / 2;
-            const distance = Math.abs(cardCenter - viewportCenter);
-            
-            if (distance < closestDistance) {
-                closestDistance = distance;
-                closestIndex = index;
-            }
-        });
-        
-        if (closestIndex !== this.currentCard) {
-            this.currentCard = closestIndex;
-            this.updateNavigation();
-            this.updateScrollIndicators();
-        }
-    },
-    
-    updateScrollIndicators() {
-        const scrollLeft = document.getElementById('scrollLeft');
-        const scrollRight = document.getElementById('scrollRight');
-        
-        if (scrollLeft) {
-            scrollLeft.classList.toggle('disabled', this.currentCard === 0);
-        }
-        
-        if (scrollRight) {
-            scrollRight.classList.toggle('disabled', this.currentCard === this.memories.length - 1);
-        }
-    },
-    
-    updateNavigation() {
-        const navigation = document.getElementById('cardNavigation');
-        if (!navigation) return;
-        
-        const dots = navigation.querySelectorAll('.nav-dot');
-        dots.forEach((dot, index) => {
-            dot.classList.toggle('active', index === this.currentCard);
-        });
-    },
-    
-    createScrollCardHTML(memory) {
+    createCardHTML(memory) {
         const type = memory.type || 'memory';
-        const priority = memory.priority || 1;
+        const priority = parseInt(memory.priority) || 1;
         const title = memory.content_short || memory.content?.substring(0, 80) || 'Untitled';
         const description = memory.notes || memory.content?.substring(80, 200) || '';
         
@@ -313,48 +201,41 @@ const Cards = {
         
         return `
             <div class="memory-card" data-memory-id="${memory.id}" data-type="${type}">
-                <div class="card-content-area">
-                    <div class="card-header">
-                        <div class="card-type-badge ${type}">${type}</div>
-                        <div class="priority-indicator">
-                            ${priorityStars}
-                        </div>
-                    </div>
-                    
-                    <div class="card-main-content">
-                        <div class="card-title">${title}</div>
-                        
-                        ${statusHTML}
-                        
-                        <div class="card-meta">
-                            ${dueMeta}
-                            ${memory.required_time ? `<div class="meta-item"><i class="fas fa-clock"></i> ${memory.required_time}</div>` : ''}
-                            ${memory.location ? `<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>` : ''}
-                            ${priority >= 4 ? `<div class="meta-item high-priority"><i class="fas fa-star"></i> High Priority</div>` : ''}
-                        </div>
-                        
-                        ${streakHTML}
-                        
-                        ${description ? `<div class="card-notes">
-                            <div class="notes-label">
-                                <i class="fas fa-sticky-note"></i> Notes
-                            </div>
-                            ${description}
-                        </div>` : ''}
+                <div class="card-header">
+                    <div class="card-type-badge ${type}">${type}</div>
+                    <div class="priority-indicator">
+                        ${priorityStars}
                     </div>
                 </div>
                 
-                <div class="card-controls">
-                    <button class="control-btn complete" data-label="Complete" data-action="complete">
+                <div class="card-title">${title}</div>
+                
+                ${statusHTML}
+                
+                <div class="card-meta">
+                    ${dueMeta}
+                    ${memory.required_time ? `<div class="meta-item"><i class="fas fa-clock"></i> ${memory.required_time}</div>` : ''}
+                    ${memory.location ? `<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>` : ''}
+                    ${priority >= 4 ? `<div class="meta-item high-priority"><i class="fas fa-star"></i> High Priority</div>` : ''}
+                </div>
+                
+                ${streakHTML}
+                
+                ${description ? `<div class="card-notes">
+                    <div class="notes-label">
+                        <i class="fas fa-sticky-note"></i> Notes
+                    </div>
+                    ${description}
+                </div>` : ''}
+                
+                <div class="card-actions">
+                    <button class="action-btn-small complete" title="Complete" data-action="complete">
                         <i class="fas fa-check"></i>
                     </button>
-                    <button class="control-btn chat" data-label="Chat" data-action="chat">
-                        <i class="fas fa-comments"></i>
-                    </button>
-                    <button class="control-btn edit" data-label="Edit" data-action="edit">
+                    <button class="action-btn-small edit" title="Edit" data-action="edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="control-btn delete" data-label="Delete" data-action="delete">
+                    <button class="action-btn-small delete" title="Delete" data-action="delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -362,15 +243,15 @@ const Cards = {
         `;
     },
     
-    setupCardControls() {
-        document.querySelectorAll('.control-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+    setupCardActions() {
+        document.querySelectorAll('.action-btn-small').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const action = btn.dataset.action;
                 const card = btn.closest('.memory-card');
                 const memoryId = parseInt(card.dataset.memoryId);
                 
-                this.handleCardAction(action, memoryId, card);
+                await this.handleCardAction(action, memoryId, card);
             });
         });
     },
@@ -385,14 +266,11 @@ const Cards = {
             case 'complete':
                 await this.completeMemory(memory, cardElement);
                 break;
-            case 'chat':
-                this.openChatModal(memory);
-                break;
             case 'edit':
                 this.editMemory(memory);
                 break;
             case 'delete':
-                this.deleteMemory(memory, cardElement);
+                await this.deleteMemory(memory, cardElement);
                 break;
         }
     },
@@ -412,7 +290,9 @@ const Cards = {
             Object.assign(memory, updates);
             
             // Visual feedback
-            cardElement.classList.add('completed');
+            cardElement.style.opacity = '0.7';
+            cardElement.style.transform = 'scale(0.95)';
+            
             setTimeout(() => {
                 this.removeCard(memory.id);
             }, 1000);
@@ -425,87 +305,11 @@ const Cards = {
         }
     },
     
-    openChatModal(memory) {
-        const modal = document.getElementById('chatModal');
-        const title = document.getElementById('chatModalTitle');
-        const messages = document.getElementById('chatMessages');
-        
-        if (!modal || !title || !messages) return;
-        
-        title.textContent = memory.content_short || memory.content?.substring(0, 50) || 'Item';
-        messages.innerHTML = '';
-        
-        // Add initial context message
-        this.addChatMessage('assistant', `Let's discuss your ${memory.type}: "${title.textContent}". What would you like to know or change?`);
-        
-        modal.classList.add('show');
-        
-        // Store current memory for chat context
-        this.currentChatMemory = memory;
-    },
-    
-    closeChatModal() {
-        const modal = document.getElementById('chatModal');
-        if (modal) {
-            modal.classList.remove('show');
-        }
-        this.currentChatMemory = null;
-    },
-    
-    async sendChatMessage() {
-        const input = document.getElementById('chatInput');
-        if (!input || !input.value.trim()) return;
-        
-        const message = input.value.trim();
-        input.value = '';
-        
-        // Add user message
-        this.addChatMessage('user', message);
-        
-        try {
-            // Create context prompt
-            const contextPrompt = `I'm discussing this specific item with the user:
-            
-Type: ${this.currentChatMemory.type}
-Content: ${this.currentChatMemory.content}
-Status: ${this.currentChatMemory.status || 'active'}
-Priority: ${this.currentChatMemory.priority || 1}
-
-User message: "${message}"
-
-Please respond helpfully about this specific item. If they want to modify it, suggest what changes to make.`;
-            
-            const response = await API.post('/api/claude', {
-                messages: [{ role: 'user', content: contextPrompt }]
-            });
-            
-            const assistantMessage = response.content[0].text;
-            this.addChatMessage('assistant', assistantMessage);
-            
-        } catch (error) {
-            console.error('Chat error:', error);
-            this.addChatMessage('assistant', 'Sorry, I had trouble processing that. Could you try again?');
-        }
-    },
-    
-    addChatMessage(type, content) {
-        const messages = document.getElementById('chatMessages');
-        if (!messages) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-message ${type}`;
-        messageDiv.innerHTML = `
-            <div class="message-content">${content}</div>
-            <div class="message-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-        `;
-        
-        messages.appendChild(messageDiv);
-        messages.scrollTop = messages.scrollHeight;
-    },
-    
     editMemory(memory) {
         if (typeof Memory !== 'undefined') {
             Memory.viewDetails(memory.id);
+        } else {
+            Utils.showAlert('Memory editing not available', 'error');
         }
     },
     
@@ -525,17 +329,159 @@ Please respond helpfully about this specific item. If they want to modify it, su
     removeCard(memoryId) {
         this.memories = this.memories.filter(m => m.id !== memoryId);
         
+        // Remove card from DOM
+        const cardElement = document.querySelector(`[data-memory-id="${memoryId}"]`);
+        if (cardElement) {
+            cardElement.remove();
+        }
+        
         if (this.memories.length === 0) {
             this.showEmptyState();
-        } else {
-            this.renderScrollableCards();
-            // Adjust current card if needed
-            if (this.currentCard >= this.memories.length) {
-                this.currentCard = this.memories.length - 1;
-            }
         }
         
         this.updateMemoryCount();
+    },
+    
+    showQuickCreateDialog(type) {
+        const typeConfig = {
+            event: {
+                title: 'Create Event',
+                icon: 'fas fa-calendar-plus',
+                placeholder: 'Describe the event...',
+                examples: ['Team meeting Thursday 2 PM', 'Doctor appointment next week']
+            },
+            memory: {
+                title: 'Create Memory',
+                icon: 'fas fa-brain',
+                placeholder: 'What would you like to remember?',
+                examples: ['Coffee shop recommendation', 'Meeting notes']
+            }
+        };
+
+        const config = typeConfig[type];
+        if (!config) {
+            Utils.showAlert(`${type} creation not available`, 'error');
+            return;
+        }
+
+        if (typeof Modals !== 'undefined') {
+            const modal = Modals.createModal(`create${type}Modal`, config.title, `
+                <div style="padding: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="width: 50px; height: 50px; background: #667eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                            <i class="${config.icon}"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; color: #333;">Quick ${config.title}</h3>
+                            <p style="margin: 0.25rem 0 0 0; color: #666; font-size: 0.9rem;">Describe what you want to create</p>
+                        </div>
+                    </div>
+                    
+                    <textarea id="quickCreate${type}Input" 
+                              placeholder="${config.placeholder}" 
+                              style="width: 100%; min-height: 100px; padding: 0.75rem; border: 2px solid #e0e6ff; border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
+                    
+                    <div style="margin-top: 1rem; font-size: 0.8rem; color: #666;">
+                        <strong>Examples:</strong><br>
+                        ${config.examples.map(ex => `• ${ex}`).join('<br>')}
+                    </div>
+                </div>
+            `, [
+                {
+                    text: 'Cancel',
+                    class: 'secondary',
+                    onclick: `Modals.removeModal('create${type}Modal')`
+                },
+                {
+                    text: `Create ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+                    class: 'primary',
+                    onclick: `Cards.submitQuickCreate('${type}')`
+                }
+            ]);
+
+            // Focus the input
+            setTimeout(() => {
+                const input = document.getElementById(`quickCreate${type}Input`);
+                if (input) input.focus();
+            }, 100);
+        }
+    },
+    
+    async submitQuickCreate(type) {
+        const input = document.getElementById(`quickCreate${type}Input`);
+        if (!input || !input.value.trim()) {
+            Utils.showAlert('Please enter a description', 'warning');
+            return;
+        }
+
+        const content = input.value.trim();
+        
+        try {
+            await API.post('/api/memories', {
+                type: type,
+                content: content,
+                priority: '2',
+                status: 'active',
+                created_via: 'quick_create'
+            });
+            
+            Utils.showAlert(`${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`, 'success');
+            
+            // Refresh cards
+            await this.refresh();
+            
+            Modals.removeModal(`create${type}Modal`);
+            
+        } catch (error) {
+            console.error(`Error creating ${type}:`, error);
+            Utils.showAlert(`Failed to create ${type}: ${error.message}`, 'error');
+        }
+    },
+    
+    openAllMemoriesModal() {
+        // Simple version - just show an alert for now
+        // In a full implementation, this would open a modal with all memories
+        Utils.showAlert('All memories view - would open full memory browser', 'info');
+    },
+    
+    setupChatModal() {
+        const chatModalClose = document.getElementById('chatModalClose');
+        const chatSendBtn = document.getElementById('chatSendBtn');
+        const chatInput = document.getElementById('chatInput');
+        
+        if (chatModalClose) {
+            chatModalClose.addEventListener('click', () => this.closeChatModal());
+        }
+        
+        if (chatSendBtn) {
+            chatSendBtn.addEventListener('click', () => this.sendChatMessage());
+        }
+        
+        if (chatInput) {
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    this.sendChatMessage();
+                }
+            });
+        }
+    },
+    
+    closeChatModal() {
+        const modal = document.getElementById('chatModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    },
+    
+    async sendChatMessage() {
+        // Basic chat implementation
+        const input = document.getElementById('chatInput');
+        if (!input || !input.value.trim()) return;
+        
+        const message = input.value.trim();
+        input.value = '';
+        
+        Utils.showAlert('Chat feature coming soon!', 'info');
     },
     
     showLoading(show) {
@@ -548,17 +494,22 @@ Please respond helpfully about this specific item. If they want to modify it, su
     
     showEmptyState() {
         const empty = document.getElementById('emptyState');
-        const viewport = document.getElementById('cardsViewport');
-        const navigation = document.getElementById('cardNavigation');
-        
-        if (empty) empty.style.display = 'flex';
-        if (viewport) viewport.innerHTML = '';
-        if (navigation) navigation.innerHTML = '';
+        if (empty) {
+            empty.style.display = 'flex';
+        }
+        this.hideLoading();
     },
     
-    hideEmptyState() {
+    hideLoadingAndEmpty() {
+        const loading = document.getElementById('loadingState');
         const empty = document.getElementById('emptyState');
+        
+        if (loading) loading.style.display = 'none';
         if (empty) empty.style.display = 'none';
+    },
+    
+    hideLoading() {
+        this.showLoading(false);
     },
     
     showError(message) {
@@ -569,6 +520,8 @@ Please respond helpfully about this specific item. If they want to modify it, su
     showSettings() {
         if (typeof MemorySettings !== 'undefined') {
             MemorySettings.showSettingsModal();
+        } else {
+            Utils.showAlert('Settings not available', 'info');
         }
     },
     
