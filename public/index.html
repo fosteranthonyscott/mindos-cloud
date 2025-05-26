@@ -2348,14 +2348,23 @@
             updateSaveStatus(success ? 'saved' : 'error');
         }
 
+        // FIXED: Enhanced saveMemoryChanges function
         async function saveMemoryChanges(showAlert = true, closeAfter = false) {
             if (!selectedMemory || Object.keys(memoryChanges).length === 0) {
                 if (showAlert) showAlert('No changes to save', 'success');
-                if (closeAfter) closeMemoryModal();
+                if (closeAfter) {
+                    setTimeout(() => {
+                        document.getElementById('memoryModal').classList.remove('show');
+                        selectedMemory = null;
+                        memoryChanges = {};
+                    }, 100); // Small delay for user feedback
+                }
                 return true;
             }
 
             try {
+                updateSaveStatus('saving');
+                
                 const response = await fetch(`/api/memories/${selectedMemory.id}`, {
                     method: 'PUT',
                     headers: {
@@ -2377,19 +2386,27 @@
 
                     memoryChanges = {};
                     updateMemoryDisplay();
+                    updateSaveStatus('saved');
                     
                     if (showAlert) showAlert('Memory updated successfully', 'success');
+                    
                     if (closeAfter) {
-                        setTimeout(() => closeMemoryModal(), 500); // Brief delay for user feedback
+                        setTimeout(() => {
+                            document.getElementById('memoryModal').classList.remove('show');
+                            selectedMemory = null;
+                            memoryChanges = {};
+                        }, 800); // Longer delay to show save confirmation
                     }
                     return true;
                 } else {
                     const error = await response.json();
+                    updateSaveStatus('error');
                     if (showAlert) showAlert('Failed to save: ' + (error.error || 'Unknown error'), 'error');
                     return false;
                 }
             } catch (error) {
                 console.error('Save error:', error);
+                updateSaveStatus('error');
                 if (showAlert) showAlert('Error saving changes: ' + error.message, 'error');
                 return false;
             }
@@ -2480,6 +2497,202 @@
             document.getElementById('memoryModal').classList.remove('show');
             selectedMemory = null;
             memoryChanges = {};
+        }
+
+        // Memory confirmation system with FIXED edit functionality
+        function showMemoryConfirmation(memories, onConfirm, onDismiss) {
+            const dialog = document.createElement('div');
+            dialog.className = 'memory-confirmation-dialog';
+            dialog.innerHTML = `
+                <div class="memory-confirmation-content">
+                    <div class="memory-confirmation-header">
+                        <div class="memory-confirmation-title">
+                            <i class="fas fa-brain"></i> Store Memories?
+                        </div>
+                        <div class="memory-confirmation-subtitle">
+                            I've identified ${memories.length} memory${memories.length > 1 ? 'ies' : ''} to store
+                        </div>
+                    </div>
+                    
+                    <div class="memory-preview-list">
+                        ${memories.map((memory, index) => `
+                            <div class="memory-preview-item">
+                                <div class="memory-preview-header">
+                                    <span class="memory-preview-type">${memory.type}</span>
+                                    <button class="memory-preview-edit" onclick="editPendingMemory(${index})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                                <div class="memory-preview-content">${memory.content}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="memory-confirmation-actions">
+                        <button class="modal-btn secondary" onclick="dismissMemories()">
+                            <i class="fas fa-times"></i> Dismiss
+                        </button>
+                        <button class="modal-btn success" onclick="confirmMemories()">
+                            <i class="fas fa-brain"></i> Remember All
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(dialog);
+            
+            // Store callbacks globally for button handlers
+            window.currentMemoryCallbacks = { onConfirm, onDismiss };
+            
+            window.confirmMemories = () => {
+                document.body.removeChild(dialog);
+                onConfirm();
+                cleanup();
+            };
+            
+            window.dismissMemories = () => {
+                document.body.removeChild(dialog);
+                onDismiss();
+                cleanup();
+            };
+            
+            window.editPendingMemory = (index) => {
+                document.body.removeChild(dialog);
+                openPendingMemoryEditor(index, onConfirm, onDismiss);
+                cleanup();
+            };
+            
+            function cleanup() {
+                delete window.currentMemoryCallbacks;
+                delete window.confirmMemories;
+                delete window.dismissMemories;
+                delete window.editPendingMemory;
+            }
+        }
+
+        // FIXED: Add the missing openPendingMemoryEditor function
+        function openPendingMemoryEditor(index, onConfirm, onDismiss) {
+            const memory = pendingMemories[index];
+            if (!memory) return;
+            
+            const dialog = document.createElement('div');
+            dialog.className = 'memory-confirmation-dialog';
+            dialog.innerHTML = `
+                <div class="memory-confirmation-content">
+                    <div class="memory-confirmation-header">
+                        <div class="memory-confirmation-title">
+                            <i class="fas fa-edit"></i> Edit Memory
+                        </div>
+                        <div class="memory-confirmation-subtitle">
+                            Modify this memory before storing
+                        </div>
+                    </div>
+                    
+                    <div class="memory-modal-body" style="max-height: 400px; overflow-y: auto;">
+                        <div class="memory-detail-section">
+                            <div class="memory-detail-label">Type</div>
+                            <select class="memory-detail-select" id="editMemoryType">
+                                <option value="goal" ${memory.type === 'goal' ? 'selected' : ''}>Goal</option>
+                                <option value="routine" ${memory.type === 'routine' ? 'selected' : ''}>Routine</option>
+                                <option value="preference" ${memory.type === 'preference' ? 'selected' : ''}>Preference</option>
+                                <option value="insight" ${memory.type === 'insight' ? 'selected' : ''}>Insight</option>
+                                <option value="event" ${memory.type === 'event' ? 'selected' : ''}>Event</option>
+                                <option value="system" ${memory.type === 'system' ? 'selected' : ''}>System</option>
+                            </select>
+                        </div>
+                        
+                        <div class="memory-detail-section">
+                            <div class="memory-detail-label">Content</div>
+                            <textarea class="memory-detail-input large" id="editMemoryContent">${memory.content}</textarea>
+                        </div>
+                        
+                        <div class="memory-detail-section">
+                            <div class="memory-detail-label">Priority (1-5)</div>
+                            <select class="memory-detail-select" id="editMemoryPriority">
+                                <option value="1" ${memory.additionalData.priority == '1' ? 'selected' : ''}>1 - Low</option>
+                                <option value="2" ${memory.additionalData.priority == '2' ? 'selected' : ''}>2 - Low-Medium</option>
+                                <option value="3" ${memory.additionalData.priority == '3' ? 'selected' : ''}>3 - Medium</option>
+                                <option value="4" ${memory.additionalData.priority == '4' ? 'selected' : ''}>4 - High</option>
+                                <option value="5" ${memory.additionalData.priority == '5' ? 'selected' : ''}>5 - Critical</option>
+                            </select>
+                        </div>
+                        
+                        <div class="memory-detail-section">
+                            <div class="memory-detail-label">Notes (Optional)</div>
+                            <textarea class="memory-detail-input" id="editMemoryNotes">${memory.additionalData.notes || ''}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="memory-confirmation-actions">
+                        <button class="modal-btn secondary" onclick="cancelEdit()">Cancel</button>
+                        <button class="modal-btn success" onclick="saveEditedMemory(${index})">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(dialog);
+            
+            window.cancelEdit = () => {
+                document.body.removeChild(dialog);
+                // Show original confirmation dialog again
+                showMemoryConfirmation(pendingMemories, onConfirm, onDismiss);
+                cleanup();
+            };
+            
+            window.saveEditedMemory = (index) => {
+                // Update the memory with edited values
+                pendingMemories[index].type = document.getElementById('editMemoryType').value;
+                pendingMemories[index].content = document.getElementById('editMemoryContent').value;
+                pendingMemories[index].additionalData.priority = document.getElementById('editMemoryPriority').value;
+                pendingMemories[index].additionalData.notes = document.getElementById('editMemoryNotes').value;
+                
+                document.body.removeChild(dialog);
+                // Show updated confirmation dialog
+                showMemoryConfirmation(pendingMemories, onConfirm, onDismiss);
+                cleanup();
+            };
+            
+            function cleanup() {
+                delete window.cancelEdit;
+                delete window.saveEditedMemory;
+            }
+        }
+
+        // Actually store the confirmed memories
+        async function storePendingMemories() {
+            for (const memory of pendingMemories) {
+                await storeMemory(user.userId, memory.type, memory.content, memory.additionalData);
+            }
+            
+            // Refresh memories and show indicator
+            await loadMemories();
+            const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
+            const indicator = document.createElement('div');
+            indicator.className = 'memory-stored-indicator';
+            indicator.innerHTML = `<i class="fas fa-brain"></i> ${pendingMemories.length} memory${pendingMemories.length > 1 ? 'ies' : ''} stored`;
+            lastMessage.appendChild(indicator);
+            
+            pendingMemories = [];
+        }
+
+        // Helper function for frontend storage calls
+        async function storeMemory(userId, type, content, additionalData) {
+            try {
+                const response = await fetch('/api/memories', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ type, content, ...additionalData })
+                });
+                return response.ok;
+            } catch (error) {
+                console.error('Store memory error:', error);
+                return false;
+            }
         }
 
         // Configuration Modal Functions - ENHANCED
@@ -2786,15 +2999,16 @@
             };
         }
 
+        // ENHANCED: Fixed buildConfigPrompt function
         function buildConfigPrompt(mode, data) {
             const prompts = {
                 'plan-day': () => {
-                    let prompt = "I'd like help planning my day with the following preferences:\n\n";
+                    let prompt = "I need help planning my day. Please create a specific, actionable plan and store relevant memories. Here are my preferences:\n\n";
                     
                     if (data.step_0 === 'comprehensive') {
-                        prompt += "**Planning Style**: Comprehensive planning with time blocks and priorities\n";
+                        prompt += "**Planning Style**: Create a comprehensive schedule with time blocks and priorities\n";
                     } else if (data.step_0 === 'priorities') {
-                        prompt += "**Planning Style**: Focus on identifying top 3-5 priorities\n";
+                        prompt += "**Planning Style**: Focus on identifying my top 3-5 priorities for the day\n";
                     } else if (data.step_0 === 'routine') {
                         prompt += "**Planning Style**: Review and adjust my existing routines\n";
                     }
@@ -2807,17 +3021,22 @@
                         prompt += `**Time Frame**: ${data.step_1_custom}\n`;
                     }
 
-                    prompt += "\nPlease use my stored memories about goals, routines, and preferences to create a personalized plan.";
+                    prompt += "\nIMPORTANT: Please:\n";
+                    prompt += "1. Use my stored memories about goals, routines, and preferences\n";
+                    prompt += "2. Create specific time blocks or priority lists\n";
+                    prompt += "3. Store any new planning preferences as memories\n";
+                    prompt += "4. If I mention any new goals or routines, store them as appropriate memory types\n";
+                    
                     return prompt;
                 },
                 'set-goals': () => {
-                    let prompt = "I want to set a new goal with these specifications:\n\n";
+                    let prompt = "I want to set a new goal. Please help me create it properly and store it as a GOAL memory:\n\n";
                     
                     const goalTypes = {
-                        'short-term': 'Short-term goal (days/weeks)',
-                        'long-term': 'Long-term goal (months/years)',
+                        'short-term': 'Short-term goal (achievable within days/weeks)',
+                        'long-term': 'Long-term goal (taking months/years)',
                         'habit': 'Habit-building goal',
-                        'project': 'Project-based goal'
+                        'project': 'Project-based goal with milestones'
                     };
                     
                     if (data.step_0) {
@@ -2828,11 +3047,17 @@
                         prompt += `**Priority Level**: ${data.step_1}/5 priority\n`;
                     }
 
-                    prompt += "\nPlease help me define this goal clearly, set success criteria, and create an action plan. Consider my existing goals and routines from my stored memories.";
+                    prompt += "\nIMPORTANT: Please:\n";
+                    prompt += "1. Help me define this goal with SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound)\n";
+                    prompt += "2. Store the goal as a GOAL memory type with appropriate priority\n";
+                    prompt += "3. Set success criteria and due dates\n";
+                    prompt += "4. Consider my existing goals from stored memories\n";
+                    prompt += "5. Ask me to specify the exact goal if I haven't already\n";
+                    
                     return prompt;
                 },
                 'create-routine': () => {
-                    let prompt = "I want to create a new routine with these details:\n\n";
+                    let prompt = "I want to create a new routine. Please help me design it and store it as a ROUTINE memory:\n\n";
                     
                     const routineTypes = {
                         'morning': 'Morning routine',
@@ -2861,11 +3086,18 @@
                         prompt += `**Frequency**: ${frequencies[data.step_1]}\n`;
                     }
 
-                    prompt += "\nPlease help me design this routine, considering my existing routines and goals. Include specific actions, timing, and success tracking.";
+                    prompt += "\nIMPORTANT: Please:\n";
+                    prompt += "1. Design specific steps for this routine with timing\n";
+                    prompt += "2. Store the routine as a ROUTINE memory type\n";
+                    prompt += "3. Include trigger conditions and energy requirements\n";
+                    prompt += "4. Set up success tracking methods\n";
+                    prompt += "5. Consider my existing routines from stored memories\n";
+                    prompt += "6. Ask me to specify routine details if needed\n";
+                    
                     return prompt;
                 },
                 'create-task': () => {
-                    let prompt = "I want to create a new task with these specifications:\n\n";
+                    let prompt = "I want to create a new task. Please help me define it and store it as a GOAL memory:\n\n";
                     
                     if (data.step_0) {
                         const priorities = {'5': 'Urgent', '4': 'High Priority', '3': 'Medium Priority', '2': 'Low Priority'};
@@ -2884,11 +3116,17 @@
                         }
                     }
 
-                    prompt += "\nPlease help me create this task with specific details, considering my existing tasks and schedule.";
+                    prompt += "\nIMPORTANT: Please:\n";
+                    prompt += "1. Help me create a specific, actionable task\n";
+                    prompt += "2. Store it as a GOAL memory type with the specified priority\n";
+                    prompt += "3. Set clear success criteria and due date\n";
+                    prompt += "4. Include time estimates and resource requirements\n";
+                    prompt += "5. Ask me to specify the task details if I haven't already\n";
+                    
                     return prompt;
                 },
                 'daily-review': () => {
-                    let prompt = "I'd like to do a daily review with this focus:\n\n";
+                    let prompt = "I want to do my daily review. Please guide me through this process:\n\n";
                     
                     const focuses = {
                         'goals': 'Goals progress review',
@@ -2911,12 +3149,18 @@
                         prompt += `**Review Depth**: ${depths[data.step_1]}\n`;
                     }
 
-                    prompt += "\nPlease guide me through this review using my stored memories about goals, routines, and recent activities.";
+                    prompt += "\nIMPORTANT: Please:\n";
+                    prompt += "1. Use my stored memories about goals, routines, and recent activities\n";
+                    prompt += "2. Ask specific questions about my progress today\n";
+                    prompt += "3. Store any insights or learnings as INSIGHT memories\n";
+                    prompt += "4. Store any new goals or routine adjustments appropriately\n";
+                    prompt += "5. Help me plan improvements for tomorrow\n";
+                    
                     return prompt;
                 }
             };
 
-            return prompts[mode] ? prompts[mode]() : `Help me with ${mode} based on my stored memories and preferences.`;
+            return prompts[mode] ? prompts[mode]() : `Help me with ${mode} and store relevant memories with correct types based on my stored memories and preferences.`;
         }
         
         // Open chat about specific memory
@@ -3002,112 +3246,6 @@ Please provide full context about this memory and help me with any modifications
             } catch (error) {
                 console.error('Delete memory error:', error);
                 showAlert('Error deleting memory: ' + error.message, 'error');
-            }
-        }
-
-        // Memory confirmation system
-        function showMemoryConfirmation(memories, onConfirm, onDismiss) {
-            const dialog = document.createElement('div');
-            dialog.className = 'memory-confirmation-dialog';
-            dialog.innerHTML = `
-                <div class="memory-confirmation-content">
-                    <div class="memory-confirmation-header">
-                        <div class="memory-confirmation-title">
-                            <i class="fas fa-brain"></i> Store Memories?
-                        </div>
-                        <div class="memory-confirmation-subtitle">
-                            I've identified ${memories.length} memory${memories.length > 1 ? 'ies' : ''} to store
-                        </div>
-                    </div>
-                    
-                    <div class="memory-preview-list">
-                        ${memories.map((memory, index) => `
-                            <div class="memory-preview-item">
-                                <div class="memory-preview-header">
-                                    <span class="memory-preview-type">${memory.type}</span>
-                                    <button class="memory-preview-edit" onclick="editPendingMemory(${index})">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                </div>
-                                <div class="memory-preview-content">${memory.content}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    
-                    <div class="memory-confirmation-actions">
-                        <button class="modal-btn secondary" onclick="dismissMemories()">
-                            <i class="fas fa-times"></i> Dismiss
-                        </button>
-                        <button class="modal-btn success" onclick="confirmMemories()">
-                            <i class="fas fa-brain"></i> Remember All
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(dialog);
-            
-            // Store callbacks globally for button handlers
-            window.currentMemoryCallbacks = { onConfirm, onDismiss };
-            
-            window.confirmMemories = () => {
-                document.body.removeChild(dialog);
-                onConfirm();
-                cleanup();
-            };
-            
-            window.dismissMemories = () => {
-                document.body.removeChild(dialog);
-                onDismiss();
-                cleanup();
-            };
-            
-            window.editPendingMemory = (index) => {
-                document.body.removeChild(dialog);
-                openPendingMemoryEditor(index, onConfirm, onDismiss);
-                cleanup();
-            };
-            
-            function cleanup() {
-                delete window.currentMemoryCallbacks;
-                delete window.confirmMemories;
-                delete window.dismissMemories;
-                delete window.editPendingMemory;
-            }
-        }
-
-        // Actually store the confirmed memories
-        async function storePendingMemories() {
-            for (const memory of pendingMemories) {
-                await storeMemory(user.userId, memory.type, memory.content, memory.additionalData);
-            }
-            
-            // Refresh memories and show indicator
-            await loadMemories();
-            const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
-            const indicator = document.createElement('div');
-            indicator.className = 'memory-stored-indicator';
-            indicator.innerHTML = `<i class="fas fa-brain"></i> ${pendingMemories.length} memory${pendingMemories.length > 1 ? 'ies' : ''} stored`;
-            lastMessage.appendChild(indicator);
-            
-            pendingMemories = [];
-        }
-
-        // Helper function for frontend storage calls
-        async function storeMemory(userId, type, content, additionalData) {
-            try {
-                const response = await fetch('/api/memories', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ type, content, ...additionalData })
-                });
-                return response.ok;
-            } catch (error) {
-                console.error('Store memory error:', error);
-                return false;
             }
         }
         
