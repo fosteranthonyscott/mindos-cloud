@@ -1,391 +1,1079 @@
-// Modal Management Module
-const Modals = {
-    // Current state
-    pendingAction: null,
-    
-    // Initialize modal module
-    init() {
-        this.setupEventListeners();
-        this.setupKeyboardShortcuts();
-    },
-    
-    // Setup event listeners
-    setupEventListeners() {
-        // Add fields modal
-        document.getElementById('cancelAddFieldsBtn').addEventListener('click', this.closeAddFieldsModal.bind(this));
-        
-        // Close modals when clicking outside
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-overlay') || 
-                e.target.classList.contains('all-memories-modal') ||
-                e.target.classList.contains('memory-modal') ||
-                e.target.classList.contains('add-fields-modal') ||
-                e.target.classList.contains('config-modal') ||
-                e.target.classList.contains('confirm-dialog')) {
-                this.closeAllModals();
-            }
-        });
-        
-        // Confirmation dialog
-        document.getElementById('cancelConfirmBtn').addEventListener('click', this.closeConfirmDialog.bind(this));
-        document.getElementById('confirmActionBtn').addEventListener('click', this.executeConfirmedAction.bind(this));
-    },
-    
-    // Setup keyboard shortcuts
-    setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeAllModals();
-            }
-        });
-    },
-    
-    // Close all modals
-    closeAllModals() {
-        this.closeMemoryModal();
-        this.closeAllMemoriesModal();
-        this.closeAddFieldsModal();
-        this.closeConfirmDialog();
-        Config.closeModal();
-    },
-    
-    // Memory Modal Functions
-    closeMemoryModal() {
-        // Check for unsaved changes
-        if (Object.keys(Memory.changes).length > 0) {
-            this.showConfirmDialog(
-                'Unsaved Changes',
-                'You have unsaved changes. Are you sure you want to close without saving?',
-                () => {
-                    document.getElementById('memoryModal').classList.remove('show');
-                    Memory.selectedMemory = null;
-                    Memory.changes = {};
-                }
-            );
-            return;
-        }
+/* Modal Base Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
 
-        document.getElementById('memoryModal').classList.remove('show');
-        Memory.selectedMemory = null;
-        Memory.changes = {};
-    },
-    
-    // All Memories Modal Functions
-    closeAllMemoriesModal() {
-        document.getElementById('allMemoriesModal').classList.remove('show');
-    },
-    
-    // Add Fields Modal Functions
-    openAddFieldsModal() {
-        this.populateAddFieldsModal();
-        document.getElementById('addFieldsModal').classList.add('show');
-    },
-    
-    closeAddFieldsModal() {
-        document.getElementById('addFieldsModal').classList.remove('show');
-    },
-    
-    populateAddFieldsModal() {
-        const fieldsGrid = document.getElementById('fieldsGrid');
-        fieldsGrid.innerHTML = '';
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
 
-        // Get fields that are currently displayed in the modal
-        const currentFields = Array.from(document.querySelectorAll('[data-field]')).map(el => 
-            el.getAttribute('data-field')
-        );
-        
-        Object.entries(memoryFieldDefinitions).forEach(([fieldKey, fieldDef]) => {
-            // Skip if field is already displayed OR if it's a required field
-            if (currentFields.includes(fieldKey) || fieldDef.required) return;
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
 
-            const fieldOption = document.createElement('div');
-            fieldOption.className = 'field-option';
-            fieldOption.onclick = () => this.addField(fieldKey, fieldDef);
+.modal-overlay.show .modal-content {
+    transform: scale(1) translateY(0);
+}
 
-            fieldOption.innerHTML = `
-                <div class="field-option-icon">
-                    <i class="${fieldDef.icon}"></i>
-                </div>
-                <div class="field-option-name">${fieldDef.label}</div>
-                <div class="field-option-desc">Add ${fieldDef.label.toLowerCase()} information</div>
-            `;
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
 
-            fieldsGrid.appendChild(fieldOption);
-        });
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+}
 
-        if (fieldsGrid.children.length === 0) {
-            fieldsGrid.innerHTML = '<div style="text-align: center; padding: 2rem; color: #888;">All available fields are already added</div>';
-        }
-    },
-    
-    addField(fieldKey, fieldDef) {
-        Memory.addField(fieldKey, fieldDef);
-        this.closeAddFieldsModal();
-    },
-    
-    // Confirmation Dialog Functions
-    showConfirmDialog(title, message, onConfirm) {
-        document.querySelector('.confirm-dialog-title').textContent = title;
-        document.getElementById('confirmMessage').textContent = message;
-        this.pendingAction = onConfirm;
-        document.getElementById('confirmDialog').classList.add('show');
-    },
-    
-    closeConfirmDialog() {
-        document.getElementById('confirmDialog').classList.remove('show');
-        this.pendingAction = null;
-    },
-    
-    executeConfirmedAction() {
-        if (this.pendingAction) {
-            this.pendingAction();
-            this.pendingAction = null;
-        }
-        this.closeConfirmDialog();
-    },
-    
-    // Modal Utilities
-    showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.add('show');
-        }
-    },
-    
-    hideModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('show');
-        }
-    },
-    
-    toggleModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.toggle('show');
-        }
-    },
-    
-    isModalOpen(modalId) {
-        const modal = document.getElementById(modalId);
-        return modal ? modal.classList.contains('show') : false;
-    },
-    
-    // Create dynamic modal
-    createModal(id, title, content, actions = []) {
-        const modal = document.createElement('div');
-        modal.id = id;
-        modal.className = 'modal-overlay';
-        
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <div class="modal-title">${title}</div>
-                    <button class="modal-close" onclick="Modals.removeModal('${id}')">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    ${content}
-                </div>
-                ${actions.length > 0 ? `
-                    <div class="modal-actions">
-                        ${actions.map(action => `
-                            <button class="modal-btn ${action.class || 'secondary'}" 
-                                    onclick="${action.onclick || ''}">
-                                ${action.icon ? `<i class="${action.icon}"></i>` : ''} 
-                                ${action.text}
-                            </button>
-                        `).join('')}
-                    </div>
-                ` : ''}
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        modal.classList.add('show');
-        
-        return modal;
-    },
-    
-    // Remove dynamic modal
-    removeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.remove();
-        }
-    },
-    
-    // Loading Modal
-    showLoadingModal(message = 'Loading...') {
-        return this.createModal('loadingModal', 'Please Wait', `
-            <div style="text-align: center; padding: 2rem;">
-                <div class="spinner" style="margin: 0 auto 1rem;"></div>
-                <p>${message}</p>
-            </div>
-        `);
-    },
-    
-    hideLoadingModal() {
-        this.removeModal('loadingModal');
-    },
-    
-    // Alert Modal
-    showAlertModal(title, message, type = 'info') {
-        const icons = {
-            info: 'fas fa-info-circle',
-            success: 'fas fa-check-circle',
-            warning: 'fas fa-exclamation-triangle',
-            error: 'fas fa-times-circle'
-        };
-        
-        const colors = {
-            info: '#3498db',
-            success: '#27ae60',
-            warning: '#f39c12',
-            error: '#e74c3c'
-        };
-        
-        return this.createModal('alertModal', title, `
-            <div style="text-align: center; padding: 2rem;">
-                <i class="${icons[type]}" style="font-size: 3rem; color: ${colors[type]}; margin-bottom: 1rem;"></i>
-                <p style="font-size: 1.1rem; line-height: 1.5;">${message}</p>
-            </div>
-        `, [
-            {
-                text: 'OK',
-                class: 'primary',
-                onclick: "Modals.removeModal('alertModal')"
-            }
-        ]);
-    },
-    
-    // Prompt Modal
-    showPromptModal(title, message, placeholder = '', onConfirm) {
-        const promptId = 'promptModal_' + Utils.generateId();
-        
-        return this.createModal(promptId, title, `
-            <div style="padding: 1rem;">
-                <p style="margin-bottom: 1rem;">${message}</p>
-                <input type="text" id="${promptId}_input" 
-                       placeholder="${placeholder}" 
-                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;"
-                       onkeypress="if(event.key==='Enter') Modals.executePrompt('${promptId}')">
-            </div>
-        `, [
-            {
-                text: 'Cancel',
-                class: 'secondary',
-                onclick: `Modals.removeModal('${promptId}')`
-            },
-            {
-                text: 'OK',
-                class: 'primary',
-                onclick: `Modals.executePrompt('${promptId}')`
-            }
-        ]);
-    },
-    
-    executePrompt(promptId) {
-        const input = document.getElementById(`${promptId}_input`);
-        const value = input ? input.value.trim() : '';
-        
-        // Get the stored callback if available
-        if (window.currentPromptCallback) {
-            window.currentPromptCallback(value);
-            delete window.currentPromptCallback;
-        }
-        
-        this.removeModal(promptId);
-    },
-    
-    // Image Modal
-    showImageModal(imageSrc, title = '') {
-        return this.createModal('imageModal', title, `
-            <div style="text-align: center;">
-                <img src="${imageSrc}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
-            </div>
-        `, [
-            {
-                text: 'Close',
-                class: 'secondary',
-                onclick: "Modals.removeModal('imageModal')"
-            }
-        ]);
-    },
-    
-    // Progress Modal
-    showProgressModal(title, initialMessage = '') {
-        const modal = this.createModal('progressModal', title, `
-            <div style="padding: 2rem;">
-                <div class="progress-bar" style="width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin-bottom: 1rem;">
-                    <div id="progressFill" style="height: 100%; background: #667eea; width: 0%; transition: width 0.3s;"></div>
-                </div>
-                <p id="progressMessage">${initialMessage}</p>
-            </div>
-        `);
-        
-        return {
-            modal,
-            updateProgress: (percent, message) => {
-                const fill = document.getElementById('progressFill');
-                const msg = document.getElementById('progressMessage');
-                if (fill) fill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
-                if (msg && message) msg.textContent = message;
-            },
-            close: () => this.removeModal('progressModal')
-        };
-    },
-    
-    // Modal State Management
-    getOpenModals() {
-        return Array.from(document.querySelectorAll('.modal-overlay.show, .all-memories-modal.show, .memory-modal.show, .add-fields-modal.show, .config-modal.show, .confirm-dialog.show'))
-            .map(modal => modal.id || modal.className);
-    },
-    
-    hasOpenModals() {
-        return this.getOpenModals().length > 0;
-    },
-    
-    // Focus Management
-    trapFocus(modal) {
-        const focusableElements = modal.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-        
-        modal.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab') {
-                if (e.shiftKey) {
-                    if (document.activeElement === firstElement) {
-                        lastElement.focus();
-                        e.preventDefault();
-                    }
-                } else {
-                    if (document.activeElement === lastElement) {
-                        firstElement.focus();
-                        e.preventDefault();
-                    }
-                }
-            }
-        });
-        
-        // Focus first element
-        if (firstElement) {
-            firstElement.focus();
-        }
-    },
-    
-    // Reset modal state
-    reset() {
-        this.pendingAction = null;
-        this.closeAllModals();
+.modal-close {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: #f5f5f5;
+    color: #333;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.modal-btn.primary {
+    background: #667eea;
+    color: white;
+}
+
+.modal-btn.primary:hover {
+    background: #5a6fd8;
+}
+
+.modal-btn.secondary {
+    background: #f5f5f5;
+    color: #333;
+}
+
+.modal-btn.secondary:hover {
+    background: #e9e9e9;
+}
+
+.modal-btn.success {
+    background: #4CAF50;
+    color: white;
+}
+
+.modal-btn.success:hover {
+    background: #45a049;
+}
+
+.modal-btn.danger {
+    background: #e74c3c;
+    color: white;
+}
+
+.modal-btn.danger:hover {
+    background: #c0392b;
+}
+
+/* All Memories Modal */
+.all-memories-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+.all-memories-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.all-memories-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 1200px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.all-memories-modal.show .all-memories-content {
+    transform: scale(1) translateY(0);
+}
+
+.all-memories-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.all-memories-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.all-memories-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.all-memories-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.memory-type-filters {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    background: #f8f9ff;
+    border: 1px solid #e0e6ff;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    color: #667eea;
+    font-weight: 500;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.memories-grid {
+    padding: 1.5rem;
+}
+
+.memory-type-section {
+    margin-bottom: 2rem;
+}
+
+.memory-type-header {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #667eea;
+}
+
+.memory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.memory-card {
+    background: white;
+    border: 1px solid #e0e6ff;
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.memory-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+}
+
+.memory-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.memory-card-priority {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+}
+
+.memory-card-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.memory-card:hover .memory-card-actions {
+    opacity: 1;
+}
+
+.memory-action-btn {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+    color: #667eea;
+}
+
+.memory-action-btn:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.memory-action-btn.delete {
+    color: #e74c3c;
+}
+
+.memory-action-btn.delete:hover {
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.memory-card-content {
+    color: #333;
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+}
+
+.memory-card-meta {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.meta-item i {
+    color: #667eea;
+}
+
+/* Memory Detail Modal */
+.memory-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+.memory-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.memory-modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.memory-modal.show .memory-modal-content {
+    transform: scale(1) translateY(0);
+}
+
+.memory-modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.memory-modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.memory-modal-status {
+    display: flex;
+    align-items: center;
+}
+
+.save-status {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.save-status.saved {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+}
+
+.save-status.saving {
+    background: rgba(255, 193, 7, 0.2);
+    color: #FFC107;
+}
+
+.save-status.unsaved {
+    background: rgba(255, 152, 0, 0.2);
+    color: #FF9800;
+}
+
+.save-status.error {
+    background: rgba(244, 67, 54, 0.2);
+    color: #F44336;
+}
+
+.memory-modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.memory-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.memory-modal-body {
+    padding: 1.5rem;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.memory-detail-section {
+    margin-bottom: 1.5rem;
+}
+
+.memory-detail-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.field-remove-btn {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+    font-size: 0.8rem;
+}
+
+.field-remove-btn:hover {
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.memory-detail-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e0e6ff;
+    border-radius: 8px;
+    background: #f8f9ff;
+    color: #333;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.memory-detail-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.memory-detail-input.large {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.memory-detail-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e0e6ff;
+    border-radius: 8px;
+    background: #f8f9ff;
+    color: #333;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.memory-detail-select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.memory-modal-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.modal-actions-left,
+.modal-actions-right {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Add Fields Modal */
+.add-fields-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+.add-fields-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.add-fields-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.add-fields-modal.show .add-fields-content {
+    transform: scale(1) translateY(0);
+}
+
+.add-fields-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.add-fields-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.add-fields-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.fields-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+.field-option {
+    background: #f8f9ff;
+    border: 2px solid #e0e6ff;
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.field-option:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.field-option-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.75rem;
+    font-size: 1.2rem;
+}
+
+.field-option-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.field-option-desc {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.4;
+}
+
+.add-fields-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Config Modal */
+.config-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+.config-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.config-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.config-modal.show .config-content {
+    transform: scale(1) translateY(0);
+}
+
+.config-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.config-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.config-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.config-body {
+    padding: 1.5rem;
+}
+
+.config-step {
+    margin-bottom: 2rem;
+}
+
+.config-step-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.config-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.config-option {
+    background: #f8f9ff;
+    border: 2px solid #e0e6ff;
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.config-option:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.config-option.selected {
+    border-color: #667eea;
+    background: #667eea;
+    color: white;
+}
+
+.config-option-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.config-option-desc {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    line-height: 1.4;
+}
+
+.config-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+/* Confirmation Dialog */
+.confirm-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2200;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+.confirm-dialog.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.confirm-dialog-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 100%;
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-dialog.show .confirm-dialog-content {
+    transform: scale(1) translateY(0);
+}
+
+.confirm-dialog-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    padding: 1.5rem 1.5rem 0.5rem;
+}
+
+.confirm-dialog-message {
+    padding: 0 1.5rem 1.5rem;
+    color: #666;
+    line-height: 1.5;
+}
+
+.confirm-dialog-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+/* Memory Confirmation Dialog */
+.memory-confirmation-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2500;
+    opacity: 1;
+    visibility: visible;
+    padding: 1rem;
+}
+
+.memory-confirmation-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: confirmationSlideIn 0.3s ease-out;
+}
+
+@keyframes confirmationSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
     }
-};
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    Modals.init();
-});
+.memory-confirmation-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.memory-confirmation-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.memory-confirmation-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.memory-preview-list {
+    padding: 1.5rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.memory-preview-item {
+    background: #f8f9ff;
+    border: 1px solid #e0e6ff;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.memory-preview-item:last-child {
+    margin-bottom: 0;
+}
+
+.memory-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.memory-preview-type {
+    background: #667eea;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.memory-preview-edit {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.memory-preview-edit:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.memory-preview-content {
+    color: #333;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+}
+
+.memory-preview-meta {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.memory-preview-meta:last-child {
+    margin-bottom: 0;
+}
+
+.memory-confirmation-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.continuation-notice {
+    background: #f0f8ff;
+    border: 1px solid #667eea;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 1.5rem;
+    font-size: 0.9rem;
+}
+
+.memory-config-hint {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+/* Choice Dialog (if needed) */
+.choice-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2300;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+.choice-dialog.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.choice-dialog-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 100%;
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.choice-dialog.show .choice-dialog-content {
+    transform: scale(1) translateY(0);
+}
+
+.choice-dialog-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.choice-dialog-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.choice-dialog-body {
+    padding: 1.5rem;
+}
+
+.choice-options {
+    display: grid;
+    gap: 1rem;
+}
+
+.choice-option {
+    background: #f8f9ff;
+    border: 2px solid #e0e6ff;
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.choice-option:hover {
+    border-color: #667eea;
+    background: #eef2ff;
+}
+
+.choice-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.choice-content {
+    flex: 1;
+}
+
+.choice-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.choice-desc {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.4;
+}
