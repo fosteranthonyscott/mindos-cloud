@@ -419,29 +419,31 @@ const EventHandlers = {
         }
     },
     
-    // Sidebar event handlers
-    setupSidebarHandlers() {
-        // Hamburger menu
-        document.getElementById('hamburgerBtn').addEventListener('click', UI.toggleSidebar);
-        
-        // Overlay click
-        document.getElementById('overlay').addEventListener('click', UI.closeSidebar);
-        
-        // Menu item handlers
-        document.querySelectorAll('.menu-item[data-action]').forEach(item => {
-            item.addEventListener('click', () => {
-                const action = item.dataset.action;
-                Config.openConfigMode(action);
-            });
+   // FIXED: Event handler binding in setupSidebarHandlers function
+// Replace the existing setupSidebarHandlers function in app.js with this:
+
+setupSidebarHandlers() {
+    // Hamburger menu
+    document.getElementById('hamburgerBtn').addEventListener('click', UI.toggleSidebar);
+    
+    // Overlay click
+    document.getElementById('overlay').addEventListener('click', UI.closeSidebar);
+    
+    // Menu item handlers
+    document.querySelectorAll('.menu-item[data-action]').forEach(item => {
+        item.addEventListener('click', () => {
+            const action = item.dataset.action;
+            Config.openConfigMode(action);
         });
-        
-        // Memory management buttons
-        document.getElementById('viewAllMemoriesBtn').addEventListener('click', Memory.openAllMemoriesModal);
-        document.getElementById('refreshMemoriesBtn').addEventListener('click', Memory.refreshMemories);
-        document.getElementById('clearSessionBtn').addEventListener('click', Chat.clearSession);
-        document.getElementById('exportChatBtn').addEventListener('click', Chat.exportChat);
-        document.getElementById('logoutBtn').addEventListener('click', Auth.logout);
-    },
+    });
+    
+    // Memory management buttons - FIXED: Proper binding
+    document.getElementById('viewAllMemoriesBtn').addEventListener('click', () => Memory.openAllMemoriesModal());
+    document.getElementById('refreshMemoriesBtn').addEventListener('click', () => Memory.refreshMemories());
+    document.getElementById('clearSessionBtn').addEventListener('click', () => Chat.clearSession());
+    document.getElementById('exportChatBtn').addEventListener('click', () => Chat.exportChat());
+    document.getElementById('logoutBtn').addEventListener('click', () => Auth.logout());
+},
     
     // Chat input handlers
     setupChatHandlers() {
