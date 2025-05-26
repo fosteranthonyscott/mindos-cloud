@@ -447,6 +447,18 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
         }
 
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+        }
+
         .edit-actions {
             display: flex;
             gap: 1rem;
@@ -665,21 +677,9 @@
     <div id="editOverlay" class="edit-overlay">
         <div class="edit-card">
             <h2 class="edit-title">Edit Item</h2>
-            <input type="text" id="editTitle" class="edit-input" placeholder="Title">
-            <textarea id="editDescription" class="edit-input" rows="4" placeholder="Description"></textarea>
-            <select id="editPriority" class="edit-input">
-                <option value="1">Low Priority</option>
-                <option value="2">Medium Priority</option>
-                <option value="3">Normal Priority</option>
-                <option value="4">High Priority</option>
-                <option value="5">Critical Priority</option>
-            </select>
-            <select id="editStatus" class="edit-input">
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="paused">Paused</option>
-                <option value="archived">Archived</option>
-            </select>
+            <div id="editFormFields">
+                <!-- Dynamic form fields will be inserted here -->
+            </div>
             <div class="edit-actions">
                 <button class="edit-btn secondary" onclick="closeEdit()">Cancel</button>
                 <button class="edit-btn primary" onclick="saveEdit()">Save Changes</button>
@@ -694,6 +694,7 @@
         let feedItems = [];
         let currentEditItem = null;
         let currentCardIndex = 0;
+        let databaseSchema = null;
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', async () => {
@@ -702,6 +703,7 @@
             if (authToken) {
                 const isValid = await validateToken();
                 if (isValid) {
+                    await loadDatabaseSchema();
                     showFeed();
                     return;
                 }
@@ -833,6 +835,24 @@
             }
         });
 
+        // Load Database Schema
+        async function loadDatabaseSchema() {
+            try {
+                const response = await fetch('/api/debug/schema', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    databaseSchema = await response.json();
+                    console.log('📊 Database schema loaded:', databaseSchema);
+                } else {
+                    console.error('Failed to load database schema');
+                }
+            } catch (error) {
+                console.error('Error loading database schema:', error);
+            }
+        }
+
         // Feed Functions
         async function showFeed() {
             document.getElementById('loginScreen').style.display = 'none';
@@ -840,6 +860,10 @@
             
             if (currentUser) {
                 document.getElementById('feedUserName').textContent = currentUser.username;
+            }
+            
+            if (!databaseSchema) {
+                await loadDatabaseSchema();
             }
             
             await loadFeedItems();
@@ -957,24 +981,19 @@
                 </div>
                 
                 <div class="card-actions">
-                    <button class="action-btn ${item.liked ? 'liked' : ''}" onclick="toggleLike(${item.id})">
-                        <i class="fas fa-heart"></i>
-                        <span class="action-count">${item.like_count || 0}</span>
-                    </button>
-                    
-                    <button class="action-btn ${item.status === 'completed' ? 'completed' : ''}" onclick="toggleComplete(${item.id})">
+                    <button class="action-btn ${item.status === 'completed' ? 'completed' : ''}" onclick="toggleComplete(${item.id})" title="Mark Complete">
                         <i class="fas fa-check"></i>
                     </button>
                     
-                    <button class="action-btn" onclick="editItem(${item.id})">
+                    <button class="action-btn" onclick="editItem(${item.id})" title="Edit Item">
                         <i class="fas fa-edit"></i>
                     </button>
                     
-                    <button class="action-btn" onclick="shareItem(${item.id})">
+                    <button class="action-btn" onclick="shareItem(${item.id})" title="Share Item">
                         <i class="fas fa-share"></i>
                     </button>
                     
-                    <button class="action-btn" onclick="deleteItem(${item.id})">
+                    <button class="action-btn" onclick="deleteItem(${item.id})" title="Delete Item">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -1003,27 +1022,30 @@
         }
 
         // Social Media Actions
-        async function toggleLike(itemId) {
-            try {
-                // This would connect to a backend endpoint for likes
-                // For now, just update UI
-                const btn = event.target.closest('.action-btn');
-                const count = btn.querySelector('.action-count');
-                const isLiked = btn.classList.contains('liked');
-                
-                btn.classList.toggle('liked');
-                count.textContent = parseInt(count.textContent) + (isLiked ? -1 : 1);
-                
-                showToast(isLiked ? 'Unliked' : 'Liked!', 'success');
-            } catch (error) {
-                console.error('Error toggling like:', error);
-            }
-        }
-
         async function toggleComplete(itemId) {
             try {
                 const item = feedItems.find(i => i.id === itemId);
-                const newStatus = item.status === 'completed' ? 'active' : 'completed';
+                const isCompleted = item.status === 'completed';
+                const newStatus = isCompleted ? 'active' : 'completed';
+                
+                // Prepare update data
+                const updateData = { status: newStatus };
+                
+                // Add completion date if marking as completed
+                if (newStatus === 'completed') {
+                    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+                    
+                    // Check which date fields are available in the schema
+                    if (databaseSchema?.memoriesTableColumns?.includes('completed_date')) {
+                        updateData.completed_date = today;
+                    }
+                    if (databaseSchema?.memoriesTableColumns?.includes('completed')) {
+                        updateData.completed = today;
+                    }
+                    if (databaseSchema?.memoriesTableColumns?.includes('modified')) {
+                        updateData.modified = today;
+                    }
+                }
                 
                 const response = await fetch(`/api/memories/${itemId}`, {
                     method: 'PUT',
@@ -1031,20 +1053,143 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({ status: newStatus })
+                    body: JSON.stringify(updateData)
                 });
                 
                 if (response.ok) {
+                    // Update local item
                     item.status = newStatus;
+                    if (newStatus === 'completed') {
+                        item.completed_date = updateData.completed_date || updateData.completed;
+                    }
+                    
+                    // Update UI
                     const btn = event.target.closest('.action-btn');
                     btn.classList.toggle('completed', newStatus === 'completed');
-                    showToast(newStatus === 'completed' ? 'Completed!' : 'Reactivated', 'success');
+                    
+                    const message = newStatus === 'completed' 
+                        ? `Completed! ✅ (${new Date().toLocaleDateString()})` 
+                        : 'Reactivated';
+                    showToast(message, 'success');
                 } else {
                     showToast('Failed to update status', 'error');
                 }
             } catch (error) {
                 console.error('Error toggling complete:', error);
+                showToast('Error updating status', 'error');
             }
+        }
+
+        function buildDynamicEditForm(item) {
+            const formContainer = document.getElementById('editFormFields');
+            if (!databaseSchema || !databaseSchema.memoriesTableColumns) {
+                // Fallback to basic form if schema not available
+                formContainer.innerHTML = `
+                    <input type="text" id="edit_content" class="edit-input" placeholder="Content" value="${item.content || ''}">
+                    <textarea id="edit_notes" class="edit-input" rows="4" placeholder="Notes">${item.notes || ''}</textarea>
+                `;
+                return;
+            }
+            
+            const columns = databaseSchema.memoriesTableColumns;
+            const excludeFields = ['id', 'user_id', 'created_at']; // Don't allow editing these
+            const textFields = ['content', 'content_short', 'notes', 'routine_type', 'goal_type', 'trigger', 'success_criteria'];
+            const selectFields = {
+                'type': ['routine', 'goal', 'task', 'note', 'preference', 'insight', 'event'],
+                'status': ['active', 'completed', 'paused', 'archived'],
+                'priority': [
+                    { value: 1, label: 'Low Priority' },
+                    { value: 2, label: 'Medium Priority' },
+                    { value: 3, label: 'Normal Priority' },
+                    { value: 4, label: 'High Priority' },
+                    { value: 5, label: 'Critical Priority' }
+                ],
+                'stage': ['planning', 'in_progress', 'review', 'completed', 'on_hold']
+            };
+            const numberFields = ['performance_streak', 'required_time'];
+            const dateFields = ['due', 'modified', 'completed_date'];
+            
+            let formHTML = '';
+            
+            columns.forEach(column => {
+                if (excludeFields.includes(column)) return;
+                
+                const value = item[column] || '';
+                const fieldId = `edit_${column}`;
+                const label = column.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                if (selectFields[column]) {
+                    // Dropdown field
+                    const options = selectFields[column];
+                    let optionsHTML = '';
+                    
+                    if (Array.isArray(options) && typeof options[0] === 'object') {
+                        // Priority-style options with value/label
+                        optionsHTML = options.map(opt => 
+                            `<option value="${opt.value}" ${value == opt.value ? 'selected' : ''}>${opt.label}</option>`
+                        ).join('');
+                    } else {
+                        // Simple string array
+                        optionsHTML = options.map(opt => 
+                            `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>`
+                        ).join('');
+                    }
+                    
+                    formHTML += `
+                        <div class="form-group">
+                            <label for="${fieldId}">${label}</label>
+                            <select id="${fieldId}" class="edit-input">
+                                <option value="">Select ${label}</option>
+                                ${optionsHTML}
+                            </select>
+                        </div>
+                    `;
+                } else if (textFields.includes(column)) {
+                    // Text input or textarea
+                    if (column === 'notes' || column === 'content') {
+                        formHTML += `
+                            <div class="form-group">
+                                <label for="${fieldId}">${label}</label>
+                                <textarea id="${fieldId}" class="edit-input" rows="4" placeholder="${label}">${value}</textarea>
+                            </div>
+                        `;
+                    } else {
+                        formHTML += `
+                            <div class="form-group">
+                                <label for="${fieldId}">${label}</label>
+                                <input type="text" id="${fieldId}" class="edit-input" placeholder="${label}" value="${value}">
+                            </div>
+                        `;
+                    }
+                } else if (numberFields.includes(column)) {
+                    // Number input
+                    formHTML += `
+                        <div class="form-group">
+                            <label for="${fieldId}">${label}</label>
+                            <input type="number" id="${fieldId}" class="edit-input" placeholder="${label}" value="${value}">
+                        </div>
+                    `;
+                } else if (dateFields.includes(column)) {
+                    // Date input
+                    const dateValue = value ? value.split('T')[0] : ''; // Convert to YYYY-MM-DD if needed
+                    formHTML += `
+                        <div class="form-group">
+                            <label for="${fieldId}">${label}</label>
+                            <input type="date" id="${fieldId}" class="edit-input" value="${dateValue}">
+                        </div>
+                    `;
+                } else {
+                    // Default text input for any other fields
+                    formHTML += `
+                        <div class="form-group">
+                            <label for="${fieldId}">${label}</label>
+                            <input type="text" id="${fieldId}" class="edit-input" placeholder="${label}" value="${value}">
+                        </div>
+                    `;
+                }
+            });
+            
+            formContainer.innerHTML = formHTML;
         }
 
         function editItem(itemId) {
@@ -1052,12 +1197,7 @@
             if (!item) return;
             
             currentEditItem = item;
-            
-            document.getElementById('editTitle').value = item.content_short || item.content || '';
-            document.getElementById('editDescription').value = item.notes || '';
-            document.getElementById('editPriority').value = item.priority || 3;
-            document.getElementById('editStatus').value = item.status || 'active';
-            
+            buildDynamicEditForm(item);
             document.getElementById('editOverlay').classList.add('show');
         }
 
@@ -1069,10 +1209,27 @@
         async function saveEdit() {
             if (!currentEditItem) return;
             
-            const title = document.getElementById('editTitle').value;
-            const description = document.getElementById('editDescription').value;
-            const priority = document.getElementById('editPriority').value;
-            const status = document.getElementById('editStatus').value;
+            // Collect all form data
+            const updateData = {};
+            const formContainer = document.getElementById('editFormFields');
+            const inputs = formContainer.querySelectorAll('input, textarea, select');
+            
+            inputs.forEach(input => {
+                const fieldName = input.id.replace('edit_', '');
+                let value = input.value.trim();
+                
+                // Convert empty strings to null for cleaner database storage
+                if (value === '') {
+                    value = null;
+                } else if (input.type === 'number' && value !== null) {
+                    value = parseInt(value);
+                } else if (input.type === 'date' && value !== null) {
+                    // Keep date as string in YYYY-MM-DD format
+                    value = value;
+                }
+                
+                updateData[fieldName] = value;
+            });
             
             try {
                 const response = await fetch(`/api/memories/${currentEditItem.id}`, {
@@ -1081,20 +1238,21 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({
-                        content_short: title,
-                        notes: description,
-                        priority: parseInt(priority),
-                        status: status
-                    })
+                    body: JSON.stringify(updateData)
                 });
                 
                 if (response.ok) {
-                    showToast('Updated successfully!', 'success');
+                    const updatedItem = await response.json();
+                    
+                    // Update the local item with new data
+                    Object.assign(currentEditItem, updatedItem);
+                    
+                    showToast('Updated successfully! 🎉', 'success');
                     closeEdit();
                     await refreshFeed();
                 } else {
-                    showToast('Failed to update', 'error');
+                    const errorData = await response.json();
+                    showToast(errorData.error || 'Failed to update', 'error');
                 }
             } catch (error) {
                 console.error('Error saving edit:', error);
