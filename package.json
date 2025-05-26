@@ -6,7 +6,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "migrate": "node migrate.js"
+    "migrate": "node migrate.js",
+    "migrate-enhanced": "node migrate-enhanced-memory.js",
+    "db:cleanup": "node -e \"require('./migrate-enhanced-memory.js').runCleanup()\"",
+    "db:status": "node -e \"require('./migrate-enhanced-memory.js').checkStatus()\"",
+    "build": "echo 'Build completed'",
+    "test": "echo 'No tests specified'",
+    "deploy": "npm run migrate-enhanced && npm start"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -22,5 +28,20 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "memory",
+    "mindos",
+    "claude",
+    "postgres",
+    "chat"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fosteranthonyscott/mindos-cloud.git"
+  },
+  "author": "Foster Anthony Scott",
+  "license": "MIT"
 }
