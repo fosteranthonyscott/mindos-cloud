@@ -224,7 +224,7 @@ const Utils = {
     }
 };
 
-javascript// Add this AFTER the Utils object in app.js
+// Add this AFTER the Utils object in app.js
 const MemorySettings = {
     showSettingsModal() {
         const modal = Modals.createModal('memorySettingsModal', 'Memory Settings', `
@@ -322,6 +322,7 @@ const MemorySettings = {
         }
     }
 };
+
 // API Helper Functions
 const API = {
     // Base fetch wrapper
