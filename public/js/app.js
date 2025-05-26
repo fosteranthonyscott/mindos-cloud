@@ -27,6 +27,27 @@ const MindOS = {
     }
 };
 
+// Add this to the top of app.js after the MindOS object
+const MemoryConfig = {
+    MODES: {
+        AUTO: 'auto',
+        CONFIRM: 'confirm', 
+        MANUAL: 'manual'
+    },
+    
+    currentMode: localStorage.getItem('mindos_memory_mode') || 'confirm',
+    
+    setMode(mode) {
+        this.currentMode = mode;
+        localStorage.setItem('mindos_memory_mode', mode);
+        console.log('🧠 Memory mode set to:', mode);
+    },
+    
+    getMode() {
+        return this.currentMode;
+    }
+};
+
 // Memory Field Definitions
 const memoryFieldDefinitions = {
     type: { 
