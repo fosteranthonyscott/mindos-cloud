@@ -198,6 +198,111 @@ const memoryFieldDefinitions = {
         type: 'textarea',
         placeholder: 'Items to buy or purchase ideas related to this'
     },
+    // API Helper Object - Add this to app.js before the UI object
+const API = {
+    // Base request method with authentication and error handling
+    async request(url, options = {}) {
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
+                ...(MindOS.token && { Authorization: `Bearer ${MindOS.token}` })
+            },
+            ...options
+        };
+        
+        // Serialize body if it's an object
+        if (options.body && typeof options.body === 'object') {
+            config.body = JSON.stringify(options.body);
+        }
+        
+        try {
+            const response = await fetch(url, config);
+            
+            // Handle non-OK responses
+            if (!response.ok) {
+                let errorMessage = `HTTP ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch (parseError) {
+                    // If can't parse JSON error, use status text
+                    errorMessage = response.statusText || errorMessage;
+                }
+                throw new Error(errorMessage);
+            }
+            
+            // Handle empty responses
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                return response.text();
+            }
+            
+        } catch (error) {
+            // Network or other fetch errors
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                throw new Error('Network error - please check your connection');
+            }
+            throw error;
+        }
+    },
+    
+    // HTTP method shortcuts
+    get(url) {
+        return this.request(url);
+    },
+    
+    post(url, data) {
+        return this.request(url, {
+            method: 'POST',
+            body: data
+        });
+    },
+    
+    put(url, data) {
+        return this.request(url, {
+            method: 'PUT',
+            body: data
+        });
+    },
+    
+    delete(url) {
+        return this.request(url, {
+            method: 'DELETE'
+        });
+    },
+    
+    // Specialized methods for common operations
+    async uploadFile(url, file, additionalData = {}) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        Object.entries(additionalData).forEach(([key, value]) => {
+            formData.append(key, value);
+        });
+        
+        return this.request(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                // Don't set Content-Type for FormData - browser will set it with boundary
+                ...(MindOS.token && { Authorization: `Bearer ${MindOS.token}` })
+            }
+        });
+    },
+    
+    // Health check method
+    async healthCheck() {
+        try {
+            const response = await this.get('/health');
+            return response.status === 'ok';
+        } catch (error) {
+            console.error('Health check failed:', error);
+            return false;
+        }
+    }
+};
     
     // ADDITIONAL ROUTINE AND PRODUCTIVITY FIELDS
     difficulty: {
