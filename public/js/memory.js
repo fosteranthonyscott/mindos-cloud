@@ -855,24 +855,29 @@ const Memory = {
         this.displayMemoriesGrid(memoryGroups);
     },
     
-    // Filter memories by type
-    filterMemories(filterType) {
-        // Update filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+    // 1. Fix the filterMemories function (around line 914)
+filterMemories(filterType) {
+    // Update filter buttons - FIXED: Use proper event handling
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    // Find and activate the clicked button
+    const activeBtn = Array.from(document.querySelectorAll('.filter-btn')).find(btn => 
+        btn.textContent.toLowerCase().includes(filterType) || (filterType === 'all' && btn.textContent === 'All')
+    );
+    if (activeBtn) activeBtn.classList.add('active');
 
-        // Filter memories
-        const memoryGroups = {};
-        MindOS.userMemories.forEach(memory => {
-            const type = memory.type || 'general';
-            if (filterType === 'all' || type === filterType) {
-                if (!memoryGroups[type]) memoryGroups[type] = [];
-                memoryGroups[type].push(memory);
-            }
-        });
+    // Filter memories
+    const memoryGroups = {};
+    MindOS.userMemories.forEach(memory => {
+        const type = memory.type || 'general';
+        if (filterType === 'all' || type === filterType) {
+            if (!memoryGroups[type]) memoryGroups[type] = [];
+            memoryGroups[type].push(memory);
+        }
+    });
 
-        this.displayMemoriesGrid(memoryGroups);
-    },
+    this.displayMemoriesGrid(memoryGroups);
+},
+
     
     // Display memories grid
     displayMemoriesGrid(memoryGroups) {
