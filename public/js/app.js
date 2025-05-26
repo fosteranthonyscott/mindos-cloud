@@ -746,3 +746,140 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
+
+// Chrome Input Container Fix - Add to app.js
+
+const ChromeFixes = {
+    // Fix input container visibility in Chrome
+    ensureInputVisibility() {
+        const inputContainer = document.getElementById('inputContainer') || 
+                              document.querySelector('.input-container');
+        
+        if (inputContainer) {
+            // Force Chrome to recognize the input container
+            inputContainer.style.display = 'flex';
+            inputContainer.style.position = 'fixed';
+            inputContainer.style.bottom = '0';
+            inputContainer.style.left = '0';
+            inputContainer.style.right = '0';
+            inputContainer.style.zIndex = '100';
+            
+            console.log('✅ Input container visibility forced for Chrome');
+        } else {
+            console.warn('⚠️ Input container not found');
+        }
+    },
+    
+    // Fix viewport height issues in Chrome mobile
+    fixViewportHeight() {
+        const setVH = () => {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        };
+        
+        setVH();
+        window.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', setVH);
+    },
+    
+    // Chrome-specific input focus handling
+    setupChromeInputFixes() {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            // Prevent Chrome from hiding input on scroll
+            messageInput.addEventListener('focus', () => {
+                const inputContainer = messageInput.closest('.input-container');
+                if (inputContainer) {
+                    inputContainer.style.position = 'fixed';
+                    inputContainer.style.bottom = '0';
+                }
+            });
+            
+            // Chrome-specific paste handling
+            messageInput.addEventListener('paste', (e) => {
+                setTimeout(() => {
+                    Chat.autoResize(messageInput);
+                }, 10);
+            });
+        }
+    },
+    
+    // Detect Chrome and apply fixes
+    init() {
+        const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+        
+        if (isChrome) {
+            console.log('🔧 Applying Chrome-specific fixes');
+            
+            // Apply fixes after DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    this.ensureInputVisibility();
+                    this.fixViewportHeight();
+                    this.setupChromeInputFixes();
+                });
+            } else {
+                this.ensureInputVisibility();
+                this.fixViewportHeight();
+                this.setupChromeInputFixes();
+            }
+        }
+    }
+};
+
+// Enhanced App initialization with Chrome fixes
+const App = {
+    // ... existing App methods ...
+    
+    // Show chat app and load data - ENHANCED
+    async showChatApp() {
+        UI.showChatApp();
+        
+        // Apply Chrome fixes after showing chat app
+        ChromeFixes.ensureInputVisibility();
+        
+        // Load session info and memories
+        await Promise.all([
+            this.loadSessionInfo(),
+            this.loadMemories()
+        ]);
+        
+        // Add welcome message if no existing messages
+        Chat.addWelcomeMessage();
+        
+        // Ensure input is visible after everything loads
+        setTimeout(() => {
+            ChromeFixes.ensureInputVisibility();
+        }, 100);
+    },
+    
+    // Initialize the application - ENHANCED
+    async init() {
+        console.log('🚀 Initializing MindOS...');
+        
+        try {
+            // Initialize Chrome fixes first
+            ChromeFixes.init();
+            
+            // Setup event handlers
+            EventHandlers.init();
+            
+            // Check authentication
+            if (MindOS.token && MindOS.token !== 'null' && MindOS.token !== 'undefined') {
+                await this.attemptAutoLogin();
+            } else {
+                UI.showAuthScreen();
+            }
+            
+            console.log('✅ MindOS initialized successfully');
+        } catch (error) {
+            console.error('❌ Failed to initialize MindOS:', error);
+            Utils.showAlert('Failed to initialize application', 'error');
+        }
+    }
+};
+
+// Initialize Chrome fixes when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    ChromeFixes.init();
+});
