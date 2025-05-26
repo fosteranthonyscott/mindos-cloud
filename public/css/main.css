@@ -27,7 +27,9 @@
     overflow: hidden;
 }
 
-/* App Header */
+/* Enhanced App Header with Action Buttons - Add to main.css */
+
+/* Updated App Header */
 .app-header {
     display: flex;
     justify-content: space-between;
@@ -37,64 +39,137 @@
     backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     color: white;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 1rem;
 }
 
-.user-avatar {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: white;
-}
-
-.user-details {
-    display: flex;
-    flex-direction: column;
-}
-
-#userName {
-    font-size: 1.2rem;
-    font-weight: 600;
-}
-
-.memory-count {
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-.header-actions {
+/* NEW: Action Buttons Section */
+.action-buttons {
     display: flex;
     gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
-.header-btn {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: all 0.2s;
+.action-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    color: white;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
 }
 
-.header-btn:hover {
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+/* Action Button Variants */
+.action-btn.primary {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.action-btn.primary:hover {
     background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
+}
+
+/* Specific Button Styling */
+.action-btn[data-action="add-task"] {
+    border-color: rgba(33, 150, 243, 0.5);
+}
+
+.action-btn[data-action="add-routine"] {
+    border-color: rgba(255, 152, 0, 0.5);
+}
+
+.action-btn[data-action="add-goal"] {
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+.action-btn[data-action="add-event"] {
+    border-color: rgba(244, 67, 54, 0.5);
+}
+
+.action-btn[data-action="add-memory"] {
+    border-color: rgba(156, 39, 176, 0.5);
+}
+
+.action-btn[data-action="show-all"] {
+    border-color: rgba(96, 125, 139, 0.5);
+}
+
+/* Enhanced Responsive Design */
+@media (max-width: 1024px) {
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+    }
+
+    .action-buttons {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .header-actions {
+        align-self: flex-end;
+        margin-top: -2.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .action-buttons {
+        gap: 0.5rem;
+    }
+
+    .action-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+
+    #userName {
+        font-size: 1.1rem;
+    }
+
+    .memory-count {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .action-buttons {
+        grid-template-columns: repeat(2, 1fr);
+        display: grid;
+        width: 100%;
+        gap: 0.5rem;
+    }
+
+    .action-btn {
+        justify-content: center;
+        padding: 0.75rem 0.5rem;
+    }
 }
 
 /* Cards Viewport */
