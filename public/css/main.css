@@ -538,3 +538,89 @@ body {
         font-weight: 900 !important; /* FontAwesome icons should be bold */
     }
 }
+
+/* Chrome Viewport Height Fix - Add to main.css */
+
+/* Custom viewport height property for Chrome mobile */
+:root {
+    --vh: 1vh;
+}
+
+/* Fix for Chrome mobile viewport issues */
+html, body {
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+    overflow: hidden;
+}
+
+/* Chat app layout fixes for Chrome */
+.chat-app {
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+    display: flex;
+    flex-direction: column;
+    background: #f5f5f5;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Ensure proper stacking in Chrome */
+.chat-header {
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    min-height: 0; /* Important for flex items in Chrome */
+}
+
+/* Chrome-specific input container positioning */
+@supports (-webkit-appearance: none) {
+    .input-container {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+    }
+    
+    .chat-container {
+        padding-bottom: 80px !important;
+    }
+    
+    .messages {
+        -webkit-overflow-scrolling: touch;
+        overflow-y: auto;
+        padding-bottom: 2rem !important;
+    }
+}
+
+/* Chrome mobile address bar compensation */
+@media screen and (max-width: 768px) {
+    @supports (-webkit-touch-callout: none) {
+        .chat-app {
+            height: 100vh;
+            height: -webkit-fill-available;
+        }
+        
+        .input-container {
+            bottom: 0;
+            bottom: env(safe-area-inset-bottom, 0);
+        }
+    }
+}
+
+/* Force Chrome to render input container */
+.input-container {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
