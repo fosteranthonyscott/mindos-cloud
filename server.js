@@ -74,7 +74,7 @@ app.post('/api/register', async (req, res) => {
         
         // Check if user exists
         const existingUser = await db.query(
-            'SELECT id FROM users WHERE email = $1 OR username = $2',
+            'SELECT id FROM user WHERE email = $1 OR username = $2',
             [email, username]
         );
         
@@ -88,7 +88,7 @@ app.post('/api/register', async (req, res) => {
         
         // Create user
         await db.query(
-            `INSERT INTO users (user_id, username, email, password_hash, created_at, updated_at, is_active, onboarding_completed) 
+            `INSERT INTO user (user_id, username, email, password_hash, created_at, updated_at, is_active, onboarding_completed) 
              VALUES ($1, $2, $3, $4, NOW(), NOW(), true, false)`,
             [userId, username, email, password_hash]
         );
@@ -118,7 +118,7 @@ app.post('/api/login', async (req, res) => {
         
         // Find user
         const userResult = await db.query(
-            'SELECT user_id, username, email, password_hash, onboarding_completed FROM users WHERE email = $1 AND is_active = true',
+            'SELECT user_id, username, email, password_hash, onboarding_completed FROM user WHERE email = $1 AND is_active = true',
             [email]
         );
         
@@ -136,7 +136,7 @@ app.post('/api/login', async (req, res) => {
         
         // Update last login
         await db.query(
-            'UPDATE users SET last_login = NOW(), updated_at = NOW() WHERE user_id = $1',
+            'UPDATE user SET last_login = NOW(), updated_at = NOW() WHERE user_id = $1',
             [user.user_id]
         );
         
@@ -332,7 +332,7 @@ app.post('/api/clear-session', auth, (req, res) => {
 app.get('/api/user-status', auth, async (req, res) => {
     try {
         const userResult = await db.query(
-            'SELECT onboarding_completed, last_login FROM users WHERE user_id = $1',
+            'SELECT onboarding_completed, last_login FROM user WHERE user_id = $1',
             [req.user.userId]
         );
         
@@ -357,7 +357,7 @@ app.get('/api/user-status', auth, async (req, res) => {
 app.post('/api/complete-onboarding', auth, async (req, res) => {
     try {
         await db.query(
-            'UPDATE users SET onboarding_completed = true, updated_at = NOW() WHERE user_id = $1',
+            'UPDATE user SET onboarding_completed = true, updated_at = NOW() WHERE user_id = $1',
             [req.user.userId]
         );
         res.json({ success: true });
