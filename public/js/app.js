@@ -27,7 +27,7 @@ const MindOS = {
     }
 };
 
-// Add this to the top of app.js after the MindOS object
+// Memory Configuration for handling memory storage preferences
 const MemoryConfig = {
     MODES: {
         AUTO: 'auto',
@@ -48,7 +48,7 @@ const MemoryConfig = {
     }
 };
 
-// Memory Field Definitions
+// ENHANCED Memory Field Definitions with Routine-Specific Fields
 const memoryFieldDefinitions = {
     type: { 
         label: 'Type', 
@@ -61,17 +61,38 @@ const memoryFieldDefinitions = {
         label: 'Full Content', 
         icon: 'fas fa-align-left', 
         type: 'textarea', 
-        required: true 
+        required: true,
+        placeholder: 'Describe this item in detail...'
     },
     content_short: { 
         label: 'Summary', 
         icon: 'fas fa-compress-alt', 
-        type: 'text' 
+        type: 'text',
+        placeholder: 'Brief summary (auto-generated if empty)'
     },
+    
+    // ROUTINE-SPECIFIC FIELDS
+    routine_type: {
+        label: 'Routine Type',
+        icon: 'fas fa-list',
+        type: 'select',
+        options: ['morning', 'evening', 'work', 'exercise', 'health', 'learning', 'self-care', 'custom'],
+        placeholder: 'What kind of routine is this?'
+    },
+    frequency: {
+        label: 'Frequency',
+        icon: 'fas fa-calendar-alt',
+        type: 'select',
+        options: ['daily', 'weekdays', 'weekends', 'weekly', 'bi-weekly', 'monthly', 'flexible'],
+        placeholder: 'How often should this routine occur?'
+    },
+    
+    // EXISTING ENHANCED FIELDS
     notes: { 
         label: 'Notes', 
         icon: 'fas fa-sticky-note', 
-        type: 'textarea' 
+        type: 'textarea',
+        placeholder: 'Additional notes, tips, or reminders...'
     },
     priority: { 
         label: 'Priority', 
@@ -94,7 +115,8 @@ const memoryFieldDefinitions = {
     performance_streak: { 
         label: 'Current Streak', 
         icon: 'fas fa-fire', 
-        type: 'number' 
+        type: 'number',
+        placeholder: 'Number of consecutive days'
     },
     performance_rate: { 
         label: 'Success Rate', 
@@ -102,7 +124,8 @@ const memoryFieldDefinitions = {
         type: 'number', 
         step: '0.01', 
         min: '0', 
-        max: '1' 
+        max: '1',
+        placeholder: 'Success rate (0.0 to 1.0)'
     },
     due: { 
         label: 'Due Date', 
@@ -110,9 +133,10 @@ const memoryFieldDefinitions = {
         type: 'date' 
     },
     trigger: { 
-        label: 'Trigger', 
+        label: 'Trigger/Cue', 
         icon: 'fas fa-play', 
-        type: 'text' 
+        type: 'text',
+        placeholder: 'What starts this routine or goal? (e.g., alarm, after coffee)'
     },
     energy_requirements: { 
         label: 'Energy Level', 
@@ -123,47 +147,121 @@ const memoryFieldDefinitions = {
     required_time: { 
         label: 'Time Required', 
         icon: 'fas fa-clock', 
-        type: 'text' 
+        type: 'text',
+        placeholder: 'How long does this take? (e.g., 15 minutes, 1 hour)'
     },
     success_criteria: { 
         label: 'Success Criteria', 
         icon: 'fas fa-check-circle', 
-        type: 'textarea' 
+        type: 'textarea',
+        placeholder: 'How will you know this was completed successfully?'
     },
     resources: { 
         label: 'Resources', 
         icon: 'fas fa-tools', 
-        type: 'textarea' 
+        type: 'textarea',
+        placeholder: 'What do you need to complete this? (tools, materials, etc.)'
     },
     location: { 
         label: 'Location', 
         icon: 'fas fa-map-marker-alt', 
-        type: 'text' 
+        type: 'text',
+        placeholder: 'Where does this happen? (home, gym, office, etc.)'
     },
     weather: { 
         label: 'Weather Context', 
         icon: 'fas fa-cloud-sun', 
-        type: 'text' 
+        type: 'text',
+        placeholder: 'Weather conditions relevant to this item'
     },
     mood: { 
         label: 'Mood', 
         icon: 'fas fa-smile', 
-        type: 'text' 
+        type: 'text',
+        placeholder: 'Mood or emotional state associated with this'
     },
     emotion: { 
         label: 'Emotion', 
         icon: 'fas fa-heart', 
-        type: 'text' 
+        type: 'text',
+        placeholder: 'Emotional context or feeling'
     },
     search_query: { 
         label: 'Related Searches', 
         icon: 'fas fa-search', 
-        type: 'text' 
+        type: 'text',
+        placeholder: 'Search terms or keywords related to this'
     },
     shoppingideas: { 
         label: 'Shopping Ideas', 
         icon: 'fas fa-shopping-cart', 
-        type: 'textarea' 
+        type: 'textarea',
+        placeholder: 'Items to buy or purchase ideas related to this'
+    },
+    
+    // ADDITIONAL ROUTINE AND PRODUCTIVITY FIELDS
+    difficulty: {
+        label: 'Difficulty Level',
+        icon: 'fas fa-chart-line',
+        type: 'select',
+        options: ['very-easy', 'easy', 'medium', 'hard', 'very-hard'],
+        placeholder: 'How challenging is this?'
+    },
+    environment: {
+        label: 'Environment',
+        icon: 'fas fa-home',
+        type: 'select',
+        options: ['home', 'office', 'gym', 'outdoor', 'anywhere', 'quiet', 'social'],
+        placeholder: 'What environment works best?'
+    },
+    time_of_day: {
+        label: 'Best Time',
+        icon: 'fas fa-clock',
+        type: 'select',
+        options: ['early-morning', 'morning', 'afternoon', 'evening', 'night', 'flexible'],
+        placeholder: 'When is the best time for this?'
+    },
+    dependencies: {
+        label: 'Dependencies',
+        icon: 'fas fa-link',
+        type: 'textarea',
+        placeholder: 'What needs to happen before this? (other routines, conditions, etc.)'
+    },
+    rewards: {
+        label: 'Rewards',
+        icon: 'fas fa-gift',
+        type: 'textarea',
+        placeholder: 'How do you celebrate or reward completion?'
+    },
+    obstacles: {
+        label: 'Common Obstacles',
+        icon: 'fas fa-exclamation-triangle',
+        type: 'textarea',
+        placeholder: 'What typically gets in the way of this routine?'
+    },
+    backup_plan: {
+        label: 'Backup Plan',
+        icon: 'fas fa-redo',
+        type: 'textarea',
+        placeholder: 'What to do if the main plan fails? (shorter version, alternative)'
+    },
+    tracking_method: {
+        label: 'Tracking Method',
+        icon: 'fas fa-clipboard-check',
+        type: 'text',
+        placeholder: 'How do you track completion? (app, journal, habit tracker)'
+    },
+    duration_target: {
+        label: 'Target Duration',
+        icon: 'fas fa-stopwatch',
+        type: 'text',
+        placeholder: 'How long should you spend on this? (exact time goal)'
+    },
+    repetitions: {
+        label: 'Repetitions/Sets',
+        icon: 'fas fa-redo-alt',
+        type: 'text',
+        placeholder: 'Number of repetitions, sets, or cycles (for exercise/practice)'
     }
 };
 
@@ -224,7 +322,7 @@ const Utils = {
     }
 };
 
-// Add this AFTER the Utils object in app.js
+// Memory Settings for user preferences
 const MemorySettings = {
     showSettingsModal() {
         const modal = Modals.createModal('memorySettingsModal', 'Memory Settings', `
@@ -419,31 +517,29 @@ const EventHandlers = {
         }
     },
     
-   // FIXED: Event handler binding in setupSidebarHandlers function
-// Replace the existing setupSidebarHandlers function in app.js with this:
-
-setupSidebarHandlers() {
-    // Hamburger menu
-    document.getElementById('hamburgerBtn').addEventListener('click', UI.toggleSidebar);
-    
-    // Overlay click
-    document.getElementById('overlay').addEventListener('click', UI.closeSidebar);
-    
-    // Menu item handlers
-    document.querySelectorAll('.menu-item[data-action]').forEach(item => {
-        item.addEventListener('click', () => {
-            const action = item.dataset.action;
-            Config.openConfigMode(action);
+    // FIXED: Event handler binding in setupSidebarHandlers function
+    setupSidebarHandlers() {
+        // Hamburger menu
+        document.getElementById('hamburgerBtn').addEventListener('click', UI.toggleSidebar);
+        
+        // Overlay click
+        document.getElementById('overlay').addEventListener('click', UI.closeSidebar);
+        
+        // Menu item handlers
+        document.querySelectorAll('.menu-item[data-action]').forEach(item => {
+            item.addEventListener('click', () => {
+                const action = item.dataset.action;
+                Config.openConfigMode(action);
+            });
         });
-    });
-    
-    // Memory management buttons - FIXED: Proper binding
-    document.getElementById('viewAllMemoriesBtn').addEventListener('click', () => Memory.openAllMemoriesModal());
-    document.getElementById('refreshMemoriesBtn').addEventListener('click', () => Memory.refreshMemories());
-    document.getElementById('clearSessionBtn').addEventListener('click', () => Chat.clearSession());
-    document.getElementById('exportChatBtn').addEventListener('click', () => Chat.exportChat());
-    document.getElementById('logoutBtn').addEventListener('click', () => Auth.logout());
-},
+        
+        // Memory management buttons - FIXED: Proper binding
+        document.getElementById('viewAllMemoriesBtn').addEventListener('click', () => Memory.openAllMemoriesModal());
+        document.getElementById('refreshMemoriesBtn').addEventListener('click', () => Memory.refreshMemories());
+        document.getElementById('clearSessionBtn').addEventListener('click', () => Chat.clearSession());
+        document.getElementById('exportChatBtn').addEventListener('click', () => Chat.exportChat());
+        document.getElementById('logoutBtn').addEventListener('click', () => Auth.logout());
+    },
     
     // Chat input handlers
     setupChatHandlers() {
