@@ -509,7 +509,7 @@ const MemorySettings = {
     }
 };
 
-// Enhanced Header Action Buttons
+// Updated ActionButtons section
 const ActionButtons = {
     init() {
         this.setupActionButtonHandlers();
@@ -564,12 +564,12 @@ const ActionButtons = {
         }
     },
 
-    // Integration with existing Config module
+    // Connect to existing Config modals
     openCreateTask() {
         if (typeof Config !== 'undefined') {
             Config.openConfigMode('create-task');
         } else {
-            this.showQuickCreateDialog('task');
+            Utils.showAlert('Task creation not available', 'error');
         }
     },
 
@@ -577,7 +577,7 @@ const ActionButtons = {
         if (typeof Config !== 'undefined') {
             Config.openConfigMode('create-routine');
         } else {
-            this.showQuickCreateDialog('routine');
+            Utils.showAlert('Routine creation not available', 'error');
         }
     },
 
@@ -585,11 +585,12 @@ const ActionButtons = {
         if (typeof Config !== 'undefined') {
             Config.openConfigMode('set-goals');
         } else {
-            this.showQuickCreateDialog('goal');
+            Utils.showAlert('Goal creation not available', 'error');
         }
     },
 
     openCreateEvent() {
+        // Use quick create for events (no full modal exists yet)
         this.showQuickCreateDialog('event');
     },
 
@@ -605,90 +606,69 @@ const ActionButtons = {
         }
     },
 
-    // Quick create dialog for types without full Config support
+    // Quick create for types without full Config support
     showQuickCreateDialog(type) {
         const typeConfig = {
-            task: {
-                title: 'Create Task',
-                icon: 'fas fa-tasks',
-                placeholder: 'What task do you need to complete?',
-                examples: ['Review quarterly reports', 'Call dentist for appointment', 'Prepare presentation for Monday']
-            },
-            routine: {
-                title: 'Create Routine',
-                icon: 'fas fa-repeat',
-                placeholder: 'Describe your routine...',
-                examples: ['Morning workout 30 minutes', 'Evening reading 1 hour', 'Weekly grocery shopping']
-            },
-            goal: {
-                title: 'Create Goal',
-                icon: 'fas fa-bullseye',
-                placeholder: 'What goal do you want to achieve?',
-                examples: ['Learn Spanish in 6 months', 'Run a 5K race', 'Save $5000 for vacation']
-            },
             event: {
                 title: 'Create Event',
                 icon: 'fas fa-calendar-plus',
                 placeholder: 'Describe the event...',
-                examples: ['Team meeting Thursday 2 PM', 'Birthday party Saturday', 'Doctor appointment next week']
+                examples: ['Team meeting Thursday 2 PM', 'Doctor appointment next week']
             },
             memory: {
                 title: 'Create Memory',
                 icon: 'fas fa-brain',
                 placeholder: 'What would you like to remember?',
-                examples: ['Favorite coffee shop downtown', 'John prefers morning meetings', 'Password reset procedure']
+                examples: ['Coffee shop recommendation', 'Meeting notes']
             }
         };
 
         const config = typeConfig[type];
-        if (!config) return;
+        if (!config || typeof Modals === 'undefined') {
+            Utils.showAlert(`${type} creation not available`, 'error');
+            return;
+        }
 
-        if (typeof Modals !== 'undefined') {
-            const modal = Modals.createModal(`create${type}Modal`, config.title, `
-                <div style="padding: 1rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                        <div style="width: 50px; height: 50px; background: #667eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
-                            <i class="${config.icon}"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0; color: #333;">Quick ${config.title}</h3>
-                            <p style="margin: 0.25rem 0 0 0; color: #666; font-size: 0.9rem;">Describe what you want to create</p>
-                        </div>
+        const modal = Modals.createModal(`create${type}Modal`, config.title, `
+            <div style="padding: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="width: 50px; height: 50px; background: #667eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                        <i class="${config.icon}"></i>
                     </div>
-                    
-                    <textarea id="quickCreate${type}Input" 
-                              placeholder="${config.placeholder}" 
-                              style="width: 100%; min-height: 100px; padding: 0.75rem; border: 2px solid #e0e6ff; border-radius: 8px; font-family: inherit; resize: vertical;"
-                              onkeydown="if(event.key==='Enter' && event.ctrlKey) ActionButtons.submitQuickCreate('${type}')"></textarea>
-                    
-                    <div style="margin-top: 1rem; font-size: 0.8rem; color: #666;">
-                        <strong>Examples:</strong><br>
-                        ${config.examples.map(ex => `• ${ex}`).join('<br>')}
-                    </div>
-                    
-                    <div style="margin-top: 1rem; font-size: 0.8rem; color: #999; text-align: center;">
-                        Press Ctrl+Enter to save quickly
+                    <div>
+                        <h3 style="margin: 0; color: #333;">Quick ${config.title}</h3>
+                        <p style="margin: 0.25rem 0 0 0; color: #666; font-size: 0.9rem;">Describe what you want to create</p>
                     </div>
                 </div>
-            `, [
-                {
-                    text: 'Cancel',
-                    class: 'secondary',
-                    onclick: `Modals.removeModal('create${type}Modal')`
-                },
-                {
-                    text: `Create ${type.charAt(0).toUpperCase() + type.slice(1)}`,
-                    class: 'primary',
-                    onclick: `ActionButtons.submitQuickCreate('${type}')`
-                }
-            ]);
+                
+                <textarea id="quickCreate${type}Input" 
+                          placeholder="${config.placeholder}" 
+                          style="width: 100%; min-height: 100px; padding: 0.75rem; border: 2px solid #e0e6ff; border-radius: 8px; font-family: inherit; resize: vertical;"
+                          onkeydown="if(event.key==='Enter' && event.ctrlKey) ActionButtons.submitQuickCreate('${type}')"></textarea>
+                
+                <div style="margin-top: 1rem; font-size: 0.8rem; color: #666;">
+                    <strong>Examples:</strong><br>
+                    ${config.examples.map(ex => `• ${ex}`).join('<br>')}
+                </div>
+            </div>
+        `, [
+            {
+                text: 'Cancel',
+                class: 'secondary',
+                onclick: `Modals.removeModal('create${type}Modal')`
+            },
+            {
+                text: `Create ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+                class: 'primary',
+                onclick: `ActionButtons.submitQuickCreate('${type}')`
+            }
+        ]);
 
-            // Focus the input
-            setTimeout(() => {
-                const input = document.getElementById(`quickCreate${type}Input`);
-                if (input) input.focus();
-            }, 100);
-        }
+        // Focus the input
+        setTimeout(() => {
+            const input = document.getElementById(`quickCreate${type}Input`);
+            if (input) input.focus();
+        }, 100);
     },
 
     async submitQuickCreate(type) {
@@ -701,47 +681,22 @@ const ActionButtons = {
         const content = input.value.trim();
         
         try {
-            // Store as memory using existing Memory module
-            if (typeof Memory !== 'undefined' && Memory.storeMemory) {
-                await Memory.storeMemory(MindOS.user.userId, type, content, {
-                    priority: type === 'task' ? '3' : '2',
-                    status: 'active',
-                    created_via: 'quick_create'
-                });
-                
-                Utils.showAlert(`${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`, 'success');
-                
-                // Refresh cards if available
-                if (typeof Cards !== 'undefined' && Cards.refresh) {
-                    Cards.refresh();
-                }
-                
-                // Close modal
-                Modals.removeModal(`create${type}Modal`);
-                
-            } else {
-                // Fallback: use API directly
-                await API.post('/api/memories', {
-                    type: type,
-                    content: content,
-                    priority: type === 'task' ? '3' : '2',
-                    status: 'active',
-                    created_via: 'quick_create'
-                });
-                
-                Utils.showAlert(`${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`, 'success');
-                Modals.removeModal(`create${type}Modal`);
-                
-                // Refresh the page data
-                if (typeof App !== 'undefined' && App.loadMemories) {
-                    await App.loadMemories();
-                }
-                
-                // Refresh cards if available
-                if (typeof Cards !== 'undefined' && Cards.refresh) {
-                    Cards.refresh();
-                }
+            await API.post('/api/memories', {
+                type: type,
+                content: content,
+                priority: '2',
+                status: 'active',
+                created_via: 'quick_create'
+            });
+            
+            Utils.showAlert(`${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`, 'success');
+            
+            // Refresh cards
+            if (typeof Cards !== 'undefined' && Cards.refresh) {
+                Cards.refresh();
             }
+            
+            Modals.removeModal(`create${type}Modal`);
             
         } catch (error) {
             console.error(`Error creating ${type}:`, error);
@@ -1157,29 +1112,25 @@ const App = {
         }
     },
     
-    // Show main app and load data
+    // Updated showChatApp to use card interface
     async showChatApp() {
-        // Show the card interface (function name kept for compatibility)
+        // Show the card interface
         UI.showCardApp();
         
         try {
-            // Load session info and memories in parallel
             await Promise.all([
                 this.loadSessionInfo(),
                 this.loadMemories()
             ]);
             
-            // Initialize and load today's cards
+            // Initialize Cards module
             if (typeof Cards !== 'undefined') {
-                // Ensure Cards module is initialized
                 if (typeof Cards.init === 'function') {
                     Cards.init();
                 }
-                // Load today's cards
                 await Cards.loadTodaysCards();
             } else {
-                console.warn('Cards module not loaded - check script loading order');
-                // Fallback: show empty state
+                console.warn('Cards module not loaded');
                 const emptyState = document.getElementById('emptyState');
                 if (emptyState) {
                     emptyState.style.display = 'flex';
@@ -1190,10 +1141,7 @@ const App = {
             
         } catch (error) {
             console.error('❌ Error initializing card app:', error);
-            // Show error state
-            if (typeof Utils !== 'undefined') {
-                Utils.showAlert('Failed to load your items', 'error');
-            }
+            Utils.showAlert('Failed to load your items', 'error');
         }
     },
     
