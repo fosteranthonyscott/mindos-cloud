@@ -6,7 +6,7 @@
     <title>MindOS - Personal AI Assistant</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- FIXED: Use absolute paths instead of relative paths -->
+    <!-- CSS Files -->
     <link rel="stylesheet" href="/auth.css">
     <link rel="stylesheet" href="/chat.css">
     <link rel="stylesheet" href="/modals.css">
@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/cards.css">
     <link rel="stylesheet" href="/main.css">
     
-    <!-- Fallback CSS to ensure basic styling -->
+    <!-- Fallback CSS -->
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .hidden { display: none !important; }
@@ -25,6 +25,19 @@
         .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; }
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .alert { padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; color: white; }
+        .alert.success { background: #4CAF50; }
+        .alert.error { background: #f44336; }
+        .alert.warning { background: #ff9800; }
+        .alert.info { background: #2196F3; }
+        
+        /* Quick fixes for cards */
+        .memory-card { background: white; margin: 1rem; padding: 2rem; border-radius: 12px; color: #333; position: relative; }
+        .action-btn-small { padding: 0.5rem; margin: 0.25rem; border: none; border-radius: 4px; cursor: pointer; }
+        .action-btn-small.complete { background: #4CAF50; color: white; }
+        .action-btn-small.edit { background: #ff9800; color: white; }
+        .action-btn-small.delete { background: #f44336; color: white; }
+        .card-actions { position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; }
     </style>
 </head>
 <body>
@@ -73,6 +86,124 @@
         </div>
     </div>
 
+    <!-- Chat App Interface -->
+    <div id="chatApp" class="chat-app hidden">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <button class="hamburger" id="hamburgerBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="header-info">
+                <div class="header-title">MindOS</div>
+                <div class="header-subtitle" id="headerStatus">AI Assistant Ready</div>
+                <div class="session-info">
+                    <span id="sessionMessages">0 messages</span>
+                    <span class="memory-count" id="memoryCount">0 memories</span>
+                </div>
+            </div>
+            <div class="online-indicator"></div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-user">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <div id="sidebarUsername">User</div>
+                        <div class="user-status">Online</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-menu">
+                <!-- Configuration Options -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Quick Actions</div>
+                    <button class="menu-item" data-action="plan-day">
+                        <i class="fas fa-calendar-day"></i> Plan Your Day
+                    </button>
+                    <button class="menu-item" data-action="set-goals">
+                        <i class="fas fa-bullseye"></i> Set Goals
+                    </button>
+                    <button class="menu-item" data-action="create-routine">
+                        <i class="fas fa-repeat"></i> Create Routine
+                    </button>
+                    <button class="menu-item" data-action="daily-review">
+                        <i class="fas fa-clipboard-check"></i> Daily Review
+                    </button>
+                </div>
+
+                <!-- Memory Management -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Memory</div>
+                    <button class="menu-item" id="viewAllMemoriesBtn">
+                        <i class="fas fa-brain"></i> View All Memories
+                    </button>
+                    <button class="menu-item" id="refreshMemoriesBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh Memories
+                    </button>
+                </div>
+
+                <!-- Session Management -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Session</div>
+                    <button class="menu-item" id="clearSessionBtn">
+                        <i class="fas fa-trash"></i> Clear Session
+                    </button>
+                    <button class="menu-item" id="exportChatBtn">
+                        <i class="fas fa-download"></i> Export Chat
+                    </button>
+                </div>
+
+                <!-- Recent Memories -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Recent Memories</div>
+                    <div id="recentMemories"></div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="menu-item" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Overlay -->
+        <div class="overlay" id="overlay"></div>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+            <!-- Messages -->
+            <div class="messages" id="messages"></div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+
+            <!-- Input Container -->
+            <div class="input-container">
+                <div class="input-group">
+                    <textarea id="messageInput" class="message-input" placeholder="Type your message..." rows="1"></textarea>
+                </div>
+                <button class="send-btn" id="sendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Card Interface App -->
     <div id="cardApp" class="card-app hidden">
         <!-- Compact Header -->
@@ -117,7 +248,7 @@
         </div>
         
         <!-- Cards Viewport -->
-        <div class="cards-viewport">
+        <div class="cards-viewport" id="cardsViewport">
             <!-- Loading State -->
             <div id="loadingState" class="loading-state">
                 <div class="spinner"></div>
@@ -133,13 +264,84 @@
                 <p>Use the buttons above to add tasks, routines, or goals</p>
             </div>
             
-            <!-- Cards Container -->
-            <div id="cardsFeed" class="cards-feed" style="display: none;"></div>
+            <!-- Cards Feed -->
+            <div id="cardsFeed" class="cards-feed"></div>
         </div>
     </div>
 
-    <!-- Alert Container -->
-    <div id="authAlert" style="position: fixed; top: 1rem; right: 1rem; z-index: 9999;"></div>
+    <!-- Modals -->
+    
+    <!-- Memory Detail Modal -->
+    <div id="memoryModal" class="memory-modal">
+        <div class="memory-modal-content">
+            <div class="memory-modal-header">
+                <div class="memory-modal-title">Memory Details</div>
+                <div class="memory-modal-status">
+                    <div class="save-status saved" id="saveStatus">
+                        <i class="fas fa-check"></i> Saved
+                    </div>
+                </div>
+                <button class="memory-modal-close" id="memoryModalCloseBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="memory-modal-body" id="memoryModalBody"></div>
+            <div class="memory-modal-actions">
+                <div class="modal-actions-left">
+                    <button class="modal-btn danger" id="deleteMemoryBtn">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+                <div class="modal-actions-right">
+                    <button class="modal-btn secondary" id="addFieldsBtn">
+                        <i class="fas fa-plus"></i> Add Fields
+                    </button>
+                    <button class="modal-btn primary" id="discussMemoryBtn">
+                        <i class="fas fa-comments"></i> Discuss
+                    </button>
+                    <button class="modal-btn secondary" id="closeMemoryBtn">Close</button>
+                    <button class="modal-btn success" id="saveCloseBtn">
+                        <i class="fas fa-save"></i> Save & Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Memories Modal -->
+    <div id="allMemoriesModal" class="all-memories-modal">
+        <div class="all-memories-content">
+            <div class="all-memories-header">
+                <div class="all-memories-title">All Memories</div>
+                <button class="all-memories-close" id="allMemoriesCloseBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="memory-type-filters">
+                <button class="filter-btn active" data-type="all">All</button>
+                <button class="filter-btn" data-type="goal">Goals</button>
+                <button class="filter-btn" data-type="routine">Routines</button>
+                <button class="filter-btn" data-type="preference">Preferences</button>
+                <button class="filter-btn" data-type="insight">Insights</button>
+                <button class="filter-btn" data-type="event">Events</button>
+            </div>
+            <div class="memories-grid" id="memoriesGrid"></div>
+        </div>
+    </div>
+
+    <!-- Add Fields Modal -->
+    <div id="addFieldsModal" class="add-fields-modal">
+        <div class="add-fields-content">
+            <div class="add-fields-header">
+                <div class="add-fields-title">Add Memory Fields</div>
+                <div class="add-fields-subtitle">Select additional fields to add</div>
+            </div>
+            <div class="fields-grid" id="fieldsGrid"></div>
+            <div class="add-fields-actions">
+                <button class="modal-btn secondary" id="cancelAddFieldsBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Configuration Modal -->
     <div id="configModal" class="config-modal">
@@ -156,7 +358,41 @@
         </div>
     </div>
 
-    <!-- FIXED: Use absolute paths for JavaScript files -->
+    <!-- Confirmation Dialog -->
+    <div id="confirmDialog" class="confirm-dialog">
+        <div class="confirm-dialog-content">
+            <div class="confirm-dialog-title">Confirm Action</div>
+            <div class="confirm-dialog-message" id="confirmMessage">Are you sure?</div>
+            <div class="confirm-dialog-actions">
+                <button class="modal-btn secondary" id="cancelConfirmBtn">Cancel</button>
+                <button class="modal-btn danger" id="confirmActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Modal for Card Interface -->
+    <div id="chatModal" class="chat-modal">
+        <div class="chat-modal-content">
+            <div class="chat-modal-header">
+                <div class="chat-modal-title">Chat with MindOS</div>
+                <button class="chat-modal-close" id="chatModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-area">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message...">
+                <button class="chat-send-btn" id="chatSendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="authAlert"></div>
+
+    <!-- JavaScript Files -->
     <script src="/app.js"></script>
     <script src="/auth.js"></script>
     <script src="/memory.js"></script>
@@ -183,14 +419,17 @@
                 }
             } catch (error) {
                 console.error('Failed to initialize:', error);
-                // Show error message
-                document.body.innerHTML = `
-                    <div style="padding: 2rem; text-align: center; color: red;">
-                        <h2>Initialization Error</h2>
-                        <p>Failed to load MindOS: ${error.message}</p>
-                        <button onclick="location.reload()">Reload</button>
-                    </div>
-                `;
+                
+                // Show auth screen as fallback
+                document.getElementById('authScreen').style.display = 'flex';
+                document.getElementById('cardApp').classList.add('hidden');
+                document.getElementById('chatApp').classList.add('hidden');
+                
+                // Show error in auth alert
+                const alert = document.createElement('div');
+                alert.className = 'alert error';
+                alert.textContent = `Initialization Error: ${error.message}`;
+                document.getElementById('authAlert').appendChild(alert);
             }
         });
         
@@ -198,6 +437,16 @@
         window.addEventListener('error', (e) => {
             console.error('Global error:', e.error);
         });
+
+        // Fallback auth handlers if auth.js fails to load
+        if (typeof Auth === 'undefined') {
+            window.Auth = {
+                logout: () => {
+                    localStorage.clear();
+                    location.reload();
+                }
+            };
+        }
     </script>
 </body>
 </html>
