@@ -1,4 +1,4 @@
-// Cards Module - Complete Implementation
+// Cards Module - Updated for Scrolling
 const Cards = {
     currentCard: 0,
     memories: [],
@@ -44,8 +44,8 @@ const Cards = {
             });
         }
         
-        // Touch/swipe gestures for card navigation
-        this.setupSwipeGestures();
+        // Scroll gestures and navigation
+        this.setupScrollNavigation();
     },
     
     async loadTodaysCards() {
@@ -61,7 +61,7 @@ const Cards = {
             if (this.memories.length === 0) {
                 this.showEmptyState();
             } else {
-                this.renderCards();
+                this.renderScrollableCards();
                 this.updateMemoryCount();
             }
         } catch (error) {
@@ -72,7 +72,7 @@ const Cards = {
         }
     },
     
-    renderCards() {
+    renderScrollableCards() {
         const viewport = document.getElementById('cardsViewport');
         const navigation = document.getElementById('cardNavigation');
         
@@ -88,6 +88,16 @@ const Cards = {
         viewport.innerHTML = '';
         if (navigation) navigation.innerHTML = '';
         
+        // Add scroll indicators
+        viewport.innerHTML = `
+            <div class="scroll-indicator left" id="scrollLeft">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+            <div class="scroll-indicator right" id="scrollRight">
+                <i class="fas fa-chevron-right"></i>
+            </div>
+        `;
+        
         // Render each card
         this.memories.forEach((memory, index) => {
             const cardHTML = this.createScrollCardHTML(memory);
@@ -97,7 +107,7 @@ const Cards = {
             if (navigation) {
                 const dot = document.createElement('div');
                 dot.className = `nav-dot ${index === 0 ? 'active' : ''}`;
-                dot.addEventListener('click', () => this.goToCard(index));
+                dot.addEventListener('click', () => this.scrollToCard(index));
                 navigation.appendChild(dot);
             }
         });
@@ -105,9 +115,151 @@ const Cards = {
         // Setup card controls
         this.setupCardControls();
         
-        // Initialize at first card
+        // Setup scroll navigation
+        this.setupScrollControls();
+        
+        // Initialize scroll position
         this.currentCard = 0;
-        this.updateCardPosition();
+        this.updateScrollIndicators();
+    },
+    
+    setupScrollNavigation() {
+        const viewport = document.getElementById('cardsViewport');
+        if (!viewport) return;
+        
+        let isScrolling = false;
+        
+        // Touch/swipe gestures
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        
+        viewport.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            isDragging = true;
+        });
+        
+        viewport.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentX = e.touches[0].clientX;
+        });
+        
+        viewport.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const diffX = startX - currentX;
+            
+            if (Math.abs(diffX) > 50) {
+                if (diffX > 0) {
+                    this.scrollNext();
+                } else {
+                    this.scrollPrev();
+                }
+            }
+        });
+        
+        // Scroll event listener for navigation updates
+        viewport.addEventListener('scroll', () => {
+            if (isScrolling) return;
+            
+            clearTimeout(this.scrollTimeout);
+            this.scrollTimeout = setTimeout(() => {
+                this.updateCurrentCardFromScroll();
+            }, 100);
+        });
+    },
+    
+    setupScrollControls() {
+        const scrollLeft = document.getElementById('scrollLeft');
+        const scrollRight = document.getElementById('scrollRight');
+        
+        if (scrollLeft) {
+            scrollLeft.addEventListener('click', () => this.scrollPrev());
+        }
+        
+        if (scrollRight) {
+            scrollRight.addEventListener('click', () => this.scrollNext());
+        }
+    },
+    
+    scrollToCard(index) {
+        const viewport = document.getElementById('cardsViewport');
+        const cards = viewport.querySelectorAll('.memory-card');
+        
+        if (index >= 0 && index < cards.length) {
+            const card = cards[index];
+            const scrollLeft = card.offsetLeft - (viewport.offsetWidth - card.offsetWidth) / 2;
+            
+            viewport.scrollTo({
+                left: scrollLeft,
+                behavior: 'smooth'
+            });
+            
+            this.currentCard = index;
+            this.updateNavigation();
+            this.updateScrollIndicators();
+        }
+    },
+    
+    scrollNext() {
+        if (this.currentCard < this.memories.length - 1) {
+            this.scrollToCard(this.currentCard + 1);
+        }
+    },
+    
+    scrollPrev() {
+        if (this.currentCard > 0) {
+            this.scrollToCard(this.currentCard - 1);
+        }
+    },
+    
+    updateCurrentCardFromScroll() {
+        const viewport = document.getElementById('cardsViewport');
+        const cards = viewport.querySelectorAll('.memory-card');
+        
+        let closestIndex = 0;
+        let closestDistance = Infinity;
+        
+        cards.forEach((card, index) => {
+            const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+            const viewportCenter = viewport.scrollLeft + viewport.offsetWidth / 2;
+            const distance = Math.abs(cardCenter - viewportCenter);
+            
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestIndex = index;
+            }
+        });
+        
+        if (closestIndex !== this.currentCard) {
+            this.currentCard = closestIndex;
+            this.updateNavigation();
+            this.updateScrollIndicators();
+        }
+    },
+    
+    updateScrollIndicators() {
+        const scrollLeft = document.getElementById('scrollLeft');
+        const scrollRight = document.getElementById('scrollRight');
+        
+        if (scrollLeft) {
+            scrollLeft.classList.toggle('disabled', this.currentCard === 0);
+        }
+        
+        if (scrollRight) {
+            scrollRight.classList.toggle('disabled', this.currentCard === this.memories.length - 1);
+        }
+    },
+    
+    updateNavigation() {
+        const navigation = document.getElementById('cardNavigation');
+        if (!navigation) return;
+        
+        const dots = navigation.querySelectorAll('.nav-dot');
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === this.currentCard);
+        });
     },
     
     createScrollCardHTML(memory) {
@@ -376,88 +528,14 @@ Please respond helpfully about this specific item. If they want to modify it, su
         if (this.memories.length === 0) {
             this.showEmptyState();
         } else {
-            this.renderCards();
+            this.renderScrollableCards();
+            // Adjust current card if needed
+            if (this.currentCard >= this.memories.length) {
+                this.currentCard = this.memories.length - 1;
+            }
         }
         
         this.updateMemoryCount();
-    },
-    
-    setupSwipeGestures() {
-        const viewport = document.getElementById('cardsViewport');
-        if (!viewport) return;
-        
-        let startX = 0;
-        let currentX = 0;
-        let isDragging = false;
-        
-        viewport.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            isDragging = true;
-        });
-        
-        viewport.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            currentX = e.touches[0].clientX;
-        });
-        
-        viewport.addEventListener('touchend', () => {
-            if (!isDragging) return;
-            isDragging = false;
-            
-            const diffX = startX - currentX;
-            
-            if (Math.abs(diffX) > 50) { // Minimum swipe distance
-                if (diffX > 0 && this.currentCard < this.memories.length - 1) {
-                    this.nextCard();
-                } else if (diffX < 0 && this.currentCard > 0) {
-                    this.prevCard();
-                }
-            }
-        });
-    },
-    
-    goToCard(index) {
-        if (index >= 0 && index < this.memories.length) {
-            this.currentCard = index;
-            this.updateCardPosition();
-            this.updateNavigation();
-        }
-    },
-    
-    nextCard() {
-        if (this.currentCard < this.memories.length - 1) {
-            this.currentCard++;
-            this.updateCardPosition();
-            this.updateNavigation();
-        }
-    },
-    
-    prevCard() {
-        if (this.currentCard > 0) {
-            this.currentCard--;
-            this.updateCardPosition();
-            this.updateNavigation();
-        }
-    },
-    
-    updateCardPosition() {
-        const viewport = document.getElementById('cardsViewport');
-        if (!viewport) return;
-        
-        const cards = viewport.querySelectorAll('.memory-card');
-        cards.forEach((card, index) => {
-            card.style.display = index === this.currentCard ? 'flex' : 'none';
-        });
-    },
-    
-    updateNavigation() {
-        const navigation = document.getElementById('cardNavigation');
-        if (!navigation) return;
-        
-        const dots = navigation.querySelectorAll('.nav-dot');
-        dots.forEach((dot, index) => {
-            dot.classList.toggle('active', index === this.currentCard);
-        });
     },
     
     showLoading(show) {
