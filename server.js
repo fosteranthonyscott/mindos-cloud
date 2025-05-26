@@ -1153,6 +1153,55 @@ app.get('/api/memories', auth, async (req, res) => {
     }
 });
 
+// NEW: Get today's priority cards
+app.get('/api/memories/today', auth, async (req, res) => {
+    try {
+        if (!isDbConnected) {
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+        
+        const today = new Date().toISOString().split('T')[0];
+        
+        let query = `
+            SELECT * FROM memories 
+            WHERE user_id = $1 
+            AND (
+                due <= $2 
+                OR priority >= 4 
+                OR status = 'active'
+                OR (type = 'routine' AND status != 'completed')
+            )
+            ORDER BY priority DESC, due ASC
+            LIMIT 50
+        `;
+        
+        // Adapt query based on available columns
+        if (!memoriesTableColumns.includes('due')) {
+            query = `
+                SELECT * FROM memories 
+                WHERE user_id = $1 
+                AND (
+                    priority >= 4 
+                    OR status = 'active'
+                    OR (type = 'routine' AND status != 'completed')
+                )
+                ORDER BY priority DESC, id DESC
+                LIMIT 50
+            `;
+        }
+        
+        const params = memoriesTableColumns.includes('due') ? [req.user.userId, today] : [req.user.userId];
+        const result = await db.query(query, params);
+        
+        console.log(`✅ Found ${result.rows.length} items for today`);
+        res.json(result.rows);
+        
+    } catch (error) {
+        console.error('❌ Get today memories error:', error);
+        res.status(500).json({ error: 'Failed to get today\'s items' });
+    }
+});
+
 app.post('/api/memories', auth, async (req, res) => {
     try {
         const { type, content, ...additionalData } = req.body;
@@ -1577,4 +1626,5 @@ app.listen(PORT, () => {
     console.log('⚡ Mathematical constraint reasoning active');
     console.log('🔍 Enhanced conversation context with constraint extraction');
     console.log('🔧 FIXED: Message cleaning for Claude API compatibility');
+    console.log('📱 Card interface endpoint: /api/memories/today active');
 });
