@@ -739,8 +739,12 @@
         }
         
         function showChatApp() {
+            console.log('showChatApp called'); // Debug
             document.getElementById('authScreen').classList.add('hidden');
-            document.getElementById('chatApp').classList.remove('hidden');
+            const chatApp = document.getElementById('chatApp');
+            chatApp.classList.remove('hidden');
+            chatApp.style.display = 'flex'; // Force display
+            console.log('Chat app display:', chatApp.style.display); // Debug
             document.getElementById('sidebarUsername').textContent = user.username || 'User';
             addWelcomeMessage();
         }
