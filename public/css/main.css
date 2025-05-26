@@ -502,3 +502,133 @@
         font-size: 0.9rem;
     }
 }
+/* Add these styles to main.css */
+
+/* Hidden class for proper element hiding */
+.hidden {
+    display: none !important;
+}
+
+/* Updated Cards Viewport for Scrolling */
+.cards-viewport {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2rem;
+    position: relative;
+    display: flex;
+    gap: 2rem;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+}
+
+/* Updated Memory Card for Scrolling */
+.memory-card {
+    flex: 0 0 auto;
+    width: 90%;
+    max-width: 800px;
+    min-width: 320px;
+    height: 600px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: flex;
+    position: relative;
+    overflow: hidden;
+    animation: cardSlideIn 0.4s ease-out;
+    scroll-snap-align: center;
+}
+
+/* Card Navigation - Updated for scrolling */
+.card-navigation {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.75rem;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.75rem 1.5rem;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+}
+
+/* Scroll indicators */
+.scroll-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s;
+    z-index: 20;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.scroll-indicator:hover {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.scroll-indicator.left {
+    left: 1rem;
+}
+
+.scroll-indicator.right {
+    right: 1rem;
+}
+
+.scroll-indicator.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Hide scrollbar but keep functionality */
+.cards-viewport::-webkit-scrollbar {
+    display: none;
+}
+
+.cards-viewport {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Mobile adjustments for scrolling */
+@media (max-width: 768px) {
+    .cards-viewport {
+        padding: 1rem;
+        gap: 1rem;
+    }
+    
+    .memory-card {
+        width: 85%;
+        min-width: 280px;
+        height: 500px;
+    }
+    
+    .scroll-indicator {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    .memory-card {
+        width: 90%;
+        min-width: 260px;
+        height: 450px;
+    }
+    
+    .cards-viewport {
+        gap: 0.5rem;
+    }
+}
