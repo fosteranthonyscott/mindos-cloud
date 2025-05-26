@@ -9,10 +9,24 @@ const Modals = {
         this.setupKeyboardShortcuts();
     },
     
-    // Setup event listeners
+    // Setup event listeners - FIXED to check element existence
     setupEventListeners() {
-        // Add fields modal
-        document.getElementById('cancelAddFieldsBtn').addEventListener('click', this.closeAddFieldsModal.bind(this));
+        // Add fields modal - check if elements exist
+        const cancelAddFieldsBtn = document.getElementById('cancelAddFieldsBtn');
+        const cancelConfirmBtn = document.getElementById('cancelConfirmBtn');
+        const confirmActionBtn = document.getElementById('confirmActionBtn');
+        
+        if (cancelAddFieldsBtn) {
+            cancelAddFieldsBtn.addEventListener('click', this.closeAddFieldsModal.bind(this));
+        }
+        
+        if (cancelConfirmBtn) {
+            cancelConfirmBtn.addEventListener('click', this.closeConfirmDialog.bind(this));
+        }
+        
+        if (confirmActionBtn) {
+            confirmActionBtn.addEventListener('click', this.executeConfirmedAction.bind(this));
+        }
         
         // Close modals when clicking outside
         document.addEventListener('click', (e) => {
@@ -25,10 +39,6 @@ const Modals = {
                 this.closeAllModals();
             }
         });
-        
-        // Confirmation dialog
-        document.getElementById('cancelConfirmBtn').addEventListener('click', this.closeConfirmDialog.bind(this));
-        document.getElementById('confirmActionBtn').addEventListener('click', this.executeConfirmedAction.bind(this));
     },
     
     // Setup keyboard shortcuts
@@ -46,53 +56,82 @@ const Modals = {
         this.closeAllMemoriesModal();
         this.closeAddFieldsModal();
         this.closeConfirmDialog();
-        Config.closeModal();
+        if (typeof Config !== 'undefined' && Config.closeModal) {
+            Config.closeModal();
+        }
     },
     
     // Memory Modal Functions
     closeMemoryModal() {
-        // Check for unsaved changes
-        if (Object.keys(Memory.changes).length > 0) {
+        const memoryModal = document.getElementById('memoryModal');
+        if (!memoryModal) return;
+        
+        // Check for unsaved changes if Memory module exists
+        if (typeof Memory !== 'undefined' && Object.keys(Memory.changes || {}).length > 0) {
             this.showConfirmDialog(
                 'Unsaved Changes',
                 'You have unsaved changes. Are you sure you want to close without saving?',
                 () => {
-                    document.getElementById('memoryModal').classList.remove('show');
-                    Memory.selectedMemory = null;
-                    Memory.changes = {};
+                    memoryModal.classList.remove('show');
+                    if (typeof Memory !== 'undefined') {
+                        Memory.selectedMemory = null;
+                        Memory.changes = {};
+                    }
                 }
             );
             return;
         }
 
-        document.getElementById('memoryModal').classList.remove('show');
-        Memory.selectedMemory = null;
-        Memory.changes = {};
+        memoryModal.classList.remove('show');
+        if (typeof Memory !== 'undefined') {
+            Memory.selectedMemory = null;
+            Memory.changes = {};
+        }
     },
     
     // All Memories Modal Functions
     closeAllMemoriesModal() {
-        document.getElementById('allMemoriesModal').classList.remove('show');
+        const allMemoriesModal = document.getElementById('allMemoriesModal');
+        if (allMemoriesModal) {
+            allMemoriesModal.classList.remove('show');
+        }
     },
     
     // Add Fields Modal Functions
     openAddFieldsModal() {
         this.populateAddFieldsModal();
-        document.getElementById('addFieldsModal').classList.add('show');
+        const addFieldsModal = document.getElementById('addFieldsModal');
+        if (addFieldsModal) {
+            addFieldsModal.classList.add('show');
+        }
     },
     
     closeAddFieldsModal() {
-        document.getElementById('addFieldsModal').classList.remove('show');
+        const addFieldsModal = document.getElementById('addFieldsModal');
+        if (addFieldsModal) {
+            addFieldsModal.classList.remove('show');
+        }
     },
     
     populateAddFieldsModal() {
         const fieldsGrid = document.getElementById('fieldsGrid');
+        if (!fieldsGrid) return;
+        
         fieldsGrid.innerHTML = '';
 
-        // Get fields that are currently displayed in the modal
-        const currentFields = Array.from(document.querySelectorAll('[data-field]')).map(el => 
-            el.getAttribute('data-field')
-        );
+        // Get fields that are currently displayed in the modal if Memory module exists
+        let currentFields = [];
+        if (typeof Memory !== 'undefined') {
+            currentFields = Array.from(document.querySelectorAll('[data-field]')).map(el => 
+                el.getAttribute('data-field')
+            );
+        }
+        
+        // Check if memoryFieldDefinitions exists
+        if (typeof memoryFieldDefinitions === 'undefined') {
+            fieldsGrid.innerHTML = '<div style="text-align: center; padding: 2rem; color: #888;">Field definitions not available</div>';
+            return;
+        }
         
         Object.entries(memoryFieldDefinitions).forEach(([fieldKey, fieldDef]) => {
             // Skip if field is already displayed OR if it's a required field
@@ -119,20 +158,35 @@ const Modals = {
     },
     
     addField(fieldKey, fieldDef) {
-        Memory.addField(fieldKey, fieldDef);
+        if (typeof Memory !== 'undefined' && Memory.addField) {
+            Memory.addField(fieldKey, fieldDef);
+        }
         this.closeAddFieldsModal();
     },
     
     // Confirmation Dialog Functions
     showConfirmDialog(title, message, onConfirm) {
-        document.querySelector('.confirm-dialog-title').textContent = title;
-        document.getElementById('confirmMessage').textContent = message;
+        const confirmDialog = document.getElementById('confirmDialog');
+        if (!confirmDialog) {
+            console.warn('Confirm dialog element not found');
+            return;
+        }
+        
+        const titleElement = document.querySelector('.confirm-dialog-title');
+        const messageElement = document.getElementById('confirmMessage');
+        
+        if (titleElement) titleElement.textContent = title;
+        if (messageElement) messageElement.textContent = message;
+        
         this.pendingAction = onConfirm;
-        document.getElementById('confirmDialog').classList.add('show');
+        confirmDialog.classList.add('show');
     },
     
     closeConfirmDialog() {
-        document.getElementById('confirmDialog').classList.remove('show');
+        const confirmDialog = document.getElementById('confirmDialog');
+        if (confirmDialog) {
+            confirmDialog.classList.remove('show');
+        }
         this.pendingAction = null;
     },
     
@@ -220,7 +274,7 @@ const Modals = {
     showLoadingModal(message = 'Loading...') {
         return this.createModal('loadingModal', 'Please Wait', `
             <div style="text-align: center; padding: 2rem;">
-                <div class="spinner" style="margin: 0 auto 1rem;"></div>
+                <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                 <p>${message}</p>
             </div>
         `);
@@ -262,7 +316,10 @@ const Modals = {
     
     // Prompt Modal
     showPromptModal(title, message, placeholder = '', onConfirm) {
-        const promptId = 'promptModal_' + Utils.generateId();
+        const promptId = 'promptModal_' + (typeof Utils !== 'undefined' ? Utils.generateId() : Date.now());
+        
+        // Store callback globally for access
+        window.currentPromptCallback = onConfirm;
         
         return this.createModal(promptId, title, `
             <div style="padding: 1rem;">
