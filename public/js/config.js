@@ -276,8 +276,15 @@ const Config = {
         console.log('📋 Mode:', this.currentMode);
         console.log('📋 Data:', this.data);
         
-        if (!this.currentMode || Object.keys(this.data).length === 0) {
-            console.error('❌ Missing mode or data');
+        // Add safety checks
+        if (!this.currentMode) {
+            console.error('❌ currentMode is null or undefined');
+            Utils.showAlert('Configuration mode not set', 'error');
+            return;
+        }
+        
+        if (Object.keys(this.data).length === 0) {
+            console.error('❌ No configuration data');
             Utils.showAlert('Please select all options before proceeding', 'warning');
             return;
         }
@@ -287,28 +294,34 @@ const Config = {
         
         // Skip choice dialog for now - go straight to AI
         console.log('🤖 Going directly to AI assistance');
-        const prompt = this.buildPrompt(this.currentMode, this.data);
-        console.log('📝 Generated prompt:', prompt);
         
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.value = prompt;
-            console.log('✅ Prompt set in input');
+        try {
+            const prompt = this.buildPrompt(this.currentMode, this.data);
+            console.log('📝 Generated prompt:', prompt);
             
-            // Trigger input resize
-            if (typeof Chat !== 'undefined' && Chat.autoResize) {
-                Chat.autoResize(messageInput);
-            }
-            
-            // Send message
-            if (typeof Chat !== 'undefined' && Chat.sendMessage) {
-                console.log('📤 Sending message via Chat.sendMessage()');
-                Chat.sendMessage();
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.value = prompt;
+                console.log('✅ Prompt set in input');
+                
+                // Trigger input resize
+                if (typeof Chat !== 'undefined' && Chat.autoResize) {
+                    Chat.autoResize(messageInput);
+                }
+                
+                // Send message
+                if (typeof Chat !== 'undefined' && Chat.sendMessage) {
+                    console.log('📤 Sending message via Chat.sendMessage()');
+                    Chat.sendMessage();
+                } else {
+                    console.error('❌ Chat module not available');
+                }
             } else {
-                console.error('❌ Chat module not available');
+                console.error('❌ Message input not found');
             }
-        } else {
-            console.error('❌ Message input not found');
+        } catch (error) {
+            console.error('❌ Error in processAndChat:', error);
+            Utils.showAlert('Error processing configuration: ' + error.message, 'error');
         }
     },
     
