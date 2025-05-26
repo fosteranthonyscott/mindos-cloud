@@ -337,17 +337,151 @@ async function runMigration() {
     }
 }
 
-// Run migration if this file is executed directly
+// Handle different operations based on command line arguments
 if (require.main === module) {
-    runMigration()
-        .then(() => {
-            console.log('🎉 Enhanced memory migration completed successfully!');
-            process.exit(0);
-        })
-        .catch((error) => {
-            console.error('💥 Migration script failed:', error);
-            process.exit(1);
-        });
+    const operation = process.argv[2];
+    
+    switch (operation) {
+        case 'cleanup':
+            runCleanup()
+                .then(() => {
+                    console.log('🎉 Database cleanup completed!');
+                    process.exit(0);
+                })
+                .catch((error) => {
+                    console.error('💥 Cleanup failed:', error);
+                    process.exit(1);
+                });
+            break;
+            
+        case 'status':
+            checkStatus()
+                .then(() => {
+                    console.log('📊 Status check completed!');
+                    process.exit(0);
+                })
+                .catch((error) => {
+                    console.error('💥 Status check failed:', error);
+                    process.exit(1);
+                });
+            break;
+            
+        default:
+            // Default: run migration
+            runMigration()
+                .then(() => {
+                    console.log('🎉 Enhanced memory migration completed successfully!');
+                    process.exit(0);
+                })
+                .catch((error) => {
+                    console.error('💥 Migration script failed:', error);
+                    process.exit(1);
+                });
+            break;
+    }
 }
 
-module.exports = { runMigration };
+// Utility function to run cleanup
+async function runCleanup() {
+    let client;
+    
+    try {
+        console.log('🧹 Running database cleanup...');
+        client = await db.connect();
+        
+        const result = await client.query('SELECT cleanup_old_conversations();');
+        console.log('✅ Cleanup completed successfully');
+        
+        // Show cleanup stats
+        const stats = await client.query(`
+            SELECT 
+                'Cleanup Stats' as operation,
+                (SELECT COUNT(*) FROM conversation_sessions WHERE status = 'active') as active_sessions,
+                (SELECT COUNT(*) FROM conversation_chunks WHERE status = 'pending') as pending_chunks,
+                (SELECT COUNT(*) FROM memory_operations_log WHERE created_at > NOW() - INTERVAL '7 days') as recent_operations
+        `);
+        
+        console.table(stats.rows);
+        
+    } catch (error) {
+        console.error('❌ Cleanup failed:', error);
+        process.exit(1);
+    } finally {
+        if (client) client.release();
+        await db.end();
+    }
+}
+
+// Utility function to check migration status
+async function checkStatus() {
+    let client;
+    
+    try {
+        console.log('📊 Checking database status...');
+        client = await db.connect();
+        
+        // Check if enhanced tables exist
+        const tableCheck = await client.query(`
+            SELECT 
+                table_name,
+                CASE WHEN table_name IS NOT NULL THEN 'EXISTS' ELSE 'MISSING' END as status
+            FROM (
+                VALUES 
+                    ('conversation_sessions'),
+                    ('conversation_chunks'), 
+                    ('memory_operations_log'),
+                    ('memory_matching_patterns')
+            ) AS expected(table_name)
+            LEFT JOIN information_schema.tables t 
+                ON t.table_name = expected.table_name 
+                AND t.table_schema = 'public'
+            ORDER BY expected.table_name;
+        `);
+        
+        console.log('📋 Enhanced Tables Status:');
+        console.table(tableCheck.rows);
+        
+        // Check memory table columns
+        const columnCheck = await client.query(`
+            SELECT 
+                column_name,
+                data_type,
+                CASE WHEN column_default IS NOT NULL THEN 'YES' ELSE 'NO' END as has_default
+            FROM information_schema.columns 
+            WHERE table_name = 'memories' 
+            AND column_name IN ('operation_history', 'last_operation_type', 'last_operation_date', 'update_count')
+            ORDER BY column_name;
+        `);
+        
+        console.log('🗃️ Enhanced Memory Columns:');
+        console.table(columnCheck.rows);
+        
+        // Show recent activity
+        const activityCheck = await client.query(`
+            SELECT 
+                'Recent Activity (7 days)' as period,
+                (SELECT COUNT(*) FROM memory_operations_log WHERE created_at > NOW() - INTERVAL '7 days') as memory_operations,
+                (SELECT COUNT(*) FROM conversation_sessions WHERE last_activity > NOW() - INTERVAL '7 days') as active_conversations,
+                (SELECT COUNT(*) FROM conversation_chunks WHERE created_at > NOW() - INTERVAL '7 days') as conversation_chunks
+        `);
+        
+        console.log('📈 Recent Activity:');
+        console.table(activityCheck.rows);
+        
+    } catch (error) {
+        console.error('❌ Status check failed:', error);
+        
+        // If tables don't exist, suggest migration
+        if (error.message.includes('relation') && error.message.includes('does not exist')) {
+            console.log('\n💡 Enhanced tables not found. Run migration:');
+            console.log('   npm run migrate-enhanced');
+        }
+        
+        process.exit(1);
+    } finally {
+        if (client) client.release();
+        await db.end();
+    }
+}
+
+module.exports = { runMigration, runCleanup, checkStatus };
