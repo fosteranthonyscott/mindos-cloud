@@ -1,44 +1,27 @@
-// Card Interface Management
+// ScrollCards Interface Management
 const Cards = {
     // Current state
     cards: [],
     selectedCard: null,
-    quickAddType: null,
+    currentCardIndex: 0,
+    isScrolling: false,
+    scrollCards: null,
     
     // Initialize card system
     init() {
         this.setupEventListeners();
+        this.scrollCards = new ScrollCards();
         this.loadTodaysCards();
     },
     
     // Setup event listeners
     setupEventListeners() {
-        // Quick add buttons
-        document.querySelectorAll('.quick-add-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const type = e.currentTarget.dataset.type;
-                this.openQuickAdd(type);
-            });
-        });
-        
         // Modal controls
-        document.getElementById('quickAddClose').addEventListener('click', this.closeQuickAdd.bind(this));
-        document.getElementById('quickAddCancel').addEventListener('click', this.closeQuickAdd.bind(this));
-        document.getElementById('quickAddSave').addEventListener('click', this.saveQuickAdd.bind(this));
-        
-        // Card modal
-        document.getElementById('cardModalClose').addEventListener('click', this.closeCardModal.bind(this));
-        
-        // Floating chat
-        document.getElementById('floatingChatBtn').addEventListener('click', this.openGlobalChat.bind(this));
+        document.getElementById('cardModalClose')?.addEventListener('click', this.closeCardModal.bind(this));
         
         // Close modals on overlay click
-        document.getElementById('quickAddModal').addEventListener('click', (e) => {
-            if (e.target.id === 'quickAddModal') this.closeQuickAdd();
-        });
-        
-        document.getElementById('cardModal').addEventListener('click', (e) => {
-            if (e.target.id === 'cardModal') this.closeCardModal();
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'chatModal') this.closeCardModal();
         });
     },
     
@@ -51,7 +34,7 @@ const Cards = {
             const response = await API.get('/api/memories/today');
             this.cards = response || [];
             
-            this.renderCards();
+            this.renderScrollCards();
             this.updateMemoryCount();
             
         } catch (error) {
@@ -62,26 +45,24 @@ const Cards = {
         }
     },
     
-    // Render cards in the feed
-    renderCards() {
-        const feed = document.getElementById('cardsFeed');
+    // Render cards in ScrollCards format
+    renderScrollCards() {
+        const viewport = document.getElementById('cardsViewport');
         const emptyState = document.getElementById('emptyState');
         
         if (this.cards.length === 0) {
-            feed.innerHTML = '';
-            emptyState.classList.add('show');
+            viewport.innerHTML = '';
+            emptyState?.classList.add('show');
             return;
         }
         
-        emptyState.classList.remove('show');
+        emptyState?.classList.remove('show');
         
         // Sort by priority and due date
         const sortedCards = this.cards.sort((a, b) => {
-            // Priority first (5 = highest)
             const priorityDiff = (b.priority || 1) - (a.priority || 1);
             if (priorityDiff !== 0) return priorityDiff;
             
-            // Then by due date
             if (a.due && b.due) {
                 return new Date(a.due) - new Date(b.due);
             }
@@ -91,14 +72,16 @@ const Cards = {
             return 0;
         });
         
-        feed.innerHTML = sortedCards.map(card => this.createCardHTML(card)).join('');
+        viewport.innerHTML = sortedCards.map(card => this.createScrollCardHTML(card)).join('');
         
-        // Add event listeners to cards
-        this.setupCardListeners();
+        // Initialize ScrollCards functionality
+        if (this.scrollCards) {
+            this.scrollCards.updateCards();
+        }
     },
     
-    // Create HTML for a single card
-    createCardHTML(memory) {
+    // Create HTML for a single scroll card
+    createScrollCardHTML(memory) {
         const type = memory.type || 'memory';
         const priority = memory.priority || 1;
         const title = memory.content_short || memory.content?.substring(0, 80) || 'Untitled';
@@ -141,75 +124,54 @@ const Cards = {
                         <div class="progress-fill" style="width: ${progress}%"></div>
                     </div>
                     <div class="progress-text">
-                        <span>Progress</span>
-                        <span>${progress}%</span>
+                        <span>Progress: ${progress}%</span>
                     </div>
                 </div>
             `;
         }
         
         return `
-            <div class="memory-card priority-${priority}" data-memory-id="${memory.id}" data-type="${type}">
-                <div class="card-header">
-                    <div class="card-type-badge ${type}">${type}</div>
-                    <div class="card-priority">
-                        <span class="priority-stars">${'★'.repeat(priority)}</span>
+            <div class="memory-card" data-memory-id="${memory.id}" data-type="${type}">
+                <div class="card-content-area">
+                    <div class="card-header">
+                        <div class="card-type-badge ${type}">${type}</div>
+                        <div class="card-priority">
+                            <span class="priority-stars">${'★'.repeat(priority)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-main-content">
+                        <div class="card-title">${title}</div>
+                        ${description ? `<div class="card-description">${description}</div>` : ''}
+                        
+                        <div class="card-meta">
+                            ${dueMeta}
+                            ${memory.required_time ? `<div class="meta-item"><i class="fas fa-clock"></i> ${memory.required_time}</div>` : ''}
+                            ${memory.location ? `<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>` : ''}
+                            ${memory.energy_requirements ? `<div class="meta-item"><i class="fas fa-battery-three-quarters"></i> ${memory.energy_requirements} energy</div>` : ''}
+                        </div>
+                        
+                        ${streakHTML}
+                        ${progressHTML}
                     </div>
                 </div>
                 
-                <div class="card-title">${title}</div>
-                ${description ? `<div class="card-description">${description}</div>` : ''}
-                
-                <div class="card-meta">
-                    ${dueMeta}
-                    ${memory.required_time ? `<div class="meta-item"><i class="fas fa-clock"></i> ${memory.required_time}</div>` : ''}
-                    ${memory.location ? `<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>` : ''}
-                    ${memory.energy_requirements ? `<div class="meta-item"><i class="fas fa-battery-three-quarters"></i> ${memory.energy_requirements} energy</div>` : ''}
-                </div>
-                
-                ${streakHTML}
-                ${progressHTML}
-                
-                <div class="card-actions">
-                    <button class="card-action-btn complete" data-action="complete" title="Mark Complete">
+                <div class="card-controls">
+                    <button class="control-btn complete" data-label="Complete" data-action="complete">
                         <i class="fas fa-check"></i>
                     </button>
-                    <button class="card-action-btn chat" data-action="chat" title="Chat About This">
+                    <button class="control-btn chat" data-label="Chat" data-action="chat">
                         <i class="fas fa-comments"></i>
                     </button>
-                    <button class="card-action-btn" data-action="edit" title="Edit Details">
+                    <button class="control-btn edit" data-label="Edit" data-action="edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="card-action-btn" data-action="delete" title="Delete">
+                    <button class="control-btn delete" data-label="Delete" data-action="delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
         `;
-    },
-    
-    // Setup listeners for rendered cards
-    setupCardListeners() {
-        // Card click to expand
-        document.querySelectorAll('.memory-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('.card-actions')) {
-                    const memoryId = parseInt(card.dataset.memoryId);
-                    this.openCardDetail(memoryId);
-                }
-            });
-        });
-        
-        // Card action buttons
-        document.querySelectorAll('.card-action-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const action = btn.dataset.action;
-                const card = btn.closest('.memory-card');
-                const memoryId = parseInt(card.dataset.memoryId);
-                this.handleCardAction(memoryId, action);
-            });
-        });
     },
     
     // Handle card actions
@@ -243,64 +205,37 @@ const Cards = {
             
             // Remove from current view
             this.cards = this.cards.filter(c => c.id !== memoryId);
-            this.renderCards();
+            this.renderScrollCards();
             this.updateMemoryCount();
             
-            Utils.showAlert('Item marked as complete!', 'success');
+            this.showFeedback('Item completed! 🎉', 'success');
             
         } catch (error) {
-            Utils.showAlert('Failed to complete item', 'error');
+            this.showFeedback('Failed to complete item', 'error');
         }
     },
     
-    // Open card detail modal
-    openCardDetail(memoryId) {
+    // Open card chat modal
+    openCardChat(memoryId) {
         const memory = this.cards.find(c => c.id === memoryId);
         if (!memory) return;
         
         this.selectedCard = memory;
         
-        const modalBody = document.getElementById('cardModalBody');
-        modalBody.innerHTML = `
-            <div class="card-detail-content">
-                <div class="card-detail-header">
-                    <span class="card-type-badge ${memory.type}">${memory.type}</span>
-                    <div class="card-priority">Priority: ${'★'.repeat(memory.priority || 1)}</div>
-                </div>
-                
-                <h2>${memory.content_short || memory.content}</h2>
-                
-                <div class="card-detail-fields">
-                    ${memory.content ? `<div class="detail-field">
-                        <label>Description:</label>
-                        <p>${memory.content}</p>
-                    </div>` : ''}
-                    
-                    ${memory.notes ? `<div class="detail-field">
-                        <label>Notes:</label>
-                        <p>${memory.notes}</p>
-                    </div>` : ''}
-                    
-                    ${memory.due ? `<div class="detail-field">
-                        <label>Due Date:</label>
-                        <p>${Utils.formatDate(memory.due)}</p>
-                    </div>` : ''}
-                </div>
-                
-                <div class="card-chat-section">
-                    <h3>Chat about this item</h3>
-                    <div class="card-chat-messages" id="cardChatMessages">
-                        <!-- Chat messages will appear here -->
-                    </div>
-                    <div class="card-chat-input">
-                        <input type="text" id="cardChatInput" placeholder="Ask about this item or request changes...">
-                        <button id="cardChatSend"><i class="fas fa-paper-plane"></i></button>
-                    </div>
-                </div>
+        const modal = document.getElementById('chatModal');
+        const title = document.getElementById('chatModalTitle');
+        const cardTitle = memory.content_short || memory.content;
+        
+        title.textContent = cardTitle;
+        modal.classList.add('show');
+        
+        // Clear previous messages and add context message
+        const messagesContainer = document.getElementById('chatMessages');
+        messagesContainer.innerHTML = `
+            <div class="chat-message assistant">
+                Hi! I can help you with "${cardTitle}". What would you like to discuss or change?
             </div>
         `;
-        
-        document.getElementById('cardModal').classList.add('show');
         
         // Setup chat for this card
         this.setupCardChat(memoryId);
@@ -308,14 +243,20 @@ const Cards = {
     
     // Setup chat functionality for a specific card
     setupCardChat(memoryId) {
-        const input = document.getElementById('cardChatInput');
-        const sendBtn = document.getElementById('cardChatSend');
+        const input = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('chatSendBtn');
+        
+        // Remove any existing listeners
+        const newInput = input.cloneNode(true);
+        const newSendBtn = sendBtn.cloneNode(true);
+        input.parentNode.replaceChild(newInput, input);
+        sendBtn.parentNode.replaceChild(newSendBtn, sendBtn);
         
         const sendMessage = async () => {
-            const message = input.value.trim();
+            const message = newInput.value.trim();
             if (!message) return;
             
-            input.value = '';
+            newInput.value = '';
             
             // Add user message to chat
             this.addCardChatMessage('user', message);
@@ -336,202 +277,51 @@ const Cards = {
             }
         };
         
-        sendBtn.addEventListener('click', sendMessage);
-        input.addEventListener('keypress', (e) => {
+        newSendBtn.addEventListener('click', sendMessage);
+        newInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
     },
     
     // Add message to card chat
     addCardChatMessage(role, content) {
-        const messagesContainer = document.getElementById('cardChatMessages');
+        const messagesContainer = document.getElementById('chatMessages');
         const messageDiv = document.createElement('div');
-        messageDiv.className = `card-chat-message ${role}`;
-        messageDiv.innerHTML = `
-            <div class="message-content">${content}</div>
-            <div class="message-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-        `;
+        messageDiv.className = `chat-message ${role}`;
+        messageDiv.textContent = content;
         messagesContainer.appendChild(messageDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     },
     
-    // Open quick add modal
-    openQuickAdd(type) {
-        this.quickAddType = type;
-        
-        document.getElementById('quickAddTitle').textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-        
-        // Generate form based on type
-        const form = document.getElementById('quickAddForm');
-        form.innerHTML = this.generateQuickAddForm(type);
-        
-        document.getElementById('quickAddModal').classList.add('show');
+    // Edit card
+    editCard(memoryId) {
+        this.showFeedback('Edit modal would open here', 'info');
+        // TODO: Implement edit modal
     },
     
-    // Generate form fields based on type
-    generateQuickAddForm(type) {
-        const commonFields = `
-            <div class="form-group">
-                <label>Title/Description *</label>
-                <input type="text" id="quickAddContent" placeholder="What needs to be done?" required>
-            </div>
-            <div class="form-group">
-                <label>Priority</label>
-                <select id="quickAddPriority">
-                    <option value="3">Normal</option>
-                    <option value="4">High</option>
-                    <option value="5">Urgent</option>
-                    <option value="2">Low</option>
-                    <option value="1">Optional</option>
-                </select>
-            </div>
-        `;
-        
-        const typeSpecific = {
-            task: `
-                <div class="form-group">
-                    <label>Due Date</label>
-                    <input type="date" id="quickAddDue">
-                </div>
-                <div class="form-group">
-                    <label>Estimated Time</label>
-                    <input type="text" id="quickAddTime" placeholder="e.g., 30 minutes, 2 hours">
-                </div>
-            `,
-            routine: `
-                <div class="form-group">
-                    <label>Routine Type</label>
-                    <select id="quickAddRoutineType">
-                        <option value="morning">Morning</option>
-                        <option value="evening">Evening</option>
-                        <option value="work">Work</option>
-                        <option value="exercise">Exercise</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Frequency</label>
-                    <select id="quickAddFrequency">
-                        <option value="daily">Daily</option>
-                        <option value="weekdays">Weekdays</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                </div>
-            `,
-            goal: `
-                <div class="form-group">
-                    <label>Target Date</label>
-                    <input type="date" id="quickAddTarget">
-                </div>
-                <div class="form-group">
-                    <label>Goal Type</label>
-                    <select id="quickAddGoalType">
-                        <option value="short-term">Short-term</option>
-                        <option value="long-term">Long-term</option>
-                        <option value="habit">Habit</option>
-                        <option value="project">Project</option>
-                    </select>
-                </div>
-            `,
-            event: `
-                <div class="form-group">
-                    <label>Event Date *</label>
-                    <input type="date" id="quickAddDate" required>
-                </div>
-                <div class="form-group">
-                    <label>Time</label>
-                    <input type="time" id="quickAddEventTime">
-                </div>
-            `,
-            memory: `
-                <div class="form-group">
-                    <label>Memory Type</label>
-                    <select id="quickAddMemoryType">
-                        <option value="insight">Insight</option>
-                        <option value="preference">Preference</option>
-                        <option value="event">Event</option>
-                        <option value="system">System Note</option>
-                    </select>
-                </div>
-            `
-        };
-        
-        return commonFields + (typeSpecific[type] || '') + `
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea id="quickAddNotes" placeholder="Additional details..."></textarea>
-            </div>
-        `;
-    },
-    
-    // Save quick add form
-    async saveQuickAdd() {
-        try {
-            const formData = this.collectQuickAddData();
-            
-            if (!formData.content) {
-                Utils.showAlert('Please enter a title/description', 'error');
-                return;
+    // Delete card
+    async deleteCard(memoryId) {
+        if (confirm('Are you sure you want to delete this card?')) {
+            try {
+                await API.delete(`/api/memories/${memoryId}`);
+                
+                // Remove from current view
+                this.cards = this.cards.filter(c => c.id !== memoryId);
+                this.renderScrollCards();
+                this.updateMemoryCount();
+                
+                this.showFeedback('Card deleted', 'success');
+                
+            } catch (error) {
+                this.showFeedback('Failed to delete card', 'error');
             }
-            
-            const response = await API.post('/api/memories', formData);
-            
-            this.closeQuickAdd();
-            this.loadTodaysCards(); // Refresh the view
-            
-            Utils.showAlert(`${this.quickAddType} added successfully!`, 'success');
-            
-        } catch (error) {
-            Utils.showAlert('Failed to save item', 'error');
         }
-    },
-    
-    // Collect data from quick add form
-    collectQuickAddData() {
-        const data = {
-            type: this.quickAddType,
-            content: document.getElementById('quickAddContent')?.value || '',
-            priority: document.getElementById('quickAddPriority')?.value || '3',
-            notes: document.getElementById('quickAddNotes')?.value || ''
-        };
-        
-        // Add type-specific fields
-        const typeFields = {
-            task: ['due', 'time'],
-            routine: ['routineType', 'frequency'],
-            goal: ['target', 'goalType'],
-            event: ['date', 'eventTime'],
-            memory: ['memoryType']
-        };
-        
-        const fields = typeFields[this.quickAddType] || [];
-        fields.forEach(field => {
-            const element = document.getElementById(`quickAdd${field.charAt(0).toUpperCase() + field.slice(1)}`);
-            if (element?.value) {
-                data[field] = element.value;
-            }
-        });
-        
-        return data;
-    },
-    
-    // Close quick add modal
-    closeQuickAdd() {
-        document.getElementById('quickAddModal').classList.remove('show');
-        this.quickAddType = null;
     },
     
     // Close card modal
     closeCardModal() {
-        document.getElementById('cardModal').classList.remove('show');
+        document.getElementById('chatModal').classList.remove('show');
         this.selectedCard = null;
-    },
-    
-    // Open global chat
-    openGlobalChat() {
-        // Switch to chat interface temporarily
-        Utils.showAlert('Global chat coming soon!', 'info');
     },
     
     // Show/hide loading state
@@ -540,11 +330,11 @@ const Cards = {
         const container = document.getElementById('cardsContainer');
         
         if (show) {
-            loading.classList.add('show');
-            container.style.display = 'none';
+            loading?.classList.add('show');
+            if (container) container.style.display = 'none';
         } else {
-            loading.classList.remove('show');
-            container.style.display = 'block';
+            loading?.classList.remove('show');
+            if (container) container.style.display = 'block';
         }
     },
     
@@ -559,8 +349,195 @@ const Cards = {
         if (countEl) {
             countEl.textContent = `${this.cards.length} items today`;
         }
+    },
+    
+    // Show feedback message
+    showFeedback(message, type = 'info') {
+        // Create temporary feedback element
+        const feedback = document.createElement('div');
+        feedback.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#667eea'};
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            z-index: 3000;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        feedback.textContent = message;
+        
+        document.body.appendChild(feedback);
+        
+        // Show feedback
+        setTimeout(() => feedback.style.opacity = '1', 10);
+        
+        // Remove feedback
+        setTimeout(() => {
+            feedback.style.opacity = '0';
+            setTimeout(() => document.body.removeChild(feedback), 300);
+        }, 2000);
     }
 };
+
+// ScrollCards Class for handling the scroll interface
+class ScrollCards {
+    constructor() {
+        this.currentCardIndex = 0;
+        this.cards = [];
+        this.isScrolling = false;
+        this.init();
+    }
+
+    init() {
+        this.setupCards();
+        this.setupNavigation();
+        this.setupControls();
+        this.updateNavigationDots();
+    }
+
+    setupCards() {
+        this.updateCards();
+        const viewport = document.getElementById('cardsViewport');
+        
+        if (viewport) {
+            // Set up scroll snap and handle scroll events
+            viewport.addEventListener('scroll', this.handleScroll.bind(this));
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', this.handleKeyboard.bind(this));
+    }
+    
+    updateCards() {
+        this.cards = Array.from(document.querySelectorAll('.memory-card'));
+        this.updateNavigationDots();
+    }
+
+    setupNavigation() {
+        // Touch/swipe support
+        let startY = 0;
+        let startTime = 0;
+        const viewport = document.getElementById('cardsViewport');
+        
+        if (!viewport) return;
+
+        viewport.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            startTime = Date.now();
+        });
+
+        viewport.addEventListener('touchend', (e) => {
+            const endY = e.changedTouches[0].clientY;
+            const endTime = Date.now();
+            const deltaY = startY - endY;
+            const deltaTime = endTime - startTime;
+
+            // Swipe detection
+            if (Math.abs(deltaY) > 50 && deltaTime < 300) {
+                if (deltaY > 0) {
+                    this.nextCard();
+                } else {
+                    this.previousCard();
+                }
+            }
+        });
+    }
+
+    setupControls() {
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.control-btn')) {
+                const btn = e.target.closest('.control-btn');
+                const action = btn.dataset.action;
+                const card = btn.closest('.memory-card');
+                const memoryId = parseInt(card.dataset.memoryId);
+                
+                Cards.handleCardAction(memoryId, action);
+            }
+        });
+    }
+
+    handleScroll() {
+        if (this.isScrolling) return;
+        
+        this.isScrolling = true;
+        setTimeout(() => {
+            this.updateCurrentCard();
+            this.isScrolling = false;
+        }, 100);
+    }
+
+    updateCurrentCard() {
+        const viewport = document.getElementById('cardsViewport');
+        if (!viewport) return;
+        
+        const scrollTop = viewport.scrollTop;
+        const cardHeight = window.innerHeight - 70; // Minus header height
+        
+        this.currentCardIndex = Math.round(scrollTop / cardHeight);
+        this.updateNavigationDots();
+    }
+
+    updateNavigationDots() {
+        const navigation = document.getElementById('cardNavigation');
+        if (!navigation) return;
+        
+        navigation.innerHTML = '';
+        
+        this.cards.forEach((_, index) => {
+            const dot = document.createElement('div');
+            dot.className = `nav-dot ${index === this.currentCardIndex ? 'active' : ''}`;
+            dot.addEventListener('click', () => this.goToCard(index));
+            navigation.appendChild(dot);
+        });
+    }
+
+    goToCard(index) {
+        if (index >= 0 && index < this.cards.length) {
+            const viewport = document.getElementById('cardsViewport');
+            if (!viewport) return;
+            
+            const cardHeight = window.innerHeight - 70;
+            
+            viewport.scrollTo({
+                top: index * cardHeight,
+                behavior: 'smooth'
+            });
+            
+            this.currentCardIndex = index;
+            this.updateNavigationDots();
+        }
+    }
+
+    nextCard() {
+        this.goToCard(this.currentCardIndex + 1);
+    }
+
+    previousCard() {
+        this.goToCard(this.currentCardIndex - 1);
+    }
+
+    handleKeyboard(e) {
+        switch (e.key) {
+            case 'ArrowDown':
+            case ' ':
+                e.preventDefault();
+                this.nextCard();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                this.previousCard();
+                break;
+            case 'Escape':
+                document.getElementById('chatModal')?.classList.remove('show');
+                break;
+        }
+    }
+}
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
