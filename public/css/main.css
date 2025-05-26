@@ -314,3 +314,227 @@ body {
 .rounded-lg { border-radius: 12px; }
 .rounded-xl { border-radius: 16px; }
 .rounded-full { border-radius: 50%; }
+
+/* Mobile Font Weight Fixes for MindOS */
+/* Add this to your main.css or create as a separate file and include it */
+
+/* Base font weight improvements for mobile */
+@media (max-width: 768px) {
+    /* Strengthen base body text */
+    body {
+        font-weight: 450; /* Slightly heavier than normal 400 */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Strengthen all paragraphs and text content */
+    p, span, div:not(.icon):not(.emoji) {
+        font-weight: 450;
+    }
+    
+    /* Headers need to be more prominent */
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: 700 !important; /* Stronger than current 600 */
+    }
+    
+    /* Chat interface text improvements */
+    .message-content {
+        font-weight: 500 !important; /* Up from default */
+        color: #1a1a1a; /* Darker color for better contrast */
+    }
+    
+    .message.user .message-content {
+        font-weight: 500 !important;
+        color: #ffffff; /* Ensure white text is bold enough */
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Subtle shadow for readability */
+    }
+    
+    /* Button text needs to be stronger */
+    .btn, .modal-btn, .auth-btn, .send-btn {
+        font-weight: 600 !important;
+    }
+    
+    /* Navigation and menu items */
+    .menu-item, .sidebar-user, .header-title {
+        font-weight: 500 !important;
+    }
+    
+    /* Form inputs and labels */
+    .form-input, .message-input, 
+    .memory-detail-input, .config-form-input {
+        font-weight: 450;
+        color: #1a1a1a; /* Darker text in inputs */
+    }
+    
+    label, .form-group label, .memory-detail-label {
+        font-weight: 600 !important;
+        color: #1a1a1a;
+    }
+    
+    /* Memory cards and content */
+    .memory-card-content, .memory-item-header,
+    .memory-preview-content, .selectable-memory-card {
+        font-weight: 500;
+    }
+    
+    .memory-type, .memory-card-title {
+        font-weight: 700 !important;
+    }
+    
+    /* Modal content */
+    .modal-title, .modal-header, 
+    .config-title, .all-memories-title {
+        font-weight: 700 !important;
+    }
+    
+    /* Auth screen improvements */
+    .auth-header h1 {
+        font-weight: 800 !important; /* Extra bold for main title */
+    }
+    
+    .auth-tab {
+        font-weight: 600 !important;
+    }
+    
+    /* Specific contrast improvements */
+    .header-subtitle, .user-status, .session-info {
+        font-weight: 500;
+        opacity: 0.95; /* Less transparent than current 0.8-0.9 */
+    }
+    
+    /* Ensure adequate contrast for secondary text */
+    .text-secondary, .text-muted {
+        font-weight: 500;
+        color: #4a4a4a !important; /* Darker than current #666 or #888 */
+    }
+    
+    /* Memory metadata and small text */
+    .memory-metadata, .memory-card-meta, 
+    .meta-item, .session-info {
+        font-weight: 500;
+        color: #4a4a4a;
+    }
+    
+    /* Filter buttons and small controls */
+    .filter-btn, .memory-action-btn, 
+    .selection-action-btn {
+        font-weight: 600;
+    }
+    
+    /* Placeholder text */
+    ::placeholder {
+        font-weight: 450;
+        color: #6a6a6a !important; /* Darker placeholder text */
+    }
+    
+    /* Code and monospace text */
+    code, pre {
+        font-weight: 500;
+        color: #1a1a1a;
+    }
+    
+    /* Time stamps and dates */
+    .message-time, .memory-card-due, 
+    .memory-card-time {
+        font-weight: 500;
+        color: #4a4a4a;
+    }
+}
+
+/* Extra small mobile devices - even stronger fonts */
+@media (max-width: 480px) {
+    body {
+        font-weight: 500; /* Even heavier for small screens */
+    }
+    
+    .message-content {
+        font-weight: 550 !important;
+    }
+    
+    .memory-card-content, .memory-preview-content {
+        font-weight: 550;
+    }
+    
+    /* Ensure buttons are very readable */
+    .btn, .modal-btn, .auth-btn {
+        font-weight: 700 !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    /* Headers extra bold on small screens */
+    h1, h2, h3 {
+        font-weight: 800 !important;
+    }
+    
+    /* Menu items more prominent */
+    .menu-item, .sidebar-user {
+        font-weight: 600 !important;
+    }
+}
+
+/* High DPI/Retina display adjustments */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+    body {
+        font-weight: 450; /* Slightly lighter on high DPI since text appears sharper */
+    }
+    
+    .message-content {
+        font-weight: 500;
+    }
+}
+
+/* Dark mode adjustments if user prefers dark */
+@media (prefers-color-scheme: dark) {
+    body:not(.light-mode) {
+        font-weight: 500; /* Heavier font weight for dark backgrounds */
+    }
+    
+    .text-secondary:not(.light-mode), 
+    .text-muted:not(.light-mode) {
+        color: #cccccc !important;
+        font-weight: 500;
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-contrast: high) {
+    body, p, span, div {
+        font-weight: 600 !important;
+        color: #000000 !important;
+    }
+    
+    .text-secondary, .text-muted {
+        color: #333333 !important;
+        font-weight: 600 !important;
+    }
+}
+
+/* Focus states should be very visible on mobile */
+@media (max-width: 768px) {
+    button:focus, input:focus, textarea:focus,
+    select:focus, .btn:focus {
+        outline: 3px solid #667eea !important;
+        outline-offset: 2px;
+        font-weight: 600;
+    }
+}
+
+/* Specific fixes for very light elements */
+@media (max-width: 768px) {
+    /* Any elements that might be using font-weight: 300 or lighter */
+    * {
+        font-weight: 400 !important;
+        min-font-weight: 400;
+    }
+    
+    /* Override any existing light weights */
+    .font-light, .text-light {
+        font-weight: 500 !important;
+    }
+    
+    /* Ensure icons don't interfere */
+    .fas, .far, .fab, .fal, .fad,
+    i[class*="fa-"] {
+        font-weight: 900 !important; /* FontAwesome icons should be bold */
+    }
+}
