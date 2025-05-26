@@ -765,6 +765,145 @@
     justify-content: flex-end;
 }
 
+/* NEW: Config Form Styles for Routine Creation */
+.config-form-container {
+    width: 100%;
+}
+
+.config-form-fields {
+    margin-bottom: 1.5rem;
+}
+
+.config-form-section {
+    margin-bottom: 1.5rem;
+}
+
+.config-form-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.config-form-label i {
+    color: #667eea;
+    margin-right: 0.5rem;
+}
+
+.config-field-remove-btn {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+    font-size: 0.8rem;
+}
+
+.config-field-remove-btn:hover {
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.config-form-input,
+.config-form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e0e6ff;
+    border-radius: 8px;
+    background: #f8f9ff;
+    color: #333;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.config-form-input:focus,
+.config-form-select:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+}
+
+.config-form-textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.config-form-input::placeholder,
+.config-form-textarea::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.config-form-actions {
+    padding: 1rem 0;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: center;
+}
+
+.config-add-field-btn {
+    background: #f8f9ff;
+    border: 2px dashed #e0e6ff;
+    color: #667eea;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.config-add-field-btn:hover {
+    border-color: #667eea;
+    background: #eef2ff;
+    transform: translateY(-1px);
+}
+
+.config-add-field-btn i {
+    font-size: 0.9rem;
+}
+
+/* Required field indicator */
+.config-form-label span[style*="color: red"] {
+    color: #e74c3c !important;
+    font-weight: bold;
+    margin-left: 0.25rem;
+}
+
+/* Form validation states */
+.config-form-input.invalid,
+.config-form-select.invalid,
+.config-form-textarea.invalid {
+    border-color: #e74c3c;
+    background: #ffeaea;
+}
+
+.config-form-input.valid,
+.config-form-select.valid,
+.config-form-textarea.valid {
+    border-color: #4CAF50;
+    background: #f0f8f0;
+}
+
+/* Enhanced field styling */
+.config-form-section[data-field="content"] .config-form-label {
+    color: #667eea;
+    font-size: 1rem;
+}
+
+.config-form-section[data-field="routine_type"] .config-form-label,
+.config-form-section[data-field="frequency"] .config-form-label {
+    color: #764ba2;
+}
+
 /* Confirmation Dialog */
 .confirm-dialog {
     position: fixed;
