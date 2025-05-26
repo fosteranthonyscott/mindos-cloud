@@ -1,4 +1,4 @@
-// Configuration Module - FIXED VERSION
+// Configuration Module - ENHANCED VERSION with Full Routine Form
 const Config = {
     currentMode: null,
     data: {},
@@ -53,27 +53,96 @@ const Config = {
         'create-routine': {
             title: 'Create Routine',
             subtitle: 'Build sustainable daily or weekly habits',
-            steps: [
-                {
-                    title: 'Routine Type',
-                    options: [
-                        { id: 'morning', title: 'Morning Routine', desc: 'Start your day with purpose' },
-                        { id: 'evening', title: 'Evening Routine', desc: 'Wind down and prepare for tomorrow' },
-                        { id: 'work', title: 'Work Routine', desc: 'Productivity during work hours' },
-                        { id: 'exercise', title: 'Exercise Routine', desc: 'Physical fitness and health' },
-                        { id: 'custom', title: 'Custom Routine', desc: 'Specific activity or habit' }
-                    ]
+            type: 'form', // NEW: Indicates this uses form mode instead of steps
+            defaultFields: {
+                // Required fields
+                type: 'routine',
+                content: '',
+                
+                // Routine-specific fields with defaults
+                routine_type: 'custom',
+                frequency: 'daily',
+                priority: '3',
+                status: 'planned',
+                stage: 'planned',
+                energy_requirements: 'medium',
+                required_time: '15 minutes',
+                performance_streak: '0',
+                trigger: '',
+                success_criteria: '',
+                notes: ''
+            },
+            fieldDefinitions: {
+                routine_type: {
+                    label: 'Routine Type',
+                    icon: 'fas fa-list',
+                    type: 'select',
+                    options: ['morning', 'evening', 'work', 'exercise', 'health', 'learning', 'self-care', 'custom'],
+                    required: true
                 },
-                {
-                    title: 'Frequency',
-                    options: [
-                        { id: 'daily', title: 'Daily', desc: 'Every day without exception' },
-                        { id: 'weekdays', title: 'Weekdays', desc: 'Monday through Friday' },
-                        { id: 'weekly', title: 'Weekly', desc: 'Specific days of the week' },
-                        { id: 'flexible', title: 'Flexible', desc: 'Target frequency with flexibility' }
-                    ]
+                content: {
+                    label: 'Routine Description',
+                    icon: 'fas fa-align-left',
+                    type: 'textarea',
+                    placeholder: 'Describe your routine in detail...',
+                    required: true
+                },
+                frequency: {
+                    label: 'Frequency',
+                    icon: 'fas fa-calendar-alt',
+                    type: 'select',
+                    options: ['daily', 'weekdays', 'weekends', 'weekly', 'bi-weekly', 'monthly', 'flexible'],
+                    required: true
+                },
+                trigger: {
+                    label: 'Trigger/Cue',
+                    icon: 'fas fa-play',
+                    type: 'text',
+                    placeholder: 'What starts this routine? (e.g., wake up, after coffee, 6 PM alarm)'
+                },
+                required_time: {
+                    label: 'Time Required',
+                    icon: 'fas fa-clock',
+                    type: 'text',
+                    placeholder: 'How long does this take? (e.g., 15 minutes, 1 hour)'
+                },
+                energy_requirements: {
+                    label: 'Energy Level Needed',
+                    icon: 'fas fa-battery-three-quarters',
+                    type: 'select',
+                    options: ['low', 'medium', 'high']
+                },
+                priority: {
+                    label: 'Priority',
+                    icon: 'fas fa-star',
+                    type: 'select',
+                    options: ['1', '2', '3', '4', '5']
+                },
+                success_criteria: {
+                    label: 'Success Criteria',
+                    icon: 'fas fa-check-circle',
+                    type: 'textarea',
+                    placeholder: 'How will you know you completed this routine successfully?'
+                },
+                location: {
+                    label: 'Location',
+                    icon: 'fas fa-map-marker-alt',
+                    type: 'text',
+                    placeholder: 'Where does this routine happen?'
+                },
+                resources: {
+                    label: 'Resources Needed',
+                    icon: 'fas fa-tools',
+                    type: 'textarea',
+                    placeholder: 'What do you need to complete this routine?'
+                },
+                notes: {
+                    label: 'Additional Notes',
+                    icon: 'fas fa-sticky-note',
+                    type: 'textarea',
+                    placeholder: 'Any additional details, tips, or reminders'
                 }
-            ]
+            }
         },
         'create-task': {
             title: 'Create Task',
@@ -170,13 +239,244 @@ const Config = {
             return;
         }
         
-        this.populateModal(config);
+        if (config.type === 'form') {
+            this.populateFormModal(config);
+        } else {
+            this.populateStepModal(config);
+        }
+        
         document.getElementById('configModal').classList.add('show');
         console.log('✅ Config modal opened');
     },
     
-    populateModal(config) {
-        console.log('📝 Populating modal with config:', config.title);
+    // NEW: Populate form-based modal (for routines)
+    populateFormModal(config) {
+        console.log('📝 Populating form modal with config:', config.title);
+        
+        document.getElementById('configTitle').textContent = config.title;
+        document.getElementById('configSubtitle').textContent = config.subtitle;
+        
+        const configBody = document.getElementById('configBody');
+        configBody.innerHTML = '';
+        
+        // Initialize data with defaults
+        this.data = { ...config.defaultFields };
+        
+        // Create form container
+        const formContainer = document.createElement('div');
+        formContainer.className = 'config-form-container';
+        formContainer.innerHTML = `
+            <div class="config-form-fields" id="configFormFields">
+                <!-- Fields will be populated here -->
+            </div>
+            <div class="config-form-actions">
+                <button class="config-add-field-btn" id="configAddFieldBtn">
+                    <i class="fas fa-plus"></i> Add Field
+                </button>
+            </div>
+        `;
+        
+        configBody.appendChild(formContainer);
+        
+        // Populate initial fields
+        this.populateFormFields(config);
+        
+        // Setup add field button
+        document.getElementById('configAddFieldBtn').addEventListener('click', () => {
+            this.showAddFieldsForConfig(config);
+        });
+        
+        this.updateProceedButton();
+        console.log('✅ Form modal populated');
+    },
+    
+    // NEW: Populate form fields
+    populateFormFields(config) {
+        const fieldsContainer = document.getElementById('configFormFields');
+        fieldsContainer.innerHTML = '';
+        
+        // Required fields first
+        const requiredFields = ['content', 'routine_type', 'frequency'];
+        requiredFields.forEach(fieldKey => {
+            if (config.fieldDefinitions[fieldKey]) {
+                const field = this.createFormField(fieldKey, this.data[fieldKey] || '', config.fieldDefinitions[fieldKey], true);
+                fieldsContainer.appendChild(field);
+            }
+        });
+        
+        // Optional fields that have values or are commonly used
+        const commonFields = ['trigger', 'required_time', 'energy_requirements', 'priority', 'success_criteria', 'notes'];
+        commonFields.forEach(fieldKey => {
+            if (config.fieldDefinitions[fieldKey] && !requiredFields.includes(fieldKey)) {
+                const field = this.createFormField(fieldKey, this.data[fieldKey] || '', config.fieldDefinitions[fieldKey], false);
+                fieldsContainer.appendChild(field);
+            }
+        });
+    },
+    
+    // NEW: Create form field
+    createFormField(fieldKey, value, fieldDef, isRequired) {
+        const section = document.createElement('div');
+        section.className = 'config-form-section';
+        section.setAttribute('data-field', fieldKey);
+        
+        const label = document.createElement('div');
+        label.className = 'config-form-label';
+        label.innerHTML = `
+            <i class="${fieldDef.icon}"></i>
+            ${fieldDef.label} ${isRequired ? '<span style="color: red;">*</span>' : ''}
+            ${!isRequired ? `<button class="config-field-remove-btn" data-remove-field="${fieldKey}" title="Remove field">
+                <i class="fas fa-times"></i>
+            </button>` : ''}
+        `;
+        
+        let input;
+        if (fieldDef.type === 'textarea') {
+            input = document.createElement('textarea');
+            input.className = 'config-form-input config-form-textarea';
+            input.rows = 3;
+            input.placeholder = fieldDef.placeholder || '';
+        } else if (fieldDef.type === 'select') {
+            input = document.createElement('select');
+            input.className = 'config-form-select';
+            
+            if (!isRequired) {
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = '-- Select --';
+                input.appendChild(emptyOption);
+            }
+            
+            fieldDef.options.forEach(option => {
+                const optionEl = document.createElement('option');
+                optionEl.value = option;
+                optionEl.textContent = option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ');
+                if (option == value) optionEl.selected = true;
+                input.appendChild(optionEl);
+            });
+        } else {
+            input = document.createElement('input');
+            input.className = 'config-form-input';
+            input.type = fieldDef.type || 'text';
+            input.placeholder = fieldDef.placeholder || '';
+            if (fieldDef.step) input.step = fieldDef.step;
+            if (fieldDef.min) input.min = fieldDef.min;
+            if (fieldDef.max) input.max = fieldDef.max;
+        }
+        
+        input.value = value || '';
+        input.setAttribute('data-field-key', fieldKey);
+        
+        // Add change listener
+        input.addEventListener('input', () => {
+            this.handleFormFieldChange(fieldKey, input.value);
+        });
+        
+        section.appendChild(label);
+        section.appendChild(input);
+        
+        // Add remove button listener
+        const removeBtn = label.querySelector('.config-field-remove-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                delete this.data[fieldKey];
+                section.remove();
+                this.updateProceedButton();
+            });
+        }
+        
+        return section;
+    },
+    
+    // NEW: Handle form field changes
+    handleFormFieldChange(fieldKey, value) {
+        this.data[fieldKey] = value;
+        console.log('📝 Field changed:', fieldKey, '=', value);
+        console.log('📋 Current data:', this.data);
+        this.updateProceedButton();
+    },
+    
+    // NEW: Show add fields for config
+    showAddFieldsForConfig(config) {
+        const currentFields = Object.keys(this.data);
+        const availableFields = Object.keys(config.fieldDefinitions).filter(fieldKey => 
+            !currentFields.includes(fieldKey)
+        );
+        
+        if (availableFields.length === 0) {
+            Utils.showAlert('All available fields are already added', 'info');
+            return;
+        }
+        
+        // Create add fields dialog
+        const fieldsDialog = document.createElement('div');
+        fieldsDialog.className = 'memory-confirmation-dialog';
+        fieldsDialog.style.zIndex = '2600';
+        
+        const fieldsId = 'configAddFields_' + Date.now();
+        
+        fieldsDialog.innerHTML = `
+            <div class="add-fields-content">
+                <div class="add-fields-header">
+                    <div class="add-fields-title">Add Routine Fields</div>
+                    <div class="add-fields-subtitle">Select additional fields for your routine</div>
+                </div>
+                
+                <div class="fields-grid" id="${fieldsId}_grid">
+                    <!-- Available fields will be populated here -->
+                </div>
+                
+                <div class="add-fields-actions">
+                    <button class="modal-btn secondary" id="${fieldsId}_cancel">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(fieldsDialog);
+        
+        // Populate available fields
+        const fieldsGrid = document.getElementById(fieldsId + '_grid');
+        availableFields.forEach(fieldKey => {
+            const fieldDef = config.fieldDefinitions[fieldKey];
+            const fieldOption = document.createElement('div');
+            fieldOption.className = 'field-option';
+            fieldOption.innerHTML = `
+                <div class="field-option-icon">
+                    <i class="${fieldDef.icon}"></i>
+                </div>
+                <div class="field-option-name">${fieldDef.label}</div>
+                <div class="field-option-desc">${fieldDef.placeholder || `Add ${fieldDef.label.toLowerCase()} information`}</div>
+            `;
+            
+            fieldOption.addEventListener('click', () => {
+                // Add field to form
+                this.data[fieldKey] = '';
+                const fieldsContainer = document.getElementById('configFormFields');
+                const newField = this.createFormField(fieldKey, '', fieldDef, false);
+                fieldsContainer.appendChild(newField);
+                
+                // Focus new field
+                const input = newField.querySelector('.config-form-input, .config-form-select, .config-form-textarea');
+                if (input) input.focus();
+                
+                // Close dialog
+                document.body.removeChild(fieldsDialog);
+                this.updateProceedButton();
+            });
+            
+            fieldsGrid.appendChild(fieldOption);
+        });
+        
+        // Cancel button
+        document.getElementById(fieldsId + '_cancel').addEventListener('click', () => {
+            document.body.removeChild(fieldsDialog);
+        });
+    },
+    
+    // EXISTING: Populate step-based modal (for other configurations)
+    populateStepModal(config) {
+        console.log('📝 Populating step modal with config:', config.title);
         
         document.getElementById('configTitle').textContent = config.title;
         document.getElementById('configSubtitle').textContent = config.subtitle;
@@ -217,7 +517,7 @@ const Config = {
         });
         
         this.updateProceedButton();
-        console.log('✅ Modal populated');
+        console.log('✅ Step modal populated');
     },
     
     selectOption(stepIndex, optionId, optionElement) {
@@ -240,34 +540,46 @@ const Config = {
     },
     
     updateProceedButton() {
-        const requiredSteps = document.querySelectorAll('.config-step').length;
-        const selectedSteps = Object.keys(this.data).filter(key => 
-            key.startsWith('step_') && !key.includes('_custom')
-        ).length;
-        
         const proceedBtn = document.getElementById('proceedConfigBtn');
-        const isComplete = selectedSteps >= requiredSteps;
+        if (!proceedBtn) {
+            console.error('❌ Proceed button not found!');
+            return;
+        }
+        
+        const config = this.configurations[this.currentMode];
+        let isComplete = false;
+        
+        if (config && config.type === 'form') {
+            // For forms, check if required fields are filled
+            const requiredFields = ['content']; // At minimum, need routine description
+            isComplete = requiredFields.every(field => 
+                this.data[field] && this.data[field].trim() !== ''
+            );
+        } else {
+            // For step-based, check if all steps are completed
+            const requiredSteps = document.querySelectorAll('.config-step').length;
+            const selectedSteps = Object.keys(this.data).filter(key => 
+                key.startsWith('step_') && !key.includes('_custom')
+            ).length;
+            isComplete = selectedSteps >= requiredSteps;
+        }
         
         console.log('📊 Button update:');
-        console.log('  - Required steps:', requiredSteps);
-        console.log('  - Selected steps:', selectedSteps);
+        console.log('  - Mode:', this.currentMode);
+        console.log('  - Config type:', config?.type);
         console.log('  - Is complete:', isComplete);
         console.log('  - Current data:', this.data);
         
-        if (proceedBtn) {
-            proceedBtn.disabled = !isComplete;
-            
-            if (isComplete) {
-                proceedBtn.style.opacity = '1';
-                proceedBtn.style.cursor = 'pointer';
-                console.log('✅ Button ENABLED');
-            } else {
-                proceedBtn.style.opacity = '0.6';
-                proceedBtn.style.cursor = 'not-allowed';
-                console.log('❌ Button DISABLED');
-            }
+        proceedBtn.disabled = !isComplete;
+        
+        if (isComplete) {
+            proceedBtn.style.opacity = '1';
+            proceedBtn.style.cursor = 'pointer';
+            console.log('✅ Button ENABLED');
         } else {
-            console.error('❌ Proceed button not found!');
+            proceedBtn.style.opacity = '0.6';
+            proceedBtn.style.cursor = 'not-allowed';
+            console.log('❌ Button DISABLED');
         }
     },
     
@@ -285,22 +597,20 @@ const Config = {
         
         if (Object.keys(this.data).length === 0) {
             console.error('❌ No configuration data');
-            Utils.showAlert('Please select all options before proceeding', 'warning');
+            Utils.showAlert('Please fill in the required information before proceeding', 'warning');
             return;
         }
         
-        // FIXED: Save mode and data before closing modal
+        // Save mode and data before closing modal
         const savedMode = this.currentMode;
         const savedData = { ...this.data };
         
         console.log('✅ Data validation passed, closing modal');
         this.closeModal();
         
-        // Skip choice dialog for now - go straight to AI
         console.log('🤖 Going directly to AI assistance');
         
         try {
-            // FIXED: Use saved values instead of this.currentMode and this.data
             const prompt = this.buildPrompt(savedMode, savedData);
             console.log('📝 Generated prompt:', prompt);
             
@@ -380,32 +690,73 @@ const Config = {
             },
             
             'create-routine': () => {
-                let prompt = "I want to create a new routine. Please help me design it effectively:\n\n";
+                let prompt = "I want to create a new routine. Please help me set it up and store it as a memory. Here are the details I've provided:\n\n";
                 
-                const routineTypes = {
-                    'morning': 'Morning routine to start the day with purpose',
-                    'evening': 'Evening routine to wind down and prepare for tomorrow',
-                    'work': 'Work routine for productivity during work hours',
-                    'exercise': 'Exercise routine for physical fitness and health',
-                    'custom': 'Custom routine for a specific activity or habit'
-                };
-                
-                const frequencies = {
-                    'daily': 'Every day without exception',
-                    'weekdays': 'Monday through Friday only',
-                    'weekly': 'Specific days of the week',
-                    'flexible': 'Target frequency with flexibility'
-                };
-                
-                if (data.step_0) {
-                    prompt += `**Routine Type**: ${routineTypes[data.step_0]}\n`;
+                // Build prompt from form data
+                if (data.content) {
+                    prompt += `**Routine Description**: ${data.content}\n`;
                 }
                 
-                if (data.step_1) {
-                    prompt += `**Frequency**: ${frequencies[data.step_1]}\n`;
+                if (data.routine_type) {
+                    const typeLabels = {
+                        'morning': 'Morning routine to start the day with purpose',
+                        'evening': 'Evening routine to wind down and prepare for tomorrow',
+                        'work': 'Work routine for productivity during work hours',
+                        'exercise': 'Exercise routine for physical fitness and health',
+                        'health': 'Health and wellness routine',
+                        'learning': 'Learning and skill development routine',
+                        'self-care': 'Self-care and mental wellness routine',
+                        'custom': 'Custom routine'
+                    };
+                    prompt += `**Routine Type**: ${typeLabels[data.routine_type] || data.routine_type}\n`;
                 }
                 
-                prompt += "\nPlease help me create a sustainable routine with specific steps, timing, and success criteria. Store it as a memory when complete.";
+                if (data.frequency) {
+                    const frequencyLabels = {
+                        'daily': 'Every day',
+                        'weekdays': 'Monday through Friday only',
+                        'weekends': 'Weekends only',
+                        'weekly': 'Specific days of the week',
+                        'bi-weekly': 'Every two weeks',
+                        'monthly': 'Once per month',
+                        'flexible': 'Flexible timing based on circumstances'
+                    };
+                    prompt += `**Frequency**: ${frequencyLabels[data.frequency] || data.frequency}\n`;
+                }
+                
+                if (data.trigger) {
+                    prompt += `**Trigger/Cue**: ${data.trigger}\n`;
+                }
+                
+                if (data.required_time) {
+                    prompt += `**Time Required**: ${data.required_time}\n`;
+                }
+                
+                if (data.energy_requirements) {
+                    prompt += `**Energy Level Needed**: ${data.energy_requirements}\n`;
+                }
+                
+                if (data.priority) {
+                    prompt += `**Priority**: ${data.priority}/5\n`;
+                }
+                
+                if (data.success_criteria) {
+                    prompt += `**Success Criteria**: ${data.success_criteria}\n`;
+                }
+                
+                if (data.location) {
+                    prompt += `**Location**: ${data.location}\n`;
+                }
+                
+                if (data.resources) {
+                    prompt += `**Resources Needed**: ${data.resources}\n`;
+                }
+                
+                if (data.notes) {
+                    prompt += `**Additional Notes**: ${data.notes}\n`;
+                }
+                
+                prompt += "\nPlease help me refine this routine, provide implementation strategies, and store it as a comprehensive memory. Focus on making it sustainable and trackable.";
                 return prompt;
             },
             
