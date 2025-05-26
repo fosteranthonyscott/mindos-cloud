@@ -1,6 +1,4 @@
-// ENHANCED SERVER.JS - Complete Version with Memory Management
-// This version includes memory management features while maintaining adaptive schema support
-
+// FIXED SERVER.JS - Enhanced with better error handling and routing
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -12,63 +10,101 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// Enhanced CORS configuration
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 
-// Request logging
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Request logging middleware - MOVED TO TOP
 app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    if (req.method === 'POST') {
+        console.log('POST Body keys:', Object.keys(req.body || {}));
+    }
     next();
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'mindos-jwt-secret-2025';
 
-// PostgreSQL connection
+// PostgreSQL connection with better error handling
 const db = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
 });
 
 // Test database connection and get schema info
 let memoriesTableColumns = [];
+let isDbConnected = false;
 
 async function initializeDatabase() {
     try {
-        await db.connect();
+        console.log('🔄 Attempting database connection...');
+        const client = await db.connect();
         console.log('✅ Database connected successfully');
+        client.release();
+        isDbConnected = true;
         
         // Get the actual column structure of memories table
-        const columnsResult = await db.query(`
-            SELECT column_name, data_type, column_default, is_nullable
-            FROM information_schema.columns 
-            WHERE table_name = 'memories'
-            ORDER BY ordinal_position;
-        `);
-        
-        memoriesTableColumns = columnsResult.rows.map(row => row.column_name);
-        
-        if (memoriesTableColumns.length > 0) {
-            console.log('📊 Found memories table with columns:', memoriesTableColumns);
-        } else {
-            console.log('⚠️ Memories table not found or has no columns');
+        try {
+            const columnsResult = await db.query(`
+                SELECT column_name, data_type, column_default, is_nullable
+                FROM information_schema.columns 
+                WHERE table_name = 'memories'
+                ORDER BY ordinal_position;
+            `);
+            
+            memoriesTableColumns = columnsResult.rows.map(row => row.column_name);
+            
+            if (memoriesTableColumns.length > 0) {
+                console.log('📊 Found memories table with columns:', memoriesTableColumns.length);
+            } else {
+                console.log('⚠️ Memories table not found or has no columns');
+            }
+        } catch (schemaError) {
+            console.log('⚠️ Could not read memories table schema:', schemaError.message);
         }
         
     } catch (err) {
         console.error('❌ Database connection error:', err);
+        isDbConnected = false;
+        // Don't exit process, let server start anyway
     }
 }
 
-// Initialize on startup
+// Initialize database connection
 initializeDatabase();
+
+// Health check endpoint - ADDED FIRST
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        database: isDbConnected ? 'connected' : 'disconnected',
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// API route debugging middleware
+app.use('/api/*', (req, res, next) => {
+    console.log(`🔥 API Route Hit: ${req.method} ${req.path}`);
+    console.log('🔥 Headers:', Object.keys(req.headers));
+    if (req.body && Object.keys(req.body).length > 0) {
+        console.log('🔥 Body:', req.body);
+    }
+    next();
+});
 
 // In-memory conversation storage
 const activeConversations = new Map();
 
-// MindOS System Prompt
+// MindOS System Prompt (keeping your existing one)
 const MINDOS_SYSTEM_PROMPT = `You are MindOS, a personal AI assistant designed to help users manage their lives, routines, and goals. 
 
 Your capabilities:
@@ -114,6 +150,10 @@ function getConversationSession(userId) {
 
 // ADAPTIVE buildMemoryContext function - works with any column structure
 async function buildMemoryContext(userId) {
+    if (!isDbConnected) {
+        return "Database temporarily unavailable.";
+    }
+    
     try {
         // Base query with only guaranteed columns
         let query = 'SELECT * FROM memories WHERE user_id = $1';
@@ -188,6 +228,11 @@ async function buildMemoryContext(userId) {
 
 // ADAPTIVE storeMemory function - only uses existing columns
 async function storeMemory(userId, type, content, additionalData = {}) {
+    if (!isDbConnected) {
+        console.log('⚠️ Database not connected, skipping memory storage');
+        return false;
+    }
+    
     try {
         if (memoriesTableColumns.length === 0) {
             console.log('⚠️ No memory table columns found, skipping storage');
@@ -245,25 +290,45 @@ async function storeMemory(userId, type, content, additionalData = {}) {
 // Authentication middleware
 const auth = (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
-        if (!token) return res.status(401).json({ error: 'No token provided' });
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            console.log('❌ No authorization header');
+            return res.status(401).json({ error: 'No token provided' });
+        }
+        
+        const token = authHeader.split(' ')[1];
+        if (!token) {
+            console.log('❌ No token in authorization header');
+            return res.status(401).json({ error: 'No token provided' });
+        }
         
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
+        console.log(`✅ Auth successful for user: ${decoded.userId}`);
         next();
     } catch (error) {
-        console.error('Auth error:', error);
+        console.error('❌ Auth error:', error);
         res.status(403).json({ error: 'Invalid token' });
     }
 };
 
-// API Routes (keeping existing auth routes unchanged)
+// ===== API ROUTES =====
+
+// REGISTER endpoint with enhanced error handling
 app.post('/api/register', async (req, res) => {
+    console.log('📝 Register attempt:', { body: Object.keys(req.body) });
+    
     try {
         const { username, email, password } = req.body;
         
         if (!username || !email || !password) {
+            console.log('❌ Missing required fields');
             return res.status(400).json({ error: 'All fields are required' });
+        }
+        
+        if (!isDbConnected) {
+            console.log('❌ Database not connected');
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
         const existingUser = await db.query(
@@ -272,6 +337,7 @@ app.post('/api/register', async (req, res) => {
         );
         
         if (existingUser.rows.length > 0) {
+            console.log('❌ User already exists');
             return res.status(409).json({ error: 'User already exists' });
         }
         
@@ -285,23 +351,33 @@ app.post('/api/register', async (req, res) => {
         
         const token = jwt.sign({ userId, username, email }, JWT_SECRET);
         
+        console.log('✅ Registration successful for:', username);
         res.status(201).json({
             token,
             user: { userId, username, email }
         });
         
     } catch (error) {
-        console.error('Registration error:', error);
+        console.error('❌ Registration error:', error);
         res.status(500).json({ error: 'Registration failed' });
     }
 });
 
+// LOGIN endpoint with enhanced error handling
 app.post('/api/login', async (req, res) => {
+    console.log('🔐 Login attempt:', { body: Object.keys(req.body) });
+    
     try {
         const { email, password } = req.body;
         
         if (!email || !password) {
+            console.log('❌ Missing email or password');
             return res.status(400).json({ error: 'Email and password are required' });
+        }
+        
+        if (!isDbConnected) {
+            console.log('❌ Database not connected for login');
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
         const result = await db.query(
@@ -310,6 +386,7 @@ app.post('/api/login', async (req, res) => {
         );
         
         if (result.rows.length === 0) {
+            console.log('❌ User not found:', email);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
@@ -317,6 +394,7 @@ app.post('/api/login', async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password_hash);
         
         if (!validPassword) {
+            console.log('❌ Invalid password for:', email);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
@@ -326,6 +404,7 @@ app.post('/api/login', async (req, res) => {
             email: user.email 
         }, JWT_SECRET);
         
+        console.log('✅ Login successful for:', user.username);
         res.json({
             token,
             user: { 
@@ -336,13 +415,18 @@ app.post('/api/login', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('❌ Login error:', error);
         res.status(500).json({ error: 'Login failed' });
     }
 });
 
+// USER STATUS endpoint
 app.get('/api/user-status', auth, async (req, res) => {
     try {
+        if (!isDbConnected) {
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+        
         const result = await db.query(
             'SELECT user_id, username, email FROM "user" WHERE user_id = $1',
             [req.user.userId]
@@ -354,13 +438,15 @@ app.get('/api/user-status', auth, async (req, res) => {
         
         res.json({ user: result.rows[0] });
     } catch (error) {
-        console.error('User status error:', error);
+        console.error('❌ User status error:', error);
         res.status(500).json({ error: 'Failed to get user status' });
     }
 });
 
-// SIMPLIFIED Claude endpoint - adaptive to existing schema
+// CLAUDE endpoint - adaptive to existing schema
 app.post('/api/claude', auth, async (req, res) => {
+    console.log('🤖 Claude request from user:', req.user.userId);
+    
     try {
         const { messages } = req.body;
         const userId = req.user.userId;
@@ -451,6 +537,10 @@ Session started: ${session.startTime.toLocaleString()}`;
             ]
         };
         
+        if (!process.env.CLAUDE_API_KEY) {
+            throw new Error('Claude API key not configured');
+        }
+        
         const fetch = await import('node-fetch').then(m => m.default);
         
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -466,7 +556,7 @@ Session started: ${session.startTime.toLocaleString()}`;
         const data = await response.json();
         
         if (!response.ok) {
-            console.error('Claude API error:', data);
+            console.error('❌ Claude API error:', data);
             return res.status(500).json({ error: 'Claude API failed' });
         }
         
@@ -486,17 +576,22 @@ Session started: ${session.startTime.toLocaleString()}`;
             session.messages = session.messages.slice(-20);
         }
         
+        console.log('✅ Claude response sent successfully');
         res.json(data);
         
     } catch (error) {
-        console.error('Claude error:', error);
+        console.error('❌ Claude error:', error);
         res.status(500).json({ error: 'Failed to communicate with Claude' });
     }
 });
 
-// ENHANCED memory endpoints with DELETE functionality
+// MEMORY endpoints
 app.get('/api/memories', auth, async (req, res) => {
     try {
+        if (!isDbConnected) {
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+        
         const { type, limit = 50 } = req.query;
         
         let query = 'SELECT * FROM memories WHERE user_id = $1';
@@ -523,7 +618,7 @@ app.get('/api/memories', auth, async (req, res) => {
         res.json(result.rows);
         
     } catch (error) {
-        console.error('Get memories error:', error);
+        console.error('❌ Get memories error:', error);
         res.status(500).json({ error: 'Failed to get memories' });
     }
 });
@@ -545,14 +640,18 @@ app.post('/api/memories', auth, async (req, res) => {
             res.status(500).json({ error: 'Failed to store memory' });
         }
     } catch (error) {
-        console.error('Store memory error:', error);
+        console.error('❌ Store memory error:', error);
         res.status(500).json({ error: 'Failed to store memory' });
     }
 });
 
-// NEW: Delete memory endpoint
+// DELETE memory endpoint
 app.delete('/api/memories/:id', auth, async (req, res) => {
     try {
+        if (!isDbConnected) {
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+        
         const memoryId = req.params.id;
         const userId = req.user.userId;
         
@@ -580,14 +679,18 @@ app.delete('/api/memories/:id', auth, async (req, res) => {
         }
         
     } catch (error) {
-        console.error('Delete memory error:', error);
+        console.error('❌ Delete memory error:', error);
         res.status(500).json({ error: 'Failed to delete memory' });
     }
 });
 
-// NEW: Get specific memory details
+// GET specific memory details
 app.get('/api/memories/:id', auth, async (req, res) => {
     try {
+        if (!isDbConnected) {
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+        
         const memoryId = req.params.id;
         const userId = req.user.userId;
         
@@ -603,14 +706,18 @@ app.get('/api/memories/:id', auth, async (req, res) => {
         res.json(result.rows[0]);
         
     } catch (error) {
-        console.error('Get memory error:', error);
+        console.error('❌ Get memory error:', error);
         res.status(500).json({ error: 'Failed to get memory' });
     }
 });
 
-// NEW: Update memory endpoint (for future editing functionality)
+// UPDATE memory endpoint
 app.put('/api/memories/:id', auth, async (req, res) => {
     try {
+        if (!isDbConnected) {
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+        
         const memoryId = req.params.id;
         const userId = req.user.userId;
         const updateData = req.body;
@@ -666,12 +773,12 @@ app.put('/api/memories/:id', auth, async (req, res) => {
         }
         
     } catch (error) {
-        console.error('Update memory error:', error);
+        console.error('❌ Update memory error:', error);
         res.status(500).json({ error: 'Failed to update memory' });
     }
 });
 
-// Session management (keeping existing)
+// SESSION management
 app.post('/api/clear-session', auth, (req, res) => {
     try {
         const userId = req.user.userId;
@@ -679,7 +786,7 @@ app.post('/api/clear-session', auth, (req, res) => {
         console.log(`🧹 Session cleared for user: ${userId}`);
         res.json({ message: 'Session cleared successfully' });
     } catch (error) {
-        console.error('Clear session error:', error);
+        console.error('❌ Clear session error:', error);
         res.status(500).json({ error: 'Failed to clear session' });
     }
 });
@@ -704,7 +811,7 @@ app.get('/api/session-info', auth, (req, res) => {
             lastActivity: session.lastActivity
         });
     } catch (error) {
-        console.error('Session info error:', error);
+        console.error('❌ Session info error:', error);
         res.status(500).json({ error: 'Failed to get session info' });
     }
 });
@@ -716,21 +823,39 @@ app.get('/api/debug/schema', (req, res) => {
         totalColumns: memoriesTableColumns.length,
         hasTypeColumn: memoriesTableColumns.includes('type'),
         hasContentColumn: memoriesTableColumns.includes('content'),
-        hasPriorityColumn: memoriesTableColumns.includes('priority')
+        hasPriorityColumn: memoriesTableColumns.includes('priority'),
+        databaseConnected: isDbConnected
     });
 });
 
-// Serve static files
+// ===== STATIC FILES SERVING - MOVED TO END =====
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Catch-all route for SPA - THIS MUST BE LAST!
 app.get('*', (req, res) => {
+    console.log(`📄 Serving static file for: ${req.path}`);
     res.sendFile(path.join(__dirname, 'public/index.html'));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('❌ Unhandled error:', err);
+    res.status(500).json({ 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    });
 });
 
 // Start server
 app.listen(PORT, () => {
     console.log(`🚀 MindOS server running on port ${PORT}`);
-    console.log('📊 Database: Connected');
+    console.log(`📊 Database: ${isDbConnected ? 'Connected' : 'Disconnected'}`);
     console.log('🤖 Claude: Ready with Adaptive Memory Management');
     console.log('🧠 Session Storage: Active');
     console.log('🗑️ Memory Management: DELETE/UPDATE endpoints active');
     console.log(`📋 Memory table columns: ${memoriesTableColumns.length} found`);
+    console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
+    console.log('🌐 Health check available at /health');
 });
