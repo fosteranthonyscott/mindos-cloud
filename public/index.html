@@ -57,7 +57,7 @@
         <div id="authAlert"></div>
     </div>
     
-    <!-- Main Card App -->
+    <!-- Main Card App with ScrollCards -->
     <div id="cardApp" class="card-app">
         <!-- Header with Profile -->
         <div class="app-header">
@@ -80,50 +80,18 @@
             </div>
         </div>
         
-        <!-- Quick Add Bar -->
-        <div class="quick-add-bar">
-            <div class="quick-add-scroll">
-                <button class="quick-add-btn" data-type="task">
-                    <i class="fas fa-plus"></i>
-                    <span>Task</span>
-                </button>
-                <button class="quick-add-btn" data-type="routine">
-                    <i class="fas fa-repeat"></i>
-                    <span>Routine</span>
-                </button>
-                <button class="quick-add-btn" data-type="goal">
-                    <i class="fas fa-bullseye"></i>
-                    <span>Goal</span>
-                </button>
-                <button class="quick-add-btn" data-type="event">
-                    <i class="fas fa-calendar"></i>
-                    <span>Event</span>
-                </button>
-                <button class="quick-add-btn" data-type="memory">
-                    <i class="fas fa-brain"></i>
-                    <span>Memory</span>
-                </button>
-            </div>
+        <!-- ScrollCards Viewport -->
+        <div class="cards-viewport" id="cardsViewport">
+            <!-- Cards will be loaded here dynamically -->
         </div>
         
-        <!-- Priority Cards Feed -->
-        <div class="cards-container" id="cardsContainer">
-            <div class="cards-feed" id="cardsFeed">
-                <!-- Cards will be loaded here -->
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon">
+                <i class="fas fa-clipboard-list"></i>
             </div>
-            
-            <!-- Empty State -->
-            <div class="empty-state" id="emptyState">
-                <div class="empty-icon">
-                    <i class="fas fa-clipboard-list"></i>
-                </div>
-                <h3>Nothing scheduled for today</h3>
-                <p>Add your first task, routine, or goal to get started</p>
-                <button class="quick-add-btn" data-type="task">
-                    <i class="fas fa-plus"></i>
-                    Add Your First Task
-                </button>
-            </div>
+            <h3>Nothing scheduled for today</h3>
+            <p>Add your first task, routine, or goal to get started</p>
         </div>
         
         <!-- Loading State -->
@@ -132,41 +100,31 @@
             <p>Loading your items...</p>
         </div>
         
-        <!-- Floating Chat Button -->
-        <button class="floating-chat-btn" id="floatingChatBtn">
-            <i class="fas fa-comments"></i>
-        </button>
-    </div>
-
-    <!-- Card Detail Modal -->
-    <div class="card-modal" id="cardModal">
-        <div class="card-modal-content">
-            <div class="card-modal-header">
-                <button class="card-modal-close" id="cardModalClose">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="card-modal-body" id="cardModalBody">
-                <!-- Card details and chat will load here -->
-            </div>
+        <!-- Card Navigation Dots -->
+        <div class="card-navigation" id="cardNavigation">
+            <!-- Navigation dots will be generated dynamically -->
         </div>
     </div>
 
-    <!-- Quick Add Modal -->
-    <div class="quick-add-modal" id="quickAddModal">
-        <div class="quick-add-content">
-            <div class="quick-add-header">
-                <h3 id="quickAddTitle">Add Task</h3>
-                <button class="quick-add-close" id="quickAddClose">
+    <!-- Chat Modal -->
+    <div class="chat-modal" id="chatModal">
+        <div class="chat-modal-content">
+            <div class="chat-modal-header">
+                <div class="chat-modal-title">Chat about: <span id="chatModalTitle">Item</span></div>
+                <button class="chat-modal-close" id="chatModalClose">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="quick-add-form" id="quickAddForm">
-                <!-- Form fields will be generated based on type -->
+            
+            <div class="chat-messages" id="chatMessages">
+                <!-- Chat messages will appear here -->
             </div>
-            <div class="quick-add-actions">
-                <button class="btn secondary" id="quickAddCancel">Cancel</button>
-                <button class="btn primary" id="quickAddSave">Save</button>
+            
+            <div class="chat-input-area">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Ask about this item or request changes...">
+                <button class="chat-send-btn" id="chatSendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </div>
         </div>
     </div>
