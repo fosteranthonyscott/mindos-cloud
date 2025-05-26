@@ -7,7 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/auth.css">
-    <link rel="stylesheet" href="css/chat.css">
+    <link rel="stylesheet" href="css/cards.css">
     <link rel="stylesheet" href="css/modals.css">
     <link rel="stylesheet" href="css/responsive.css">
 </head>
@@ -57,256 +57,116 @@
         <div id="authAlert"></div>
     </div>
     
-    <!-- Chat App -->
-    <div id="chatApp" class="chat-app">
-        <!-- Header -->
-        <div class="chat-header">
-            <button class="hamburger" id="hamburgerBtn">
-                <i class="fas fa-bars"></i>
-            </button>
-            <div class="header-info">
-                <div class="header-title">MindOS</div>
-                <div class="header-subtitle" id="headerStatus">AI Assistant Ready</div>
-                <div class="session-info">
-                    <span id="sessionMessages">0 messages</span>
-                    <span class="memory-count" id="memoryCount">0 memories</span>
+    <!-- Main Card App -->
+    <div id="cardApp" class="card-app">
+        <!-- Header with Profile -->
+        <div class="app-header">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <div id="userName">User</div>
+                    <div class="memory-count" id="memoryCount">0 items</div>
                 </div>
             </div>
-            <div class="online-indicator"></div>
-        </div>
-        
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-user">
-                    <div class="user-avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div>
-                        <div id="sidebarUsername">User</div>
-                        <div class="user-status">Online</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="sidebar-menu">
-                <div class="menu-section">
-                    <div class="menu-section-title">Quick Actions</div>
-                    <button class="menu-item" data-action="plan-day">
-                        <i class="fas fa-calendar-day"></i>
-                        Plan My Day
-                    </button>
-                    <button class="menu-item" data-action="set-goals">
-                        <i class="fas fa-bullseye"></i>
-                        Set Goals
-                    </button>
-                    <button class="menu-item" data-action="create-routine">
-                        <i class="fas fa-repeat"></i>
-                        Create Routine
-                    </button>
-                    <button class="menu-item" data-action="create-task">
-                        <i class="fas fa-plus-circle"></i>
-                        Quick Task
-                    </button>
-                    <button class="menu-item" data-action="daily-review">
-                        <i class="fas fa-chart-line"></i>
-                        Daily Review
-                    </button>
-                </div>
-                
-                <div class="menu-section">
-                    <div class="menu-section-title">Memory Management</div>
-                    <button class="menu-item" id="viewAllMemoriesBtn">
-                        <i class="fas fa-brain"></i>
-                        View All Memories
-                    </button>
-                    <button class="menu-item" id="refreshMemoriesBtn">
-                        <i class="fas fa-sync-alt"></i>
-                        Refresh Memories
-                    </button>
-                </div>
-                
-                <div class="menu-section">
-                    <div class="menu-section-title">Recent Memories</div>
-                    <div id="recentMemories">
-                        <!-- Recent memories will be loaded here -->
-                    </div>
-                </div>
-                
-                <div class="menu-section">
-                    <div class="menu-section-title">Session</div>
-                    <button class="menu-item" id="clearSessionBtn">
-                        <i class="fas fa-broom"></i>
-                        Clear Session
-                    </button>
-                    <button class="menu-item" id="exportChatBtn">
-                        <i class="fas fa-download"></i>
-                        Export Chat
-                    </button>
-                </div>
-            </div>
-            <!-- ADD this section to your sidebar menu in index.html -->
-<div class="menu-section">
-    <div class="menu-section-title">Settings</div>
-    <button class="menu-item" onclick="MemorySettings.showSettingsModal()">
-        <i class="fas fa-cog"></i>
-        Memory Settings
-    </button>
-</div>
-            <div class="sidebar-footer">
-                <button class="menu-item" id="logoutBtn">
+            <div class="header-actions">
+                <button class="header-btn" id="settingsBtn">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button class="header-btn" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
-                    Logout
                 </button>
             </div>
         </div>
         
-        <!-- Overlay -->
-        <div class="overlay" id="overlay"></div>
-        
-        <!-- All Memories Modal -->
-        <div class="all-memories-modal" id="allMemoriesModal">
-            <div class="all-memories-content">
-                <div class="all-memories-header">
-                    <div class="all-memories-title">All Memories</div>
-                    <button class="all-memories-close" id="allMemoriesCloseBtn">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div class="memory-type-filters" id="memoryTypeFilters">
-                    <!-- Filter buttons will be generated here -->
-                </div>
-                
-                <div class="memories-grid" id="memoriesGrid">
-                    <!-- Memory cards will be loaded here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Memory Detail Modal -->
-        <div class="memory-modal" id="memoryModal">
-            <div class="memory-modal-content">
-                <div class="memory-modal-header">
-                    <div class="memory-modal-title">Memory Details</div>
-                    <div class="memory-modal-status">
-                        <div class="save-status saved" id="saveStatus">
-                            <i class="fas fa-check"></i> Saved
-                        </div>
-                    </div>
-                    <button class="memory-modal-close" id="memoryModalCloseBtn">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div class="memory-modal-body" id="memoryModalContent">
-                    <!-- Editable memory details will be loaded here -->
-                </div>
-                
-                <div class="memory-modal-actions">
-                    <div class="modal-actions-left">
-                        <button class="modal-btn success" id="saveCloseBtn">
-                            <i class="fas fa-save"></i> Save & Close
-                        </button>
-                        <button class="modal-btn secondary" id="addFieldsBtn">
-                            <i class="fas fa-plus"></i> Add Fields
-                        </button>
-                    </div>
-                    <div class="modal-actions-right">
-                        <button class="modal-btn primary" id="discussMemoryBtn">
-                            <i class="fas fa-comments"></i> Discuss with AI
-                        </button>
-                        <button class="modal-btn danger" id="deleteMemoryBtn">
-                            <i class="fas fa-trash"></i> Delete Memory
-                        </button>
-                        <button class="modal-btn secondary" id="closeMemoryBtn">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add Fields Modal -->
-        <div class="add-fields-modal" id="addFieldsModal">
-            <div class="add-fields-content">
-                <div class="add-fields-header">
-                    <div class="add-fields-title">Add Memory Fields</div>
-                    <div class="add-fields-subtitle">Select additional fields to add to this memory</div>
-                </div>
-                
-                <div class="fields-grid" id="fieldsGrid">
-                    <!-- Available fields will be loaded here -->
-                </div>
-                
-                <div class="add-fields-actions">
-                    <button class="modal-btn secondary" id="cancelAddFieldsBtn">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Configuration Modal -->
-        <div class="config-modal" id="configModal">
-            <div class="config-content">
-                <div class="config-header">
-                    <div class="config-title" id="configTitle">Configure Action</div>
-                    <div class="config-subtitle" id="configSubtitle">Set up your preferences before engaging AI</div>
-                </div>
-                
-                <div class="config-body" id="configBody">
-                    <!-- Configuration steps will be loaded here -->
-                </div>
-                
-                <div class="config-actions">
-                    <button class="modal-btn secondary" id="cancelConfigBtn">Cancel</button>
-                    <button class="modal-btn primary" id="proceedConfigBtn">
-                        <i class="fas fa-robot"></i> Proceed with AI
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Confirmation Dialog -->
-        <div class="confirm-dialog" id="confirmDialog">
-            <div class="confirm-dialog-content">
-                <div class="confirm-dialog-title">Confirm Action</div>
-                <div class="confirm-dialog-message" id="confirmMessage">
-                    Are you sure you want to proceed?
-                </div>
-                <div class="confirm-dialog-actions">
-                    <button class="modal-btn secondary" id="cancelConfirmBtn">Cancel</button>
-                    <button class="modal-btn danger" id="confirmActionBtn">Confirm</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Chat Container -->
-        <div class="chat-container">
-            <div class="messages" id="messages">
-                <!-- Messages will be added here -->
-            </div>
-            
-            <div class="typing-indicator" id="typingIndicator">
-                <div class="message-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-            </div>
-            
-            <div class="input-container">
-                <div class="input-group">
-                    <textarea 
-                        class="message-input" 
-                        id="messageInput" 
-                        placeholder="Message MindOS..."
-                        rows="1"
-                    ></textarea>
-                </div>
-                <button class="send-btn" id="sendBtn">
-                    <i class="fas fa-paper-plane"></i>
+        <!-- Quick Add Bar -->
+        <div class="quick-add-bar">
+            <div class="quick-add-scroll">
+                <button class="quick-add-btn" data-type="task">
+                    <i class="fas fa-plus"></i>
+                    <span>Task</span>
                 </button>
+                <button class="quick-add-btn" data-type="routine">
+                    <i class="fas fa-repeat"></i>
+                    <span>Routine</span>
+                </button>
+                <button class="quick-add-btn" data-type="goal">
+                    <i class="fas fa-bullseye"></i>
+                    <span>Goal</span>
+                </button>
+                <button class="quick-add-btn" data-type="event">
+                    <i class="fas fa-calendar"></i>
+                    <span>Event</span>
+                </button>
+                <button class="quick-add-btn" data-type="memory">
+                    <i class="fas fa-brain"></i>
+                    <span>Memory</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Priority Cards Feed -->
+        <div class="cards-container" id="cardsContainer">
+            <div class="cards-feed" id="cardsFeed">
+                <!-- Cards will be loaded here -->
+            </div>
+            
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h3>Nothing scheduled for today</h3>
+                <p>Add your first task, routine, or goal to get started</p>
+                <button class="quick-add-btn" data-type="task">
+                    <i class="fas fa-plus"></i>
+                    Add Your First Task
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading State -->
+        <div class="loading-state" id="loadingState">
+            <div class="spinner"></div>
+            <p>Loading your items...</p>
+        </div>
+        
+        <!-- Floating Chat Button -->
+        <button class="floating-chat-btn" id="floatingChatBtn">
+            <i class="fas fa-comments"></i>
+        </button>
+    </div>
+
+    <!-- Card Detail Modal -->
+    <div class="card-modal" id="cardModal">
+        <div class="card-modal-content">
+            <div class="card-modal-header">
+                <button class="card-modal-close" id="cardModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="card-modal-body" id="cardModalBody">
+                <!-- Card details and chat will load here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Add Modal -->
+    <div class="quick-add-modal" id="quickAddModal">
+        <div class="quick-add-content">
+            <div class="quick-add-header">
+                <h3 id="quickAddTitle">Add Task</h3>
+                <button class="quick-add-close" id="quickAddClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="quick-add-form" id="quickAddForm">
+                <!-- Form fields will be generated based on type -->
+            </div>
+            <div class="quick-add-actions">
+                <button class="btn secondary" id="quickAddCancel">Cancel</button>
+                <button class="btn primary" id="quickAddSave">Save</button>
             </div>
         </div>
     </div>
@@ -314,7 +174,7 @@
     <!-- Scripts -->
     <script src="js/app.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/chat.js"></script>
+    <script src="js/cards.js"></script>
     <script src="js/memory.js"></script>
     <script src="js/config.js"></script>
     <script src="js/modals.js"></script>
