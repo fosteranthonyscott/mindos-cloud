@@ -1,10 +1,8 @@
-// Configuration Module - FIXED VERSION
+// Configuration Module - DEBUG VERSION
 const Config = {
-    // Current configuration state
     currentMode: null,
     data: {},
     
-    // Configuration definitions (same as before...)
     configurations: {
         'plan-day': {
             title: 'Plan Your Day',
@@ -126,20 +124,40 @@ const Config = {
         }
     },
     
-    // Initialize configuration module
     init() {
+        console.log('🎬 Config.init() called');
         this.setupEventListeners();
     },
     
-    // Setup event listeners
     setupEventListeners() {
-        document.getElementById('cancelConfigBtn').addEventListener('click', this.closeModal.bind(this));
-        document.getElementById('proceedConfigBtn').addEventListener('click', this.processAndChat.bind(this));
+        console.log('🎧 Setting up Config event listeners');
+        
+        const cancelBtn = document.getElementById('cancelConfigBtn');
+        const proceedBtn = document.getElementById('proceedConfigBtn');
+        
+        console.log('🔍 Found buttons:', { cancelBtn: !!cancelBtn, proceedBtn: !!proceedBtn });
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                console.log('❌ Cancel button clicked');
+                this.closeModal();
+            });
+        }
+        
+        if (proceedBtn) {
+            proceedBtn.addEventListener('click', (e) => {
+                console.log('▶️ PROCEED BUTTON CLICKED!');
+                console.log('🔍 Button disabled?', proceedBtn.disabled);
+                console.log('📋 Current data:', this.data);
+                console.log('🔧 Current mode:', this.currentMode);
+                e.preventDefault();
+                this.processAndChat();
+            });
+        }
     },
     
-    // Open configuration mode
     openConfigMode(mode) {
-        console.log('🔧 Opening config mode:', mode); // DEBUG
+        console.log('🔧 Opening config mode:', mode);
         this.currentMode = mode;
         this.data = {};
         
@@ -147,16 +165,19 @@ const Config = {
         
         const config = this.configurations[mode];
         if (!config) {
+            console.error('❌ Configuration not found for mode:', mode);
             Utils.showAlert('Configuration not found', 'error');
             return;
         }
         
         this.populateModal(config);
         document.getElementById('configModal').classList.add('show');
+        console.log('✅ Config modal opened');
     },
     
-    // Populate configuration modal
     populateModal(config) {
+        console.log('📝 Populating modal with config:', config.title);
+        
         document.getElementById('configTitle').textContent = config.title;
         document.getElementById('configSubtitle').textContent = config.subtitle;
         
@@ -177,7 +198,10 @@ const Config = {
             step.options.forEach(option => {
                 const optionDiv = document.createElement('div');
                 optionDiv.className = 'config-option';
-                optionDiv.onclick = () => this.selectOption(stepIndex, option.id, optionDiv);
+                optionDiv.onclick = () => {
+                    console.log('🎯 Option clicked:', stepIndex, option.id);
+                    this.selectOption(stepIndex, option.id, optionDiv);
+                };
                 
                 optionDiv.innerHTML = `
                     <div class="config-option-title">${option.title}</div>
@@ -190,31 +214,14 @@ const Config = {
             stepDiv.appendChild(stepTitle);
             stepDiv.appendChild(optionsDiv);
             configBody.appendChild(stepDiv);
-            
-            // Add custom input form if needed
-            if (step.options.some(opt => opt.id === 'custom')) {
-                const customForm = document.createElement('div');
-                customForm.className = 'config-form hidden';
-                customForm.id = `customForm_${stepIndex}`;
-                
-                customForm.innerHTML = `
-                    <div class="config-form-group">
-                        <label class="config-form-label">Specify details:</label>
-                        <input type="text" class="config-form-input" placeholder="Enter your preference..." />
-                    </div>
-                `;
-                
-                stepDiv.appendChild(customForm);
-            }
         });
         
-        // Initially disable proceed button
         this.updateProceedButton();
+        console.log('✅ Modal populated');
     },
     
-    // Select configuration option
     selectOption(stepIndex, optionId, optionElement) {
-        console.log('🎯 Selected option:', stepIndex, optionId); // DEBUG
+        console.log('🎯 Selected option:', stepIndex, optionId);
         
         // Remove selection from siblings
         optionElement.parentElement.querySelectorAll('.config-option').forEach(el => {
@@ -226,27 +233,12 @@ const Config = {
         
         // Store selection
         this.data[`step_${stepIndex}`] = optionId;
+        console.log('💾 Updated data:', this.data);
         
-        // Show/hide custom form if needed
-        const customForm = document.getElementById(`customForm_${stepIndex}`);
-        if (customForm) {
-            if (optionId === 'custom') {
-                customForm.classList.remove('hidden');
-                const input = customForm.querySelector('input');
-                input.addEventListener('input', (e) => {
-                    this.data[`step_${stepIndex}_custom`] = e.target.value;
-                });
-            } else {
-                customForm.classList.add('hidden');
-                delete this.data[`step_${stepIndex}_custom`];
-            }
-        }
-        
-        // Enable proceed button if all steps are selected
+        // Update button
         this.updateProceedButton();
     },
     
-    // Update proceed button state - FIXED VERSION
     updateProceedButton() {
         const requiredSteps = document.querySelectorAll('.config-step').length;
         const selectedSteps = Object.keys(this.data).filter(key => 
@@ -256,134 +248,72 @@ const Config = {
         const proceedBtn = document.getElementById('proceedConfigBtn');
         const isComplete = selectedSteps >= requiredSteps;
         
-        console.log('📊 Button update - Required:', requiredSteps, 'Selected:', selectedSteps, 'Complete:', isComplete); // DEBUG
-        console.log('📋 Current data:', this.data); // DEBUG
+        console.log('📊 Button update:');
+        console.log('  - Required steps:', requiredSteps);
+        console.log('  - Selected steps:', selectedSteps);
+        console.log('  - Is complete:', isComplete);
+        console.log('  - Current data:', this.data);
         
-        proceedBtn.disabled = !isComplete;
-        
-        // Visual feedback
-        if (isComplete) {
-            proceedBtn.style.opacity = '1';
-            proceedBtn.style.cursor = 'pointer';
+        if (proceedBtn) {
+            proceedBtn.disabled = !isComplete;
+            
+            if (isComplete) {
+                proceedBtn.style.opacity = '1';
+                proceedBtn.style.cursor = 'pointer';
+                console.log('✅ Button ENABLED');
+            } else {
+                proceedBtn.style.opacity = '0.6';
+                proceedBtn.style.cursor = 'not-allowed';
+                console.log('❌ Button DISABLED');
+            }
         } else {
-            proceedBtn.style.opacity = '0.6';
-            proceedBtn.style.cursor = 'not-allowed';
+            console.error('❌ Proceed button not found!');
         }
     },
     
-    // Process configuration and proceed to chat - ENHANCED VERSION
     processAndChat() {
-        console.log('🚀 ProcessAndChat called'); // DEBUG
-        console.log('📋 Current mode:', this.currentMode); // DEBUG
-        console.log('📋 Current data:', this.data); // DEBUG
+        console.log('🚀 processAndChat() called');
+        console.log('📋 Mode:', this.currentMode);
+        console.log('📋 Data:', this.data);
         
         if (!this.currentMode || Object.keys(this.data).length === 0) {
-            console.log('❌ Missing mode or data'); // DEBUG
+            console.error('❌ Missing mode or data');
             Utils.showAlert('Please select all options before proceeding', 'warning');
             return;
         }
         
+        console.log('✅ Data validation passed, closing modal');
         this.closeModal();
         
-        // Show choice dialog with enhanced debugging
-        this.showChoiceDialog(
-            'How would you like to proceed?',
-            'Choose how you want to set up your ' + this.currentMode.replace('-', ' '),
-            [
-                {
-                    id: 'manual',
-                    title: 'Manual Setup',
-                    desc: 'I want to specify details step by step',
-                    icon: 'fas fa-hand-paper'
-                },
-                {
-                    id: 'ai_assist',
-                    title: 'AI Assistance',
-                    desc: 'Let AI help me create this',
-                    icon: 'fas fa-robot'
-                }
-            ],
-            (choice) => {
-                console.log('🎯 User chose:', choice); // DEBUG
-                if (choice === 'manual') {
-                    this.openManualConfig();
-                } else {
-                    // Use AI prompt system
-                    const prompt = this.buildPrompt(this.currentMode, this.data);
-                    console.log('📝 Generated prompt:', prompt); // DEBUG
-                    
-                    const messageInput = document.getElementById('messageInput');
-                    messageInput.value = prompt;
-                    
-                    // Trigger the input event to resize textarea
-                    Chat.autoResize(messageInput);
-                    
-                    // Send the message
-                    Chat.sendMessage();
-                }
+        // Skip choice dialog for now - go straight to AI
+        console.log('🤖 Going directly to AI assistance');
+        const prompt = this.buildPrompt(this.currentMode, this.data);
+        console.log('📝 Generated prompt:', prompt);
+        
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.value = prompt;
+            console.log('✅ Prompt set in input');
+            
+            // Trigger input resize
+            if (typeof Chat !== 'undefined' && Chat.autoResize) {
+                Chat.autoResize(messageInput);
             }
-        );
+            
+            // Send message
+            if (typeof Chat !== 'undefined' && Chat.sendMessage) {
+                console.log('📤 Sending message via Chat.sendMessage()');
+                Chat.sendMessage();
+            } else {
+                console.error('❌ Chat module not available');
+            }
+        } else {
+            console.error('❌ Message input not found');
+        }
     },
     
-    // Show choice dialog - ENHANCED VERSION
-    showChoiceDialog(title, message, choices, onChoice) {
-        console.log('🎭 Showing choice dialog'); // DEBUG
-        
-        // Remove any existing choice dialogs
-        const existingDialogs = document.querySelectorAll('.choice-dialog');
-        existingDialogs.forEach(dialog => dialog.remove());
-        
-        const dialog = document.createElement('div');
-        dialog.className = 'choice-dialog';
-        dialog.style.zIndex = '2500'; // Ensure it's on top
-        dialog.innerHTML = `
-            <div class="choice-dialog-content">
-                <div class="choice-dialog-header">
-                    <div class="choice-dialog-title">${title}</div>
-                    <div class="choice-dialog-subtitle">${message}</div>
-                </div>
-                <div class="choice-options">
-                    ${choices.map(choice => `
-                        <div class="choice-option" data-choice-id="${choice.id}">
-                            <div class="choice-icon">
-                                <i class="${choice.icon}"></i>
-                            </div>
-                            <div class="choice-content">
-                                <div class="choice-title">${choice.title}</div>
-                                <div class="choice-desc">${choice.desc}</div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(dialog);
-        
-        // Add event listeners to choice options
-        dialog.querySelectorAll('.choice-option').forEach(option => {
-            option.addEventListener('click', () => {
-                const choiceId = option.getAttribute('data-choice-id');
-                console.log('🎯 Choice clicked:', choiceId); // DEBUG
-                document.body.removeChild(dialog);
-                onChoice(choiceId);
-            });
-        });
-        
-        // Close on background click
-        dialog.addEventListener('click', (e) => {
-            if (e.target === dialog) {
-                console.log('🚪 Dialog closed by background click'); // DEBUG
-                document.body.removeChild(dialog);
-            }
-        });
-        
-        console.log('✅ Choice dialog created and added to DOM'); // DEBUG
-    },
-    
-    // Build AI prompt based on configuration - SAME AS BEFORE
     buildPrompt(mode, data) {
-        console.log('🔨 Building prompt for mode:', mode, 'with data:', data); // DEBUG
+        console.log('🔨 Building prompt for mode:', mode);
         
         const prompts = {
             'plan-day': () => {
@@ -401,20 +331,13 @@ const Config = {
                     prompt += "**Time Frame**: Today only\n";
                 } else if (data.step_1 === 'week') {
                     prompt += "**Time Frame**: This entire week\n";
-                } else if (data.step_1 === 'custom' && data.step_1_custom) {
-                    prompt += `**Time Frame**: ${data.step_1_custom}\n`;
                 }
 
-                prompt += "\nIMPORTANT: Please:\n";
-                prompt += "1. Use my stored memories about goals, routines, and preferences\n";
-                prompt += "2. Create specific time blocks or priority lists\n";
-                prompt += "3. Store any new planning preferences as memories\n";
-                prompt += "4. If I mention any new goals or routines, store them as appropriate memory types\n";
-                
+                prompt += "\nPlease use my stored memories and create a specific plan.";
                 return prompt;
             },
             'set-goals': () => {
-                let prompt = "I want to set a new goal. Please help me create it properly and store it as a GOAL memory:\n\n";
+                let prompt = "I want to set a new goal. Please help me create it properly:\n\n";
                 
                 const goalTypes = {
                     'short-term': 'Short-term goal (achievable within days/weeks)',
@@ -431,138 +354,19 @@ const Config = {
                     prompt += `**Priority Level**: ${data.step_1}/5 priority\n`;
                 }
 
-                prompt += "\nIMPORTANT: Please:\n";
-                prompt += "1. Help me define this goal with SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound)\n";
-                prompt += "2. Store the goal as a GOAL memory type with appropriate priority\n";
-                prompt += "3. Set success criteria and due dates\n";
-                prompt += "4. Consider my existing goals from stored memories\n";
-                prompt += "5. Ask me to specify the exact goal if I haven't already\n";
-                
-                return prompt;
-            },
-            'create-routine': () => {
-                let prompt = "I want to create a new routine. Please help me design it and store it as a ROUTINE memory:\n\n";
-                
-                const routineTypes = {
-                    'morning': 'Morning routine',
-                    'evening': 'Evening routine',
-                    'work': 'Work/productivity routine',
-                    'exercise': 'Exercise routine',
-                    'custom': 'Custom routine'
-                };
-
-                if (data.step_0) {
-                    prompt += `**Routine Type**: ${routineTypes[data.step_0]}`;
-                    if (data.step_0 === 'custom' && data.step_0_custom) {
-                        prompt += ` - ${data.step_0_custom}`;
-                    }
-                    prompt += "\n";
-                }
-
-                const frequencies = {
-                    'daily': 'Daily (every day)',
-                    'weekdays': 'Weekdays only',
-                    'weekly': 'Specific days of the week',
-                    'flexible': 'Flexible frequency'
-                };
-
-                if (data.step_1) {
-                    prompt += `**Frequency**: ${frequencies[data.step_1]}\n`;
-                }
-
-                prompt += "\nIMPORTANT: Please:\n";
-                prompt += "1. Design specific steps for this routine with timing\n";
-                prompt += "2. Store the routine as a ROUTINE memory type\n";
-                prompt += "3. Include trigger conditions and energy requirements\n";
-                prompt += "4. Set up success tracking methods\n";
-                prompt += "5. Consider my existing routines from stored memories\n";
-                prompt += "6. Ask me to specify routine details if needed\n";
-                
-                return prompt;
-            },
-            'create-task': () => {
-                let prompt = "I want to create a new task. Please help me define it and store it as a GOAL memory:\n\n";
-                
-                if (data.step_0) {
-                    const priorities = {'5': 'Urgent', '4': 'High Priority', '3': 'Medium Priority', '2': 'Low Priority'};
-                    prompt += `**Priority**: ${priorities[data.step_0]}\n`;
-                }
-
-                if (data.step_1) {
-                    if (data.step_1 === 'today') {
-                        prompt += `**Due Date**: Today\n`;
-                    } else if (data.step_1 === 'tomorrow') {
-                        prompt += `**Due Date**: Tomorrow\n`;
-                    } else if (data.step_1 === 'this_week') {
-                        prompt += `**Due Date**: Within this week\n`;
-                    } else if (data.step_1 === 'custom' && data.step_1_custom) {
-                        prompt += `**Due Date**: ${data.step_1_custom}\n`;
-                    }
-                }
-
-                prompt += "\nIMPORTANT: Please:\n";
-                prompt += "1. Help me create a specific, actionable task\n";
-                prompt += "2. Store it as a GOAL memory type with the specified priority\n";
-                prompt += "3. Set clear success criteria and due date\n";
-                prompt += "4. Include time estimates and resource requirements\n";
-                prompt += "5. Ask me to specify the task details if I haven't already\n";
-                
-                return prompt;
-            },
-            'daily-review': () => {
-                let prompt = "I want to do my daily review. Please guide me through this process:\n\n";
-                
-                const focuses = {
-                    'goals': 'Goals progress review',
-                    'routines': 'Routines completion check',
-                    'overall': 'Overall day reflection',
-                    'planning': 'Tomorrow planning focus'
-                };
-
-                if (data.step_0) {
-                    prompt += `**Review Focus**: ${focuses[data.step_0]}\n`;
-                }
-
-                const depths = {
-                    'quick': 'Quick check (5-10 minutes)',
-                    'standard': 'Standard review (15-20 minutes)',
-                    'detailed': 'Detailed analysis (30+ minutes)'
-                };
-
-                if (data.step_1) {
-                    prompt += `**Review Depth**: ${depths[data.step_1]}\n`;
-                }
-
-                prompt += "\nIMPORTANT: Please:\n";
-                prompt += "1. Use my stored memories about goals, routines, and recent activities\n";
-                prompt += "2. Ask specific questions about my progress today\n";
-                prompt += "3. Store any insights or learnings as INSIGHT memories\n";
-                prompt += "4. Store any new goals or routine adjustments appropriately\n";
-                prompt += "5. Help me plan improvements for tomorrow\n";
-                
+                prompt += "\nPlease help me define this goal with SMART criteria and store it as a memory.";
                 return prompt;
             }
         };
 
-        const generatedPrompt = prompts[mode] ? prompts[mode]() : `Help me with ${mode} and store relevant memories with correct types based on my stored memories and preferences.`;
-        console.log('✅ Generated prompt:', generatedPrompt); // DEBUG
-        return generatedPrompt;
+        const result = prompts[mode] ? prompts[mode]() : `Help me with ${mode} based on my preferences.`;
+        console.log('✅ Generated prompt:', result);
+        return result;
     },
     
-    // Open manual configuration (for future implementation)
-    openManualConfig() {
-        Utils.showAlert('Manual configuration coming soon', 'info');
-    },
-    
-    // Close configuration modal
     closeModal() {
+        console.log('🚪 Closing config modal');
         document.getElementById('configModal').classList.remove('show');
-        this.currentMode = null;
-        this.data = {};
-    },
-    
-    // Reset configuration
-    reset() {
         this.currentMode = null;
         this.data = {};
     }
@@ -570,5 +374,6 @@ const Config = {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🎬 DOM loaded, initializing Config');
     Config.init();
 });
