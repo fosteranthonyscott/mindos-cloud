@@ -289,6 +289,10 @@ const Config = {
             return;
         }
         
+        // FIXED: Save mode and data before closing modal
+        const savedMode = this.currentMode;
+        const savedData = { ...this.data };
+        
         console.log('✅ Data validation passed, closing modal');
         this.closeModal();
         
@@ -296,7 +300,8 @@ const Config = {
         console.log('🤖 Going directly to AI assistance');
         
         try {
-            const prompt = this.buildPrompt(this.currentMode, this.data);
+            // FIXED: Use saved values instead of this.currentMode and this.data
+            const prompt = this.buildPrompt(savedMode, savedData);
             console.log('📝 Generated prompt:', prompt);
             
             const messageInput = document.getElementById('messageInput');
@@ -344,6 +349,8 @@ const Config = {
                     prompt += "**Time Frame**: Today only\n";
                 } else if (data.step_1 === 'week') {
                     prompt += "**Time Frame**: This entire week\n";
+                } else if (data.step_1 === 'custom') {
+                    prompt += "**Time Frame**: Custom period (please ask for specifics)\n";
                 }
 
                 prompt += "\nPlease use my stored memories and create a specific plan.";
@@ -469,7 +476,7 @@ const Config = {
         const result = prompts[mode] ? prompts[mode]() : `Help me with ${mode}. Please use my stored memories to provide personalized assistance based on my preferences and history.`;
         console.log('✅ Generated prompt:', result);
         return result;
-    }, // <-- ADDED MISSING COMMA HERE
+    },
     
     closeModal() {
         console.log('🚪 Closing config modal');
