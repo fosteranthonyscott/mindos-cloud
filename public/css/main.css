@@ -1,1094 +1,484 @@
-/* Base Reset and Global Styles */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    background: #f5f5f5;
+/* Card App Layout */
+.card-app {
+    display: none;
     height: 100vh;
+    flex-direction: column;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     overflow: hidden;
 }
 
-/* Utility Classes */
-.hidden { 
-    display: none !important; 
+/* App Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
 }
 
-.loading { 
-    opacity: 0.6; 
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
-/* Base Button Styles */
-.btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 8px;
+.user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+}
+
+#userName {
+    font-size: 1.2rem;
     font-weight: 600;
+}
+
+.memory-count {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.header-btn {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 1.1rem;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-family: inherit;
-    font-size: 1rem;
+    justify-content: center;
 }
 
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+.header-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
 }
 
-.btn.primary {
-    background: #667eea;
-    color: white;
-}
-
-.btn.primary:hover:not(:disabled) {
-    background: #5a6fd8;
-}
-
-.btn.secondary {
-    background: #f5f5f5;
-    color: #333;
-}
-
-.btn.secondary:hover:not(:disabled) {
-    background: #e9e9e9;
-}
-
-.btn.success {
-    background: #4CAF50;
-    color: white;
-}
-
-.btn.success:hover:not(:disabled) {
-    background: #45a049;
-}
-
-.btn.danger {
-    background: #e74c3c;
-    color: white;
-}
-
-.btn.danger:hover:not(:disabled) {
-    background: #c0392b;
-}
-
-/* Form Elements */
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #333;
-}
-
-.form-input {
-    width: 100%;
-    padding: 1rem;
-    border: 2px solid #e0e6ff;
-    border-radius: 12px;
-    background: #f8f9ff;
-    color: #333;
-    font-size: 1rem;
-    font-family: inherit;
-    transition: border-color 0.2s;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.form-input.large {
-    min-height: 80px;
-    resize: vertical;
-}
-
-/* Alert Messages */
-.alert {
-    padding: 1rem;
-    margin: 1rem;
-    border-radius: 8px;
-    font-weight: 500;
-}
-
-.alert.error {
-    background: #fee;
-    color: #c33;
-    border: 1px solid #fcc;
-}
-
-.alert.success {
-    background: #efe;
-    color: #3c3;
-    border: 1px solid #cfc;
-}
-
-.alert.warning {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
-}
-
-.alert.info {
-    background: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
-}
-
-/* Loading States */
-.spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255,255,255,.3);
-    border-radius: 50%;
-    border-top-color: #fff;
-    animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Priority Colors */
-.priority-1, .priority-2 { 
-    background: #e8f5e8; 
-    color: #2e7d32; 
-}
-
-.priority-3 { 
-    background: #fff3e0; 
-    color: #f57c00; 
-}
-
-.priority-4, .priority-5 { 
-    background: #ffebee; 
-    color: #c62828; 
-}
-
-/* Status Indicators */
-.status-active {
-    background: #e8f5e8;
-    color: #2e7d32;
-}
-
-.status-completed {
-    background: #e3f2fd;
-    color: #1976d2;
-}
-
-.status-paused {
-    background: #fff3e0;
-    color: #f57c00;
-}
-
-.status-archived {
-    background: #f5f5f5;
-    color: #666;
-}
-
-/* Memory Type Colors */
-.type-goal {
-    border-left-color: #667eea;
-    background: #f8f9ff;
-}
-
-.type-routine {
-    border-left-color: #4CAF50;
-    background: #f1f8e9;
-}
-
-.type-preference {
-    border-left-color: #ff9800;
-    background: #fff8e1;
-}
-
-.type-insight {
-    border-left-color: #9c27b0;
-    background: #f3e5f5;
-}
-
-.type-event {
-    border-left-color: #f44336;
-    background: #ffebee;
-}
-
-.type-system {
-    border-left-color: #607d8b;
-    background: #eceff1;
-}
-
-/* Card Shadows */
-.shadow-sm {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.shadow-md {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-}
-
-.shadow-xl {
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-/* Gradients */
-.gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.gradient-glass {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-}
-
-/* Icon Sizes */
-.icon-sm { font-size: 0.875rem; }
-.icon-md { font-size: 1rem; }
-.icon-lg { font-size: 1.25rem; }
-.icon-xl { font-size: 1.5rem; }
-
-/* Text Utilities */
-.text-center { text-align: center; }
-.text-left { text-align: left; }
-.text-right { text-align: right; }
-
-.font-bold { font-weight: 600; }
-.font-medium { font-weight: 500; }
-.font-normal { font-weight: 400; }
-
-.text-sm { font-size: 0.875rem; }
-.text-base { font-size: 1rem; }
-.text-lg { font-size: 1.125rem; }
-.text-xl { font-size: 1.25rem; }
-
-/* Color Utilities */
-.text-primary { color: #667eea; }
-.text-secondary { color: #666; }
-.text-muted { color: #888; }
-.text-success { color: #4CAF50; }
-.text-danger { color: #e74c3c; }
-.text-warning { color: #f57c00; }
-
-/* Spacing Utilities */
-.m-0 { margin: 0; }
-.m-1 { margin: 0.25rem; }
-.m-2 { margin: 0.5rem; }
-.m-3 { margin: 0.75rem; }
-.m-4 { margin: 1rem; }
-
-.p-0 { padding: 0; }
-.p-1 { padding: 0.25rem; }
-.p-2 { padding: 0.5rem; }
-.p-3 { padding: 0.75rem; }
-.p-4 { padding: 1rem; }
-
-.mb-1 { margin-bottom: 0.25rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-3 { margin-bottom: 0.75rem; }
-.mb-4 { margin-bottom: 1rem; }
-
-/* Flexbox Utilities */
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.flex-row { flex-direction: row; }
-.items-center { align-items: center; }
-.justify-center { justify-content: center; }
-.justify-between { justify-content: space-between; }
-.flex-1 { flex: 1; }
-
-/* Border Radius */
-.rounded-sm { border-radius: 4px; }
-.rounded { border-radius: 8px; }
-.rounded-lg { border-radius: 12px; }
-.rounded-xl { border-radius: 16px; }
-.rounded-full { border-radius: 50%; }
-
-/* Mobile Font Weight Fixes for MindOS */
-/* Add this to your main.css or create as a separate file and include it */
-
-/* Base font weight improvements for mobile */
-@media (max-width: 768px) {
-    /* Strengthen base body text */
-    body {
-        font-weight: 450; /* Slightly heavier than normal 400 */
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-    
-    /* Strengthen all paragraphs and text content */
-    p, span, div:not(.icon):not(.emoji) {
-        font-weight: 450;
-    }
-    
-    /* Headers need to be more prominent */
-    h1, h2, h3, h4, h5, h6 {
-        font-weight: 700 !important; /* Stronger than current 600 */
-    }
-    
-    /* Chat interface text improvements */
-    .message-content {
-        font-weight: 500 !important; /* Up from default */
-        color: #1a1a1a; /* Darker color for better contrast */
-    }
-    
-    .message.user .message-content {
-        font-weight: 500 !important;
-        color: #ffffff; /* Ensure white text is bold enough */
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Subtle shadow for readability */
-    }
-    
-    /* Button text needs to be stronger */
-    .btn, .modal-btn, .auth-btn, .send-btn {
-        font-weight: 600 !important;
-    }
-    
-    /* Navigation and menu items */
-    .menu-item, .sidebar-user, .header-title {
-        font-weight: 500 !important;
-    }
-    
-    /* Form inputs and labels */
-    .form-input, .message-input, 
-    .memory-detail-input, .config-form-input {
-        font-weight: 450;
-        color: #1a1a1a; /* Darker text in inputs */
-    }
-    
-    label, .form-group label, .memory-detail-label {
-        font-weight: 600 !important;
-        color: #1a1a1a;
-    }
-    
-    /* Memory cards and content */
-    .memory-card-content, .memory-item-header,
-    .memory-preview-content, .selectable-memory-card {
-        font-weight: 500;
-    }
-    
-    .memory-type, .memory-card-title {
-        font-weight: 700 !important;
-    }
-    
-    /* Modal content */
-    .modal-title, .modal-header, 
-    .config-title, .all-memories-title {
-        font-weight: 700 !important;
-    }
-    
-    /* Auth screen improvements */
-    .auth-header h1 {
-        font-weight: 800 !important; /* Extra bold for main title */
-    }
-    
-    .auth-tab {
-        font-weight: 600 !important;
-    }
-    
-    /* Specific contrast improvements */
-    .header-subtitle, .user-status, .session-info {
-        font-weight: 500;
-        opacity: 0.95; /* Less transparent than current 0.8-0.9 */
-    }
-    
-    /* Ensure adequate contrast for secondary text */
-    .text-secondary, .text-muted {
-        font-weight: 500;
-        color: #4a4a4a !important; /* Darker than current #666 or #888 */
-    }
-    
-    /* Memory metadata and small text */
-    .memory-metadata, .memory-card-meta, 
-    .meta-item, .session-info {
-        font-weight: 500;
-        color: #4a4a4a;
-    }
-    
-    /* Filter buttons and small controls */
-    .filter-btn, .memory-action-btn, 
-    .selection-action-btn {
-        font-weight: 600;
-    }
-    
-    /* Placeholder text */
-    ::placeholder {
-        font-weight: 450;
-        color: #6a6a6a !important; /* Darker placeholder text */
-    }
-    
-    /* Code and monospace text */
-    code, pre {
-        font-weight: 500;
-        color: #1a1a1a;
-    }
-    
-    /* Time stamps and dates */
-    .message-time, .memory-card-due, 
-    .memory-card-time {
-        font-weight: 500;
-        color: #4a4a4a;
-    }
-}
-
-/* Extra small mobile devices - even stronger fonts */
-@media (max-width: 480px) {
-    body {
-        font-weight: 500; /* Even heavier for small screens */
-    }
-    
-    .message-content {
-        font-weight: 550 !important;
-    }
-    
-    .memory-card-content, .memory-preview-content {
-        font-weight: 550;
-    }
-    
-    /* Ensure buttons are very readable */
-    .btn, .modal-btn, .auth-btn {
-        font-weight: 700 !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-    
-    /* Headers extra bold on small screens */
-    h1, h2, h3 {
-        font-weight: 800 !important;
-    }
-    
-    /* Menu items more prominent */
-    .menu-item, .sidebar-user {
-        font-weight: 600 !important;
-    }
-}
-
-/* High DPI/Retina display adjustments */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
-    body {
-        font-weight: 450; /* Slightly lighter on high DPI since text appears sharper */
-    }
-    
-    .message-content {
-        font-weight: 500;
-    }
-}
-
-/* Dark mode adjustments if user prefers dark */
-@media (prefers-color-scheme: dark) {
-    body:not(.light-mode) {
-        font-weight: 500; /* Heavier font weight for dark backgrounds */
-    }
-    
-    .text-secondary:not(.light-mode), 
-    .text-muted:not(.light-mode) {
-        color: #cccccc !important;
-        font-weight: 500;
-    }
-}
-
-/* Accessibility improvements */
-@media (prefers-contrast: high) {
-    body, p, span, div {
-        font-weight: 600 !important;
-        color: #000000 !important;
-    }
-    
-    .text-secondary, .text-muted {
-        color: #333333 !important;
-        font-weight: 600 !important;
-    }
-}
-
-/* Focus states should be very visible on mobile */
-@media (max-width: 768px) {
-    button:focus, input:focus, textarea:focus,
-    select:focus, .btn:focus {
-        outline: 3px solid #667eea !important;
-        outline-offset: 2px;
-        font-weight: 600;
-    }
-}
-
-/* Specific fixes for very light elements */
-@media (max-width: 768px) {
-    /* Any elements that might be using font-weight: 300 or lighter */
-    * {
-        font-weight: 400 !important;
-        min-font-weight: 400;
-    }
-    
-    /* Override any existing light weights */
-    .font-light, .text-light {
-        font-weight: 500 !important;
-    }
-    
-    /* Ensure icons don't interfere */
-    .fas, .far, .fab, .fal, .fad,
-    i[class*="fa-"] {
-        font-weight: 900 !important; /* FontAwesome icons should be bold */
-    }
-}
-
-/* Chrome Viewport Height Fix - Add to main.css */
-
-/* Custom viewport height property for Chrome mobile */
-:root {
-    --vh: 1vh;
-}
-
-/* Fix for Chrome mobile viewport issues */
-html, body {
-    height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
-    overflow: hidden;
-}
-
-/* Chat app layout fixes for Chrome */
-.chat-app {
-    height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
-    display: flex;
-    flex-direction: column;
-    background: #f5f5f5;
-    position: relative;
-    overflow: hidden;
-}
-
-/* Ensure proper stacking in Chrome */
-.chat-header {
-    position: relative;
-    z-index: 10;
-    flex-shrink: 0;
-}
-
-.chat-container {
+/* Cards Viewport */
+.cards-viewport {
     flex: 1;
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
     position: relative;
-    min-height: 0; /* Important for flex items in Chrome */
+    overflow: hidden;
 }
 
-/* Chrome-specific input container positioning */
-@supports (-webkit-appearance: none) {
-    .input-container {
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        z-index: 1000 !important;
-        -webkit-transform: translateZ(0);
-        transform: translateZ(0);
-    }
-    
-    .chat-container {
-        padding-bottom: 80px !important;
-    }
-    
-    .messages {
-        -webkit-overflow-scrolling: touch;
-        overflow-y: auto;
-        padding-bottom: 2rem !important;
-    }
+/* Memory Card */
+.memory-card {
+    width: 100%;
+    max-width: 800px;
+    height: 600px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: flex;
+    position: relative;
+    overflow: hidden;
+    animation: cardSlideIn 0.4s ease-out;
 }
 
-/* Chrome mobile address bar compensation */
-@media screen and (max-width: 768px) {
-    @supports (-webkit-touch-callout: none) {
-        .chat-app {
-            height: 100vh;
-            height: -webkit-fill-available;
-        }
-        
-        .input-container {
-            bottom: 0;
-            bottom: env(safe-area-inset-bottom, 0);
-        }
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 
-/* Force Chrome to render input container */
-.input-container {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+.memory-card.completed {
+    animation: cardComplete 1s ease-out forwards;
 }
 
-/* Enhanced Conversational UI Styles - ADD TO YOUR main.css */
+@keyframes cardComplete {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        background: #e8f5e8;
+    }
+    100% {
+        transform: scale(0.8) translateY(-100px);
+        opacity: 0;
+    }
+}
 
-/* Memory Operation Indicators */
-.memory-operation-indicator {
-    display: inline-block;
-    padding: 0.3rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
+/* Card Type Badge */
+.card-type-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
     font-weight: 600;
-    margin-top: 0.5rem;
-    animation: fadeInScale 0.4s ease-out;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.memory-operation-indicator.stored {
+.card-type-badge.goal {
     background: linear-gradient(135deg, #4CAF50, #45a049);
     color: white;
 }
 
-.memory-operation-indicator.updated {
+.card-type-badge.routine {
     background: linear-gradient(135deg, #ff9800, #f57c00);
     color: white;
 }
 
-.memory-operation-indicator.processed {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+.card-type-badge.task {
+    background: linear-gradient(135deg, #2196F3, #1976d2);
     color: white;
 }
 
-.memory-operation-indicator i {
-    margin-right: 0.25rem;
-    animation: pulse 2s infinite;
+.card-type-badge.preference {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    color: white;
 }
 
-@keyframes fadeInScale {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+.card-type-badge.insight {
+    background: linear-gradient(135deg, #607d8b, #455a64);
+    color: white;
 }
 
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.1);
-    }
+.card-type-badge.event {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: white;
 }
 
-/* Quick Response Buttons */
-.quick-responses {
+/* Card Navigation */
+.card-navigation {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-    flex-wrap: wrap;
-    animation: slideInUp 0.3s ease-out;
+    gap: 0.75rem;
+    z-index: 10;
 }
 
-.quick-response-btn {
-    padding: 0.4rem 0.8rem;
-    background: rgba(102, 126, 234, 0.1);
-    color: #667eea;
-    border: 1px solid rgba(102, 126, 234, 0.3);
-    border-radius: 16px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 500;
-}
-
-.quick-response-btn:hover {
-    background: #667eea;
-    color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-@keyframes slideInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Enhanced Message Spacing for Conversational Flow */
-.message.assistant + .message.assistant {
-    margin-top: 0.5rem; /* Closer spacing for chunked responses */
-}
-
-.message.assistant:not(:first-child) .message-content {
-    animation: typeIn 0.6s ease-out;
-}
-
-@keyframes typeIn {
-    from {
-        opacity: 0;
-        transform: translateX(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* Enhanced Typing Indicator for Chunks */
-.typing-indicator.chunk-waiting {
-    background: linear-gradient(135deg, #f8f9ff 0%, #e0e6ff 100%);
-    border-radius: 16px;
-    padding: 0.75rem 1rem;
-    margin: 0.5rem 0;
-}
-
-.typing-indicator.chunk-waiting .typing-dots {
-    background: transparent;
-    box-shadow: none;
-}
-
-.typing-indicator.chunk-waiting .typing-dot {
-    background: #667eea;
-    animation: chunkTyping 1.2s infinite;
-}
-
-.typing-indicator.chunk-waiting .typing-dot:nth-child(2) {
-    animation-delay: 0.15s;
-}
-
-.typing-indicator.chunk-waiting .typing-dot:nth-child(3) {
-    animation-delay: 0.3s;
-}
-
-@keyframes chunkTyping {
-    0%, 60%, 100% { 
-        transform: translateY(0); 
-        opacity: 0.4;
-        background: #667eea;
-    }
-    30% { 
-        transform: translateY(-8px); 
-        opacity: 1;
-        background: #5a6fd8;
-    }
-}
-
-/* Conversation Flow Indicators */
-.conversation-flow-indicator {
-    text-align: center;
-    padding: 0.5rem;
-    margin: 1rem 0;
-    font-size: 0.75rem;
-    color: #888;
-    font-style: italic;
-    position: relative;
-}
-
-.conversation-flow-indicator::before,
-.conversation-flow-indicator::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: 30px;
-    height: 1px;
-    background: linear-gradient(to right, transparent, #ddd, transparent);
-}
-
-.conversation-flow-indicator::before {
-    left: 20px;
-}
-
-.conversation-flow-indicator::after {
-    right: 20px;
-}
-
-/* Message Continuation Hint */
-.message-continuation-hint {
-    margin-top: 0.5rem;
-    padding: 0.3rem 0.6rem;
-    background: rgba(102, 126, 234, 0.1);
-    color: #667eea;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    text-align: center;
-    font-style: italic;
-    animation: breathe 2s infinite;
-}
-
-@keyframes breathe {
-    0%, 100% {
-        opacity: 0.6;
-    }
-    50% {
-        opacity: 1;
-    }
-}
-
-/* Enhanced Memory Indicators */
-.memory-stored-indicator,
-.memory-deleted-indicator,
-.memory-updated-indicator,
-.memory-processed-indicator {
-    display: inline-block;
-    padding: 0.3rem 0.6rem;
-    border-radius: 8px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    margin-top: 0.5rem;
-    position: relative;
-    overflow: hidden;
-}
-
-.memory-stored-indicator {
-    background: #4CAF50;
-    color: white;
-}
-
-.memory-updated-indicator {
-    background: #ff9800;
-    color: white;
-}
-
-.memory-processed-indicator {
-    background: #667eea;
-    color: white;
-}
-
-.memory-deleted-indicator {
-    background: #e74c3c;
-    color: white;
-}
-
-/* Add subtle animation to memory indicators */
-.memory-stored-indicator::before,
-.memory-updated-indicator::before,
-.memory-processed-indicator::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-    0% {
-        left: -100%;
-    }
-    100% {
-        left: 100%;
-    }
-}
-
-/* Conversational Status Indicator */
-.conversation-status {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.5rem;
-    background: rgba(255, 255, 255, 0.9);
+.nav-dot {
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    transition: all 0.2s;
-    display: none; /* Hidden by default */
-}
-
-.conversation-status.active {
-    display: block;
-    color: #4CAF50;
-}
-
-.conversation-status.processing {
-    display: block;
-    color: #ff9800;
-    animation: spin 1s linear infinite;
-}
-
-.conversation-status.waiting {
-    display: block;
-    color: #667eea;
-    animation: pulse 1.5s infinite;
-}
-
-/* Message Actions (for future enhancements) */
-.message-actions {
-    display: flex;
-    gap: 0.25rem;
-    margin-top: 0.5rem;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.message:hover .message-actions {
-    opacity: 1;
-}
-
-.message-action-btn {
-    padding: 0.2rem 0.4rem;
-    background: rgba(102, 126, 234, 0.1);
-    color: #667eea;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.4);
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.message-action-btn:hover {
+.nav-dot.active {
+    background: white;
+    transform: scale(1.3);
+}
+
+.nav-dot:hover {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+/* Empty State */
+.empty-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: white;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.7;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.empty-state p {
+    font-size: 1rem;
+    opacity: 0.8;
+    max-width: 300px;
+}
+
+/* Loading State */
+.loading-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: white;
+    text-align: center;
+}
+
+.loading-state .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+.loading-state p {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+/* Chat Modal */
+.chat-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.chat-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.chat-modal-content {
+    background: white;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 600px;
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.chat-modal-header {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-modal-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.chat-modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.chat-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.chat-message {
+    max-width: 80%;
+    padding: 0.75rem 1rem;
+    border-radius: 15px;
+    position: relative;
+}
+
+.chat-message.user {
+    align-self: flex-end;
     background: #667eea;
     color: white;
 }
 
-/* Responsive Enhancements for Conversational Flow */
+.chat-message.assistant {
+    align-self: flex-start;
+    background: #f5f5f5;
+    color: #333;
+}
+
+.message-content {
+    line-height: 1.4;
+}
+
+.message-time {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    margin-top: 0.25rem;
+}
+
+.chat-input-area {
+    padding: 1rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 2px solid #e0e6ff;
+    border-radius: 20px;
+    background: #f8f9ff;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+    border-color: #667eea;
+}
+
+.chat-send-btn {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.chat-send-btn:hover {
+    background: #5a6fd8;
+    transform: scale(1.05);
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-    .quick-responses {
-        justify-content: center;
-        margin-top: 0.5rem;
+    .app-header {
+        padding: 1rem;
     }
     
-    .quick-response-btn {
-        font-size: 0.75rem;
-        padding: 0.3rem 0.6rem;
+    .cards-viewport {
+        padding: 1rem;
     }
     
-    .memory-operation-indicator {
-        font-size: 0.7rem;
-        padding: 0.25rem 0.5rem;
+    .memory-card {
+        height: 500px;
+        border-radius: 15px;
     }
     
-    .conversation-flow-indicator {
-        font-size: 0.7rem;
-        margin: 0.5rem 0;
+    .user-info {
+        gap: 0.75rem;
     }
     
-    .conversation-flow-indicator::before,
-    .conversation-flow-indicator::after {
-        width: 20px;
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
     }
     
-    .conversation-flow-indicator::before {
-        left: 10px;
+    #userName {
+        font-size: 1.1rem;
     }
     
-    .conversation-flow-indicator::after {
-        right: 10px;
+    .memory-count {
+        font-size: 0.8rem;
+    }
+    
+    .header-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .chat-modal-content {
+        width: 95%;
+        height: 85vh;
     }
 }
 
-/* Dark Mode Support for New Elements */
-@media (prefers-color-scheme: dark) {
-    body:not(.light-mode) .quick-response-btn {
-        background: rgba(102, 126, 234, 0.2);
-        border-color: rgba(102, 126, 234, 0.4);
-        color: #8fa3ff;
+@media (max-width: 480px) {
+    .app-header {
+        padding: 0.75rem;
     }
     
-    body:not(.light-mode) .conversation-flow-indicator {
-        color: #aaa;
+    .cards-viewport {
+        padding: 0.75rem;
     }
     
-    body:not(.light-mode) .conversation-flow-indicator::before,
-    body:not(.light-mode) .conversation-flow-indicator::after {
-        background: linear-gradient(to right, transparent, #555, transparent);
+    .memory-card {
+        height: 450px;
+        border-radius: 12px;
     }
     
-    body:not(.light-mode) .message-continuation-hint {
-        background: rgba(102, 126, 234, 0.2);
-        color: #8fa3ff;
-    }
-}
-
-/* High Contrast Mode Support */
-@media (prefers-contrast: high) {
-    .memory-operation-indicator {
-        border: 2px solid currentColor;
-        font-weight: 700;
+    .user-info {
+        gap: 0.5rem;
     }
     
-    .quick-response-btn {
-        border-width: 2px;
-        font-weight: 600;
+    .user-avatar {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
     }
     
-    .memory-operation-indicator.stored {
-        background: #000;
-        color: #fff;
-        border-color: #4CAF50;
+    #userName {
+        font-size: 1rem;
     }
     
-    .memory-operation-indicator.updated {
-        background: #000;
-        color: #fff;
-        border-color: #ff9800;
+    .header-actions {
+        gap: 0.5rem;
     }
     
-    .memory-operation-indicator.processed {
-        background: #000;
-        color: #fff;
-        border-color: #667eea;
-    }
-}
-
-/* Reduced Motion Support */
-@media (prefers-reduced-motion: reduce) {
-    .memory-operation-indicator,
-    .quick-responses,
-    .message-continuation-hint {
-        animation: none;
-    }
-    
-    .memory-operation-indicator i {
-        animation: none;
-    }
-    
-    .typing-indicator.chunk-waiting .typing-dot {
-        animation: none;
-    }
-    
-    .conversation-status.processing {
-        animation: none;
-    }
-    
-    .message.assistant:not(:first-child) .message-content {
-        animation: none;
-    }
-    
-    .memory-stored-indicator::before,
-    .memory-updated-indicator::before,
-    .memory-processed-indicator::before {
-        animation: none;
-    }
-}
-
-/* Focus Management for Accessibility */
-.quick-response-btn:focus,
-.message-action-btn:focus {
-    outline: 2px solid #667eea;
-    outline-offset: 2px;
-}
-
-/* Print Styles for Conversation Export */
-@media print {
-    .memory-operation-indicator,
-    .quick-responses,
-    .message-actions,
-    .conversation-status,
-    .typing-indicator {
-        display: none !important;
-    }
-    
-    .message-continuation-hint {
-        display: none !important;
-    }
-    
-    .conversation-flow-indicator {
-        color: #666 !important;
-        page-break-inside: avoid;
+    .header-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9rem;
     }
 }
