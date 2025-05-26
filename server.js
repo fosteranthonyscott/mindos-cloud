@@ -1586,9 +1586,20 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Catch-all route for SPA - THIS MUST BE LAST!
-app.get('*', (req, res) => {
-    console.log(`📄 Serving static file for: ${req.path}`);
+// ✅ REPLACE WITH THIS NEW SMART CATCH-ALL ROUTE:
+app.get('*', (req, res, next) => {
+    // Don't intercept requests for static assets (files with extensions)
+    if (req.path.includes('.')) {
+        // Let express.static handle it, or return 404 if not found
+        return res.status(404).json({ 
+            error: 'File not found',
+            path: req.path,
+            message: 'Static asset not found in public directory'
+        });
+    }
+    
+    // Only serve SPA for routes without file extensions
+    console.log(`📄 Serving SPA for route: ${req.path}`);
     res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
