@@ -105,7 +105,7 @@ app.use('/api/*', (req, res, next) => {
     next();
 });
 
-// MindOS System Prompt (keeping your existing one)
+// MindOS System Prompt
 const MINDOS_SYSTEM_PROMPT = `You are MindOS, a personal AI assistant designed to help users manage their lives, routines, and goals. 
 
 Your capabilities:
@@ -224,6 +224,107 @@ async function buildMemoryContext(userId) {
     } catch (error) {
         console.error('Error building memory context:', error);
         return "Error accessing stored memories.";
+    }
+}
+
+// NEW: Parse config module input directly
+function parseConfigInput(userInput) {
+    try {
+        const isRoutine = userInput.includes('Routine Description:');
+        const isGoal = userInput.includes('Goal Type:');
+        
+        if (isRoutine) {
+            // Extract routine details
+            const routineData = {};
+            
+            // Parse each field
+            const fields = {
+                'Routine Description:': 'content',
+                'Routine Type:': 'routine_type',
+                'Frequency:': 'frequency',
+                'Priority:': 'priority',
+                'Status:': 'status',
+                'Stage:': 'stage',
+                'Required Time:': 'required_time',
+                'Performance Streak:': 'performance_streak',
+                'Trigger:': 'trigger',
+                'Success Criteria:': 'success_criteria',
+                'Notes:': 'notes'
+            };
+            
+            let content = '';
+            
+            Object.entries(fields).forEach(([label, field]) => {
+                const regex = new RegExp(`${label}\\s*([^\\n]+)`, 'i');
+                const match = userInput.match(regex);
+                if (match) {
+                    const value = match[1].trim();
+                    if (field === 'content') {
+                        content = value;
+                    } else {
+                        routineData[field] = value;
+                    }
+                }
+            });
+            
+            if (content) {
+                return {
+                    operation: 'create',
+                    existing_id: null,
+                    type: 'routine',
+                    content: content,
+                    data: routineData,
+                    confidence: 0.95
+                };
+            }
+        }
+        
+        if (isGoal) {
+            // Extract goal details
+            const goalData = {};
+            
+            const fields = {
+                'Goal Description:': 'content',
+                'Goal Type:': 'goal_type',
+                'Priority Level:': 'priority',
+                'Status:': 'status',
+                'Stage:': 'stage',
+                'Due Date:': 'due',
+                'Success Criteria:': 'success_criteria',
+                'Notes:': 'notes'
+            };
+            
+            let content = '';
+            
+            Object.entries(fields).forEach(([label, field]) => {
+                const regex = new RegExp(`${label}\\s*([^\\n]+)`, 'i');
+                const match = userInput.match(regex);
+                if (match) {
+                    const value = match[1].trim();
+                    if (field === 'content') {
+                        content = value;
+                    } else {
+                        goalData[field] = value;
+                    }
+                }
+            });
+            
+            if (content) {
+                return {
+                    operation: 'create',
+                    existing_id: null,
+                    type: 'goal',
+                    content: content,
+                    data: goalData,
+                    confidence: 0.95
+                };
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Error parsing config input:', error);
+        return null;
     }
 }
 
@@ -433,53 +534,70 @@ async function storeMemory(userId, type, content, additionalData = {}) {
     }
 }
 
-// FIXED analyzeUserInput function for multi-memory detection
+// ENHANCED analyzeUserInput function for better memory detection
 async function analyzeUserInput(userInput, userId) {
     try {
+        // FIRST: Check if this is a config module generated input
+        const isConfigInput = userInput.includes('Routine Description:') || 
+                             userInput.includes('Goal Type:') ||
+                             userInput.includes('**Priority**:') ||
+                             userInput.includes('Please help me set it up and store it as a memory');
+
+        if (isConfigInput) {
+            // Parse structured config input directly
+            const operation = parseConfigInput(userInput);
+            if (operation) {
+                console.log('🎯 Config module input detected:', operation);
+                return [operation];
+            }
+        }
+
         // Get user's existing memories for context
         const existingMemories = await db.query(
             'SELECT id, type, content, content_short, routine_type, status FROM memories WHERE user_id = $1 AND status != $2 ORDER BY created_at DESC LIMIT 20',
             [userId, 'archived']
         );
 
-        const analysisPrompt = `Analyze this user input for memory operations. Break down multiple tasks/items into separate operations:
+        const analysisPrompt = `Analyze this user input for memory operations. Focus on MATHEMATICAL ACCURACY and CONSTRAINT REASONING.
 
 User Input: "${userInput}"
+
+CRITICAL CONSTRAINTS TO RESPECT:
+- Work schedules and time requirements are FIXED - cannot be changed
+- Wake-up times must work backwards from fixed constraints
+- Math must be accurate (if someone needs to be at work at 7 AM, they cannot leave at 9 AM)
 
 Existing Memories Context:
 ${existingMemories.rows.map(m => `ID:${m.id} [${m.type}] ${m.content_short || m.content?.substring(0, 80)} (${m.status})`).join('\n')}
 
-Return ONLY a JSON array of memory operations in this format:
+RULES FOR ANALYSIS:
+1. If user provides detailed routine/goal information → CREATE memory operation
+2. If user mentions completing existing routine/goal → UPDATE existing memory
+3. Break compound statements into separate operations
+4. Respect mathematical constraints and work backwards from fixed requirements
+5. For time-based routines, calculate realistic timing
+
+Return ONLY a JSON array:
 [
   {
     "operation": "update|create",
     "existing_id": number|null,
     "type": "goal|routine|preference|insight|event",
     "content": "specific description",
-    "data": {"status": "active", "priority": "3", "due": "2024-05-26", "other_field": "value"},
-    "confidence": 0.8
+    "data": {
+      "status": "active",
+      "priority": "3",
+      "routine_type": "morning",
+      "wake_up_time": "5:15 AM",
+      "work_arrival_time": "7:00 AM",
+      "required_time": "1 hour 15 minutes",
+      "other_fields": "values"
+    },
+    "confidence": 0.9
   }
 ]
 
-IMPORTANT RULES:
-1. Break down compound sentences into separate items (e.g., "clean house, do report, sleep by 9" = 3 separate operations)
-2. Look for comma-separated items, "and" connections, multiple verbs
-3. Each task/item should be its own operation
-4. If user mentions completing/doing something that matches existing memory → "update"
-5. If user mentions new things → "create"
-6. For bedtimes/schedules → type: "routine"
-7. For work tasks/reports → type: "goal"
-8. For cleaning/chores → type: "routine"
-9. Set appropriate due dates for "today" items
-10. Only include operations with confidence > 0.6
-
-Example input: "I need to clean kitchen, work on project, sleep by 10pm"
-Example output:
-[
-  {"operation": "create", "existing_id": null, "type": "routine", "content": "Clean kitchen", "data": {"status": "active", "priority": "3", "due": "2024-05-26"}, "confidence": 0.9},
-  {"operation": "create", "existing_id": null, "type": "goal", "content": "Work on project", "data": {"status": "active", "priority": "4"}, "confidence": 0.9},
-  {"operation": "create", "existing_id": null, "type": "routine", "content": "Sleep by 10pm", "data": {"status": "active", "routine_type": "evening", "time_of_day": "night"}, "confidence": 0.8}
-]`;
+If this is routine creation with detailed information, confidence should be 0.95+`;
 
         const fetch = await import('node-fetch').then(m => m.default);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -491,7 +609,7 @@ Example output:
             },
             body: JSON.stringify({
                 model: 'claude-3-5-sonnet-20241022',
-                max_tokens: 1000, // Increased for multiple operations
+                max_tokens: 1500,
                 messages: [{ role: 'user', content: analysisPrompt }]
             })
         });
@@ -511,7 +629,7 @@ Example output:
         if (jsonMatch) {
             const operations = JSON.parse(jsonMatch[0]);
             console.log(`🧠 Detected ${operations.length} memory operations:`, operations.map(op => `${op.operation}: ${op.content}`));
-            return operations.filter(op => op.confidence > 0.6);
+            return operations.filter(op => op.confidence > 0.7);
         }
         
         console.log('⚠️ No valid JSON found in analysis response');
@@ -1081,6 +1199,7 @@ app.post('/api/clear-session', auth, (req, res) => {
     try {
         const userId = req.user.userId;
         activeConversations.delete(userId);
+        conversationChunks.delete(userId); // Clear conversation chunks too
         console.log(`🧹 Session cleared for user: ${userId}`);
         res.json({ message: 'Session cleared successfully' });
     } catch (error) {
@@ -1337,4 +1456,6 @@ app.listen(PORT, () => {
     console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
     console.log('🌐 Health check available at /health');
     console.log('✅ Multi-memory operation parsing enabled');
+    console.log('🎯 Config module input parsing enabled');
+    console.log('⚡ Mathematical constraint reasoning active');
 });
