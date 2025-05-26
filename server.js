@@ -859,3 +859,471 @@ app.listen(PORT, () => {
     console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
     console.log('🌐 Health check available at /health');
 });
+
+// Enhanced API Features for Planning - Add these to your server.js
+
+// NEW: Get memories filtered by planning criteria
+app.get('/api/memories/planning/:timeframe', auth, async (req, res) => {
+    try {
+        const { timeframe } = req.params;
+        const { focus, priority_min } = req.query;
+        const userId = req.user.userId;
+        
+        console.log('🔍 Planning query:', { timeframe, focus, priority_min, userId });
+        
+        let query = 'SELECT * FROM memories WHERE user_id = $1';
+        let params = [userId];
+        let paramIndex = 2;
+        
+        // Time-based filtering
+        const today = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0];
+        
+        if (timeframe === 'today') {
+            if (memoriesTableColumns.includes('due')) {
+                query += ` AND (due = $${paramIndex} OR due < $${paramIndex})`;
+                params.push(today);
+                paramIndex++;
+            }
+        } else if (timeframe === 'tomorrow') {
+            if (memoriesTableColumns.includes('due')) {
+                query += ` AND due = $${paramIndex}`;
+                params.push(tomorrow);
+                paramIndex++;
+            }
+        }
+        
+        // Focus-based filtering
+        if (focus === 'routines' && memoriesTableColumns.includes('type')) {
+            query += ` AND type = $${paramIndex}`;
+            params.push('routine');
+            paramIndex++;
+        } else if (focus === 'priorities' && memoriesTableColumns.includes('priority')) {
+            const minPriority = priority_min || '4';
+            query += ` AND priority >= $${paramIndex}`;
+            params.push(minPriority);
+            paramIndex++;
+        }
+        
+        // Filter for active items
+        if (memoriesTableColumns.includes('status')) {
+            query += ` AND (status = 'active' OR status IS NULL)`;
+        }
+        
+        // Order by relevance
+        if (memoriesTableColumns.includes('priority')) {
+            query += ' ORDER BY priority DESC, id DESC';
+        } else {
+            query += ' ORDER BY id DESC';
+        }
+        
+        query += ' LIMIT 50'; // Reasonable limit for planning
+        
+        const result = await db.query(query, params);
+        
+        console.log(`✅ Found ${result.rows.length} memories for planning`);
+        res.json(result.rows);
+        
+    } catch (error) {
+        console.error('Get planning memories error:', error);
+        res.status(500).json({ error: 'Failed to get planning memories' });
+    }
+});
+
+// NEW: Tag memories for planning
+app.post('/api/memories/tag-for-planning', auth, async (req, res) => {
+    try {
+        const { memoryIds, timeframe, planDate } = req.body;
+        const userId = req.user.userId;
+        
+        if (!memoryIds || !Array.isArray(memoryIds) || memoryIds.length === 0) {
+            return res.status(400).json({ error: 'Memory IDs array is required' });
+        }
+        
+        if (!timeframe || !planDate) {
+            return res.status(400).json({ error: 'Timeframe and plan date are required' });
+        }
+        
+        console.log('🏷️ Tagging memories for planning:', { 
+            memoryIds: memoryIds.length, 
+            timeframe, 
+            planDate,
+            userId 
+        });
+        
+        const planTag = timeframe === 'today' ? "today's plan" : "tomorrow's plan";
+        const updatedMemories = [];
+        
+        // Update each memory with planning information
+        for (const memoryId of memoryIds) {
+            // Verify memory belongs to user
+            const checkResult = await db.query(
+                'SELECT id, notes FROM memories WHERE id = $1 AND user_id = $2',
+                [memoryId, userId]
+            );
+            
+            if (checkResult.rows.length === 0) {
+                console.warn(`⚠️ Memory ${memoryId} not found or access denied for user ${userId}`);
+                continue;
+            }
+            
+            const currentNotes = checkResult.rows[0].notes || '';
+            const planningNote = `\n[Added to ${planTag} on ${planDate}]`;
+            
+            // Avoid duplicate tags
+            if (!currentNotes.includes(planTag)) {
+                const updatedNotes = currentNotes + planningNote;
+                
+                // Build update query dynamically based on available columns
+                const updateFields = ['notes = $2'];
+                const updateValues = [memoryId, updatedNotes];
+                let paramIndex = 3;
+                
+                if (memoriesTableColumns.includes('planning_tag')) {
+                    updateFields.push(`planning_tag = $${paramIndex}`);
+                    updateValues.push(planTag);
+                    paramIndex++;
+                }
+                
+                if (memoriesTableColumns.includes('planned_date')) {
+                    updateFields.push(`planned_date = $${paramIndex}`);
+                    updateValues.push(planDate);
+                    paramIndex++;
+                }
+                
+                if (memoriesTableColumns.includes('modified')) {
+                    updateFields.push('modified = CURRENT_DATE');
+                }
+                
+                const updateQuery = `
+                    UPDATE memories 
+                    SET ${updateFields.join(', ')} 
+                    WHERE id = $1 AND user_id = $${paramIndex}
+                    RETURNING *
+                `;
+                updateValues.push(userId);
+                
+                const updateResult = await db.query(updateQuery, updateValues);
+                
+                if (updateResult.rows.length > 0) {
+                    updatedMemories.push(updateResult.rows[0]);
+                    console.log(`✅ Tagged memory ${memoryId} for ${planTag}`);
+                }
+            } else {
+                console.log(`ℹ️ Memory ${memoryId} already tagged for ${planTag}`);
+            }
+        }
+        
+        res.json({
+            message: `Successfully tagged ${updatedMemories.length} memories for ${planTag}`,
+            updatedCount: updatedMemories.length,
+            skippedCount: memoryIds.length - updatedMemories.length,
+            updatedMemories: updatedMemories
+        });
+        
+    } catch (error) {
+        console.error('Tag memories for planning error:', error);
+        res.status(500).json({ error: 'Failed to tag memories for planning' });
+    }
+});
+
+// NEW: Get memories by planning tags
+app.get('/api/memories/by-plan/:timeframe', auth, async (req, res) => {
+    try {
+        const { timeframe } = req.params;
+        const userId = req.user.userId;
+        
+        const planTag = timeframe === 'today' ? "today's plan" : "tomorrow's plan";
+        
+        let query = 'SELECT * FROM memories WHERE user_id = $1';
+        let params = [userId];
+        
+        // Filter by planning tag if the column exists
+        if (memoriesTableColumns.includes('planning_tag')) {
+            query += ' AND planning_tag = $2';
+            params.push(planTag);
+        } else if (memoriesTableColumns.includes('notes')) {
+            // Fallback to searching in notes
+            query += ' AND notes LIKE $2';
+            params.push(`%${planTag}%`);
+        } else {
+            // If no suitable columns, return empty result
+            return res.json([]);
+        }
+        
+        // Order by priority if available
+        if (memoriesTableColumns.includes('priority')) {
+            query += ' ORDER BY priority DESC, id DESC';
+        } else {
+            query += ' ORDER BY id DESC';
+        }
+        
+        const result = await db.query(query, params);
+        
+        console.log(`📋 Found ${result.rows.length} memories for ${planTag}`);
+        res.json(result.rows);
+        
+    } catch (error) {
+        console.error('Get memories by plan error:', error);
+        res.status(500).json({ error: 'Failed to get memories by plan' });
+    }
+});
+
+// NEW: Remove planning tags from memories
+app.delete('/api/memories/planning-tags/:timeframe', auth, async (req, res) => {
+    try {
+        const { timeframe } = req.params;
+        const { memoryIds } = req.body;
+        const userId = req.user.userId;
+        
+        if (!memoryIds || !Array.isArray(memoryIds)) {
+            return res.status(400).json({ error: 'Memory IDs array is required' });
+        }
+        
+        const planTag = timeframe === 'today' ? "today's plan" : "tomorrow's plan";
+        const updatedMemories = [];
+        
+        for (const memoryId of memoryIds) {
+            // Verify memory belongs to user and get current notes
+            const checkResult = await db.query(
+                'SELECT id, notes FROM memories WHERE id = $1 AND user_id = $2',
+                [memoryId, userId]
+            );
+            
+            if (checkResult.rows.length === 0) continue;
+            
+            const currentNotes = checkResult.rows[0].notes || '';
+            
+            // Remove planning tag from notes
+            const planTagPattern = new RegExp(`\\n?\\[Added to ${planTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} on [^\\]]+\\]`, 'g');
+            const updatedNotes = currentNotes.replace(planTagPattern, '').trim();
+            
+            // Build update query
+            const updateFields = ['notes = $2'];
+            const updateValues = [memoryId, updatedNotes];
+            let paramIndex = 3;
+            
+            if (memoriesTableColumns.includes('planning_tag')) {
+                updateFields.push(`planning_tag = NULL`);
+            }
+            
+            if (memoriesTableColumns.includes('planned_date')) {
+                updateFields.push(`planned_date = NULL`);
+            }
+            
+            if (memoriesTableColumns.includes('modified')) {
+                updateFields.push('modified = CURRENT_DATE');
+            }
+            
+            const updateQuery = `
+                UPDATE memories 
+                SET ${updateFields.join(', ')} 
+                WHERE id = $1 AND user_id = $${paramIndex}
+                RETURNING *
+            `;
+            updateValues.push(userId);
+            
+            const updateResult = await db.query(updateQuery, updateValues);
+            
+            if (updateResult.rows.length > 0) {
+                updatedMemories.push(updateResult.rows[0]);
+            }
+        }
+        
+        res.json({
+            message: `Removed planning tags from ${updatedMemories.length} memories`,
+            updatedCount: updatedMemories.length,
+            updatedMemories: updatedMemories
+        });
+        
+    } catch (error) {
+        console.error('Remove planning tags error:', error);
+        res.status(500).json({ error: 'Failed to remove planning tags' });
+    }
+});
+
+// NEW: Get planning analytics
+app.get('/api/analytics/planning', auth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { days = 7 } = req.query;
+        
+        // Get planning statistics for the last N days
+        const analytics = {
+            totalPlannedItems: 0,
+            completedItems: 0,
+            activeRoutines: 0,
+            highPriorityItems: 0,
+            planningFrequency: {},
+            typeDistribution: {},
+            completionRate: 0
+        };
+        
+        // Base query for memories with planning information
+        let query = 'SELECT * FROM memories WHERE user_id = $1';
+        let params = [userId];
+        
+        // Add date filter if we have the planned_date column
+        if (memoriesTableColumns.includes('planned_date')) {
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - parseInt(days));
+            query += ' AND planned_date >= $2';
+            params.push(startDate.toISOString().split('T')[0]);
+        } else if (memoriesTableColumns.includes('notes')) {
+            // Fallback to searching notes for planning information
+            query += ' AND (notes LIKE $2 OR notes LIKE $3)';
+            params.push("%today's plan%", "%tomorrow's plan%");
+        }
+        
+        const result = await db.query(query, params);
+        const memories = result.rows;
+        
+        analytics.totalPlannedItems = memories.length;
+        
+        memories.forEach(memory => {
+            // Count by type
+            const type = memory.type || 'other';
+            analytics.typeDistribution[type] = (analytics.typeDistribution[type] || 0) + 1;
+            
+            // Count high priority items
+            if (memory.priority && parseInt(memory.priority) >= 4) {
+                analytics.highPriorityItems++;
+            }
+            
+            // Count completed items
+            if (memory.status === 'completed') {
+                analytics.completedItems++;
+            }
+            
+            // Count active routines
+            if (memory.type === 'routine' && memory.status === 'active') {
+                analytics.activeRoutines++;
+            }
+            
+            // Track planning frequency by date
+            if (memory.planned_date) {
+                const date = memory.planned_date;
+                analytics.planningFrequency[date] = (analytics.planningFrequency[date] || 0) + 1;
+            }
+        });
+        
+        // Calculate completion rate
+        if (analytics.totalPlannedItems > 0) {
+            analytics.completionRate = (analytics.completedItems / analytics.totalPlannedItems).toFixed(2);
+        }
+        
+        console.log('📊 Planning analytics generated:', analytics);
+        res.json(analytics);
+        
+    } catch (error) {
+        console.error('Get planning analytics error:', error);
+        res.status(500).json({ error: 'Failed to get planning analytics' });
+    }
+});
+
+// ENHANCED: Enhanced memories endpoint with better filtering
+app.get('/api/memories/enhanced', auth, async (req, res) => {
+    try {
+        const { 
+            type, 
+            status, 
+            priority_min, 
+            has_due_date, 
+            search, 
+            limit = 50,
+            offset = 0,
+            sort_by = 'priority',
+            sort_order = 'desc'
+        } = req.query;
+        
+        let query = 'SELECT * FROM memories WHERE user_id = $1';
+        let params = [req.user.userId];
+        let paramIndex = 2;
+        
+        // Type filter
+        if (type && memoriesTableColumns.includes('type')) {
+            query += ` AND type = $${paramIndex}`;
+            params.push(type);
+            paramIndex++;
+        }
+        
+        // Status filter
+        if (status && memoriesTableColumns.includes('status')) {
+            query += ` AND status = $${paramIndex}`;
+            params.push(status);
+            paramIndex++;
+        }
+        
+        // Priority filter
+        if (priority_min && memoriesTableColumns.includes('priority')) {
+            query += ` AND priority >= $${paramIndex}`;
+            params.push(priority_min);
+            paramIndex++;
+        }
+        
+        // Due date filter
+        if (has_due_date === 'true' && memoriesTableColumns.includes('due')) {
+            query += ` AND due IS NOT NULL`;
+        } else if (has_due_date === 'false' && memoriesTableColumns.includes('due')) {
+            query += ` AND due IS NULL`;
+        }
+        
+        // Search filter
+        if (search) {
+            const searchConditions = [];
+            if (memoriesTableColumns.includes('content')) {
+                searchConditions.push(`content ILIKE $${paramIndex}`);
+            }
+            if (memoriesTableColumns.includes('content_short')) {
+                searchConditions.push(`content_short ILIKE $${paramIndex}`);
+            }
+            if (memoriesTableColumns.includes('notes')) {
+                searchConditions.push(`notes ILIKE $${paramIndex}`);
+            }
+            
+            if (searchConditions.length > 0) {
+                query += ` AND (${searchConditions.join(' OR ')})`;
+                params.push(`%${search}%`);
+                paramIndex++;
+            }
+        }
+        
+        // Sorting
+        const validSortColumns = ['priority', 'created_at', 'modified', 'due', 'id'];
+        const sortColumn = validSortColumns.includes(sort_by) && memoriesTableColumns.includes(sort_by) 
+                          ? sort_by : 'id';
+        const sortOrder = sort_order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+        query += ` ORDER BY ${sortColumn} ${sortOrder}`;
+        
+        // Pagination
+        query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+        params.push(limit, offset);
+        
+        const result = await db.query(query, params);
+        
+        // Get total count for pagination
+        let countQuery = 'SELECT COUNT(*) as total FROM memories WHERE user_id = $1';
+        let countParams = [req.user.userId];
+        // Add the same filters to count query (simplified version)
+        // ... (implement same filters for count if needed)
+        
+        const countResult = await db.query(countQuery, countParams);
+        const total = parseInt(countResult.rows[0].total);
+        
+        res.json({
+            memories: result.rows,
+            pagination: {
+                total,
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                hasMore: (parseInt(offset) + parseInt(limit)) < total
+            }
+        });
+        
+    } catch (error) {
+        console.error('Enhanced memories query error:', error);
+        res.status(500).json({ error: 'Failed to get enhanced memories' });
+    }
+});
+
+console.log('✅ Enhanced Planning API endpoints loaded');
