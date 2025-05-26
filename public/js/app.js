@@ -421,34 +421,26 @@ const MemorySettings = {
     }
 };
 
-// API Helper Functions
-const API = {
-    // Base fetch wrapper
-    async request(url, options = {}) {
-        const defaultOptions = {
-            headers: {
-                'Content-Type': 'application/json',
-                ...(MindOS.token && { 'Authorization': `Bearer ${MindOS.token}` })
-            }
-        };
+// UI Helper Functions - FIXED VERSION
+const UI = {
+    // Show loading state
+    setLoading(loading) {
+        MindOS.isLoading = loading;
+        const typingIndicator = document.getElementById('typingIndicator');
+        const sendBtn = document.getElementById('sendBtn');
         
-        const config = { ...defaultOptions, ...options };
-        if (config.body && typeof config.body === 'object') {
-            config.body = JSON.stringify(config.body);
-        }
-        
-        try {
-            const response = await fetch(url, config);
-            const data = await response.json();
+        if (loading) {
+            if (typingIndicator) typingIndicator.classList.add('show');
+            if (sendBtn) sendBtn.disabled = true;
             
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP error! status: ${response.status}`);
-            }
+            const headerStatus = document.getElementById('headerStatus');
+            if (headerStatus) headerStatus.textContent = 'MindOS is thinking...';
+        } else {
+            if (typingIndicator) typingIndicator.classList.remove('show');
+            if (sendBtn) sendBtn.disabled = false;
             
-            return data;
-        } catch (error) {
-            console.error('API request failed:', error);
-            throw error;
+            const headerStatus = document.getElementById('headerStatus');
+            if (headerStatus) headerStatus.textContent = 'AI Assistant Ready';
         }
     },
     
@@ -736,28 +728,46 @@ const UI = {
         if (overlay) overlay.classList.remove('show');
     },
     
-    // Show auth screen
+    // Show auth screen - FIXED
     showAuthScreen() {
         const authScreen = document.getElementById('authScreen');
         const chatApp = document.getElementById('chatApp');
         const cardApp = document.getElementById('cardApp');
         
-        if (authScreen) authScreen.classList.remove('hidden');
-        if (chatApp) chatApp.classList.add('hidden');
-        if (cardApp) cardApp.classList.add('hidden');
+        if (authScreen) {
+            authScreen.style.display = 'flex';
+            authScreen.classList.remove('hidden');
+        }
+        if (chatApp) {
+            chatApp.style.display = 'none';
+            chatApp.classList.add('hidden');
+        }
+        if (cardApp) {
+            cardApp.style.display = 'none';
+            cardApp.classList.add('hidden');
+        }
     },
     
-    // Show card app
+    // Show card app - FIXED
     showCardApp() {
         const authScreen = document.getElementById('authScreen');
         const chatApp = document.getElementById('chatApp');
         const cardApp = document.getElementById('cardApp');
         
-        if (authScreen) authScreen.classList.add('hidden');
-        if (chatApp) chatApp.classList.add('hidden');
+        // Properly hide auth screen
+        if (authScreen) {
+            authScreen.style.display = 'none';
+            authScreen.classList.add('hidden');
+        }
+        // Hide chat app
+        if (chatApp) {
+            chatApp.style.display = 'none';
+            chatApp.classList.add('hidden');
+        }
+        // Show card app
         if (cardApp) {
-            cardApp.classList.remove('hidden');
             cardApp.style.display = 'flex';
+            cardApp.classList.remove('hidden');
         }
         
         // Update user info
@@ -767,15 +777,26 @@ const UI = {
         }
     },
     
-    // Show chat app
+    // Show chat app - FIXED
     showChatApp() {
         const authScreen = document.getElementById('authScreen');
         const chatApp = document.getElementById('chatApp');
+        const cardApp = document.getElementById('cardApp');
         
-        if (authScreen) authScreen.classList.add('hidden');
+        // Hide auth screen
+        if (authScreen) {
+            authScreen.style.display = 'none';
+            authScreen.classList.add('hidden');
+        }
+        // Hide card app
+        if (cardApp) {
+            cardApp.style.display = 'none';
+            cardApp.classList.add('hidden');
+        }
+        // Show chat app
         if (chatApp) {
-            chatApp.classList.remove('hidden');
             chatApp.style.display = 'flex';
+            chatApp.classList.remove('hidden');
         }
         
         // Update user info
