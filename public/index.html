@@ -542,19 +542,204 @@
         .overlay.show {
             display: block;
         }
+
+        /* NEW: All Memories Modal */
+        .all-memories-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 2rem;
+        }
+
+        .all-memories-modal.show {
+            display: flex;
+        }
+
+        .all-memories-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 900px;
+            width: 100%;
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .all-memories-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+        }
+
+        .all-memories-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .all-memories-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: #666;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .all-memories-close:hover {
+            background: #f5f5f5;
+        }
+
+        .memory-type-filters {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+        }
+
+        .memories-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .memory-type-section {
+            margin-bottom: 2rem;
+        }
+
+        .memory-type-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .memory-card {
+            background: #f8f9ff;
+            border: 1px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .memory-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+            border-color: #667eea;
+        }
+
+        .memory-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .memory-card-priority {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .priority-1, .priority-2 { background: #e8f5e8; color: #2e7d32; }
+        .priority-3 { background: #fff3e0; color: #f57c00; }
+        .priority-4, .priority-5 { background: #ffebee; color: #c62828; }
+
+        .memory-card-actions {
+            display: flex;
+            gap: 0.25rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .memory-card:hover .memory-card-actions {
+            opacity: 1;
+        }
+
+        .memory-card-content {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: #333;
+            margin-bottom: 0.75rem;
+        }
+
+        .memory-card-meta {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.75rem;
+            color: #666;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .meta-item i {
+            width: 12px;
+        }
         
-        /* Memory Detail Modal */
+        /* Enhanced Memory Detail Modal - Now Editable */
         .memory-modal {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 2000;
+            z-index: 2100;
             padding: 2rem;
         }
         
@@ -566,18 +751,22 @@
             background: white;
             border-radius: 20px;
             padding: 2rem;
-            max-width: 600px;
+            max-width: 700px;
             width: 100%;
-            max-height: 80vh;
-            overflow-y: auto;
+            max-height: 85vh;
+            overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
         }
         
         .memory-modal-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
         }
         
         .memory-modal-title {
@@ -585,6 +774,35 @@
             font-weight: 600;
             color: #333;
             flex: 1;
+        }
+
+        .memory-modal-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-right: 1rem;
+        }
+
+        .save-status {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .save-status.saved {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .save-status.saving {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .save-status.error {
+            background: #ffebee;
+            color: #c62828;
         }
         
         .memory-modal-close {
@@ -594,6 +812,18 @@
             cursor: pointer;
             padding: 0.5rem;
             color: #666;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .memory-modal-close:hover {
+            background: #f5f5f5;
+        }
+
+        .memory-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
         }
         
         .memory-detail-section {
@@ -606,23 +836,83 @@
             margin-bottom: 0.5rem;
             text-transform: uppercase;
             font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .field-remove-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            transition: background 0.2s;
+        }
+
+        .field-remove-btn:hover {
+            background: rgba(231, 76, 60, 0.1);
         }
         
-        .memory-detail-value {
+        .memory-detail-input {
+            width: 100%;
             background: #f8f9ff;
             padding: 0.75rem;
+            border: 2px solid #e0e6ff;
             border-radius: 8px;
-            border-left: 3px solid #667eea;
             margin-bottom: 0.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+            resize: vertical;
+            min-height: auto;
+        }
+
+        .memory-detail-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .memory-detail-input.large {
+            min-height: 80px;
+        }
+
+        .memory-detail-select {
+            width: 100%;
+            background: #f8f9ff;
+            padding: 0.75rem;
+            border: 2px solid #e0e6ff;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+
+        .memory-detail-select:focus {
+            outline: none;
+            border-color: #667eea;
         }
         
         .memory-modal-actions {
             display: flex;
             gap: 1rem;
-            justify-content: flex-end;
-            border-top: 1px solid #eee;
+            justify-content: space-between;
+            border-top: 2px solid #eee;
             padding-top: 1.5rem;
             margin-top: 1.5rem;
+        }
+
+        .modal-actions-left {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .modal-actions-right {
+            display: flex;
+            gap: 1rem;
         }
         
         .modal-btn {
@@ -632,6 +922,9 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
         .modal-btn.primary {
@@ -660,6 +953,271 @@
         .modal-btn.secondary:hover {
             background: #e9e9e9;
         }
+
+        .modal-btn.success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .modal-btn.success:hover {
+            background: #45a049;
+        }
+
+        /* NEW: Add Fields Modal */
+        .add-fields-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2200;
+            padding: 2rem;
+        }
+
+        .add-fields-modal.show {
+            display: flex;
+        }
+
+        .add-fields-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 70vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .add-fields-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .add-fields-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .add-fields-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+            max-height: 50vh;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .field-option {
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .field-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .field-option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f5f5f5;
+        }
+
+        .field-option.disabled:hover {
+            transform: none;
+            border-color: #ddd;
+            background: #f5f5f5;
+        }
+
+        .field-option-icon {
+            font-size: 1.5rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .field-option-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            text-transform: capitalize;
+        }
+
+        .field-option-desc {
+            font-size: 0.75rem;
+            color: #666;
+            line-height: 1.3;
+        }
+
+        .add-fields-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* NEW: Configuration Modes */
+        .config-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 2rem;
+        }
+
+        .config-modal.show {
+            display: flex;
+        }
+
+        .config-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 85vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+        }
+
+        .config-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .config-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .config-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .config-step {
+            margin-bottom: 2rem;
+        }
+
+        .config-step-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .config-options {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .config-option {
+            background: #f8f9ff;
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .config-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .config-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .config-option-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .config-option-desc {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .config-form {
+            background: #f8f9ff;
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .config-form-group {
+            margin-bottom: 1rem;
+        }
+
+        .config-form-label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .config-form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+
+        .config-form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .config-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: space-between;
+            border-top: 2px solid #eee;
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+        }
         
         /* Confirmation Dialog */
         .confirm-dialog {
@@ -672,7 +1230,7 @@
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 2100;
+            z-index: 2300;
         }
         
         .confirm-dialog.show {
@@ -739,12 +1297,20 @@
                 left: -280px;
             }
             
-            .memory-modal {
+            .memory-modal, .all-memories-modal, .config-modal, .add-fields-modal {
                 padding: 1rem;
             }
             
-            .memory-modal-content {
+            .memory-modal-content, .all-memories-content, .config-content, .add-fields-content {
                 padding: 1.5rem;
+            }
+
+            .memory-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .fields-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -830,19 +1396,19 @@
             <div class="sidebar-menu">
                 <div class="menu-section">
                     <div class="menu-section-title">Quick Actions</div>
-                    <button class="menu-item" onclick="quickAction('plan-day')">
+                    <button class="menu-item" onclick="openConfigMode('plan-day')">
                         <i class="fas fa-calendar-day"></i>
                         Plan My Day
                     </button>
-                    <button class="menu-item" onclick="quickAction('set-goals')">
+                    <button class="menu-item" onclick="openConfigMode('set-goals')">
                         <i class="fas fa-bullseye"></i>
                         Set Goals
                     </button>
-                    <button class="menu-item" onclick="quickAction('create-routine')">
+                    <button class="menu-item" onclick="openConfigMode('create-routine')">
                         <i class="fas fa-repeat"></i>
                         Create Routine
                     </button>
-                    <button class="menu-item" onclick="quickAction('daily-review')">
+                    <button class="menu-item" onclick="openConfigMode('daily-review')">
                         <i class="fas fa-chart-line"></i>
                         Daily Review
                     </button>
@@ -850,7 +1416,7 @@
                 
                 <div class="menu-section">
                     <div class="menu-section-title">Memory Management</div>
-                    <button class="menu-item" onclick="viewAllMemories()">
+                    <button class="menu-item" onclick="openAllMemoriesModal()">
                         <i class="fas fa-brain"></i>
                         View All Memories
                     </button>
@@ -891,22 +1457,102 @@
         <!-- Overlay -->
         <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
         
-        <!-- Memory Detail Modal -->
+        <!-- NEW: All Memories Modal -->
+        <div class="all-memories-modal" id="allMemoriesModal">
+            <div class="all-memories-content">
+                <div class="all-memories-header">
+                    <div class="all-memories-title">All Memories</div>
+                    <button class="all-memories-close" onclick="closeAllMemoriesModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="memory-type-filters" id="memoryTypeFilters">
+                    <!-- Filter buttons will be generated here -->
+                </div>
+                
+                <div class="memories-grid" id="memoriesGrid">
+                    <!-- Memory cards will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Memory Detail Modal -->
         <div class="memory-modal" id="memoryModal">
             <div class="memory-modal-content">
                 <div class="memory-modal-header">
                     <div class="memory-modal-title">Memory Details</div>
+                    <div class="memory-modal-status">
+                        <div class="save-status saved" id="saveStatus">
+                            <i class="fas fa-check"></i> Saved
+                        </div>
+                    </div>
                     <button class="memory-modal-close" onclick="closeMemoryModal()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div id="memoryModalContent">
-                    <!-- Memory details will be loaded here -->
+                
+                <div class="memory-modal-body" id="memoryModalContent">
+                    <!-- Editable memory details will be loaded here -->
                 </div>
+                
                 <div class="memory-modal-actions">
-                    <button class="modal-btn secondary" onclick="closeMemoryModal()">Close</button>
-                    <button class="modal-btn primary" onclick="openMemoryChat()">Discuss with AI</button>
-                    <button class="modal-btn danger" onclick="confirmDeleteMemory()">Delete Memory</button>
+                    <div class="modal-actions-left">
+                        <button class="modal-btn success" onclick="saveMemoryChanges()">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <button class="modal-btn secondary" onclick="openAddFieldsModal()">
+                            <i class="fas fa-plus"></i> Add Fields
+                        </button>
+                    </div>
+                    <div class="modal-actions-right">
+                        <button class="modal-btn secondary" onclick="closeMemoryModal()">Close</button>
+                        <button class="modal-btn primary" onclick="openMemoryChat()">
+                            <i class="fas fa-comments"></i> Discuss with AI
+                        </button>
+                        <button class="modal-btn danger" onclick="confirmDeleteMemory()">
+                            <i class="fas fa-trash"></i> Delete Memory
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Add Fields Modal -->
+        <div class="add-fields-modal" id="addFieldsModal">
+            <div class="add-fields-content">
+                <div class="add-fields-header">
+                    <div class="add-fields-title">Add Memory Fields</div>
+                    <div class="add-fields-subtitle">Select additional fields to add to this memory</div>
+                </div>
+                
+                <div class="fields-grid" id="fieldsGrid">
+                    <!-- Available fields will be loaded here -->
+                </div>
+                
+                <div class="add-fields-actions">
+                    <button class="modal-btn secondary" onclick="closeAddFieldsModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Configuration Modal -->
+        <div class="config-modal" id="configModal">
+            <div class="config-content">
+                <div class="config-header">
+                    <div class="config-title" id="configTitle">Configure Action</div>
+                    <div class="config-subtitle" id="configSubtitle">Set up your preferences before engaging AI</div>
+                </div>
+                
+                <div class="config-body" id="configBody">
+                    <!-- Configuration steps will be loaded here -->
+                </div>
+                
+                <div class="config-actions">
+                    <button class="modal-btn secondary" onclick="closeConfigModal()">Cancel</button>
+                    <button class="modal-btn primary" onclick="processConfigAndChat()" id="configProceedBtn">
+                        <i class="fas fa-robot"></i> Proceed with AI
+                    </button>
                 </div>
             </div>
         </div>
@@ -969,6 +1615,35 @@
         let userMemories = [];
         let selectedMemory = null;
         let pendingAction = null;
+        let memoryChanges = {};
+        let autoSaveTimeout = null;
+        let currentConfigMode = null;
+        let configData = {};
+
+        // Define all available memory fields with their properties
+        const memoryFieldDefinitions = {
+            type: { label: 'Type', icon: 'fas fa-tag', type: 'select', options: ['goal', 'routine', 'preference', 'insight', 'event', 'system'], required: true },
+            content: { label: 'Full Content', icon: 'fas fa-align-left', type: 'textarea', required: true },
+            content_short: { label: 'Summary', icon: 'fas fa-compress-alt', type: 'text' },
+            notes: { label: 'Notes', icon: 'fas fa-sticky-note', type: 'textarea' },
+            priority: { label: 'Priority', icon: 'fas fa-star', type: 'select', options: ['1', '2', '3', '4', '5'] },
+            status: { label: 'Status', icon: 'fas fa-flag', type: 'select', options: ['active', 'completed', 'paused', 'archived'] },
+            stage: { label: 'Stage', icon: 'fas fa-layer-group', type: 'select', options: ['planned', 'current', 'completed', 'paused'] },
+            performance_streak: { label: 'Current Streak', icon: 'fas fa-fire', type: 'number' },
+            performance_rate: { label: 'Success Rate', icon: 'fas fa-percentage', type: 'number', step: '0.01', min: '0', max: '1' },
+            due: { label: 'Due Date', icon: 'fas fa-calendar-alt', type: 'date' },
+            trigger: { label: 'Trigger', icon: 'fas fa-play', type: 'text' },
+            energy_requirements: { label: 'Energy Level', icon: 'fas fa-battery-three-quarters', type: 'select', options: ['low', 'medium', 'high'] },
+            required_time: { label: 'Time Required', icon: 'fas fa-clock', type: 'text' },
+            success_criteria: { label: 'Success Criteria', icon: 'fas fa-check-circle', type: 'textarea' },
+            resources: { label: 'Resources', icon: 'fas fa-tools', type: 'textarea' },
+            location: { label: 'Location', icon: 'fas fa-map-marker-alt', type: 'text' },
+            weather: { label: 'Weather Context', icon: 'fas fa-cloud-sun', type: 'text' },
+            mood: { label: 'Mood', icon: 'fas fa-smile', type: 'text' },
+            emotion: { label: 'Emotion', icon: 'fas fa-heart', type: 'text' },
+            search_query: { label: 'Related Searches', icon: 'fas fa-search', type: 'text' },
+            shoppingideas: { label: 'Shopping Ideas', icon: 'fas fa-shopping-cart', type: 'textarea' }
+        };
         
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
@@ -1196,67 +1871,712 @@
                 recentMemoriesDiv.innerHTML = '<div style="padding: 1rem; text-align: center; color: #888; font-size: 0.9rem;">No memories yet</div>';
             }
         }
+
+        // NEW: All Memories Modal Functions
+        function openAllMemoriesModal() {
+            closeSidebar();
+            populateMemoriesModal();
+            document.getElementById('allMemoriesModal').classList.add('show');
+        }
+
+        function closeAllMemoriesModal() {
+            document.getElementById('allMemoriesModal').classList.remove('show');
+        }
+
+        function populateMemoriesModal() {
+            // Group memories by type
+            const memoryGroups = {};
+            userMemories.forEach(memory => {
+                const type = memory.type || 'general';
+                if (!memoryGroups[type]) memoryGroups[type] = [];
+                memoryGroups[type].push(memory);
+            });
+
+            // Create filter buttons
+            const filtersDiv = document.getElementById('memoryTypeFilters');
+            filtersDiv.innerHTML = '<button class="filter-btn active" onclick="filterMemories(\'all\')">All</button>';
+            
+            Object.keys(memoryGroups).forEach(type => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn';
+                btn.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} (${memoryGroups[type].length})`;
+                btn.onclick = () => filterMemories(type);
+                filtersDiv.appendChild(btn);
+            });
+
+            // Display all memories
+            displayMemoriesGrid(memoryGroups);
+        }
+
+        function filterMemories(filterType) {
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filter memories
+            const memoryGroups = {};
+            userMemories.forEach(memory => {
+                const type = memory.type || 'general';
+                if (filterType === 'all' || type === filterType) {
+                    if (!memoryGroups[type]) memoryGroups[type] = [];
+                    memoryGroups[type].push(memory);
+                }
+            });
+
+            displayMemoriesGrid(memoryGroups);
+        }
+
+        function displayMemoriesGrid(memoryGroups) {
+            const gridDiv = document.getElementById('memoriesGrid');
+            gridDiv.innerHTML = '';
+
+            if (Object.keys(memoryGroups).length === 0) {
+                gridDiv.innerHTML = '<div style="text-align: center; padding: 3rem; color: #888;">No memories found</div>';
+                return;
+            }
+
+            Object.entries(memoryGroups).forEach(([type, memories]) => {
+                const section = document.createElement('div');
+                section.className = 'memory-type-section';
+                
+                const header = document.createElement('div');
+                header.className = 'memory-type-header';
+                header.textContent = `${type} (${memories.length})`;
+                section.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'memory-grid';
+                
+                memories.forEach(memory => {
+                    const card = createMemoryCard(memory);
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                gridDiv.appendChild(section);
+            });
+        }
+
+        function createMemoryCard(memory) {
+            const card = document.createElement('div');
+            card.className = 'memory-card';
+            card.onclick = (e) => {
+                if (!e.target.closest('.memory-card-actions')) {
+                    viewMemoryDetails(memory.id);
+                    closeAllMemoriesModal();
+                }
+            };
+
+            let metadata = [];
+            if (memory.performance_streak && memory.performance_streak > 0) {
+                metadata.push(`<div class="meta-item"><i class="fas fa-fire"></i> ${memory.performance_streak} days</div>`);
+            }
+            if (memory.stage) {
+                metadata.push(`<div class="meta-item"><i class="fas fa-layer-group"></i> ${memory.stage}</div>`);
+            }
+            if (memory.location) {
+                metadata.push(`<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>`);
+            }
+            if (memory.mood) {
+                metadata.push(`<div class="meta-item"><i class="fas fa-smile"></i> ${memory.mood}</div>`);
+            }
+
+            card.innerHTML = `
+                <div class="memory-card-header">
+                    ${memory.priority ? `<div class="memory-card-priority priority-${memory.priority}">Priority ${memory.priority}</div>` : '<div></div>'}
+                    <div class="memory-card-actions">
+                        <button class="memory-action-btn" onclick="viewMemoryDetails(${memory.id}); closeAllMemoriesModal();" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="memory-action-btn delete" onclick="confirmDeleteMemoryDirect(${memory.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="memory-card-content">${memory.content_short || memory.content?.substring(0, 120) || 'No content'}</div>
+                ${metadata.length > 0 ? `<div class="memory-card-meta">${metadata.join('')}</div>` : ''}
+            `;
+
+            return card;
+        }
         
-        // NEW: Memory detail viewing functionality
+        // Enhanced Memory Detail Modal Functions
         function viewMemoryDetails(memoryId) {
             const memory = userMemories.find(m => m.id === memoryId);
             if (!memory) return;
             
             selectedMemory = memory;
+            memoryChanges = {}; // Reset changes
             
-            // Build detailed view
+            populateMemoryModal(memory);
+            document.getElementById('memoryModal').classList.add('show');
+        }
+
+        function populateMemoryModal(memory) {
             const modalContent = document.getElementById('memoryModalContent');
             modalContent.innerHTML = '';
-            
-            // Display all available fields
-            const fields = [
-                { key: 'type', label: 'Type', value: memory.type },
-                { key: 'content', label: 'Full Content', value: memory.content },
-                { key: 'content_short', label: 'Summary', value: memory.content_short },
-                { key: 'notes', label: 'Notes', value: memory.notes },
-                { key: 'priority', label: 'Priority', value: memory.priority ? `${memory.priority}/5` : null },
-                { key: 'status', label: 'Status', value: memory.status },
-                { key: 'stage', label: 'Stage', value: memory.stage },
-                { key: 'performance_streak', label: 'Current Streak', value: memory.performance_streak ? `${memory.performance_streak} days` : null },
-                { key: 'performance_rate', label: 'Success Rate', value: memory.performance_rate ? `${Math.round(memory.performance_rate * 100)}%` : null },
-                { key: 'due', label: 'Due Date', value: memory.due },
-                { key: 'trigger', label: 'Trigger', value: memory.trigger },
-                { key: 'energy_requirements', label: 'Energy Level', value: memory.energy_requirements },
-                { key: 'required_time', label: 'Time Required', value: memory.required_time },
-                { key: 'success_criteria', label: 'Success Criteria', value: memory.success_criteria },
-                { key: 'resources', label: 'Resources', value: memory.resources },
-                { key: 'location', label: 'Location', value: memory.location },
-                { key: 'weather', label: 'Weather Context', value: memory.weather },
-                { key: 'mood', label: 'Mood', value: memory.mood },
-                { key: 'emotion', label: 'Emotion', value: memory.emotion },
-                { key: 'search_query', label: 'Related Searches', value: memory.search_query },
-                { key: 'shoppingideas', label: 'Shopping Ideas', value: memory.shoppingideas },
-                { key: 'created_at', label: 'Created', value: memory.created_at },
-                { key: 'modified', label: 'Last Modified', value: memory.modified }
-            ];
-            
-            fields.forEach(field => {
-                if (field.value && field.value !== '' && field.value !== null) {
-                    const section = document.createElement('div');
-                    section.className = 'memory-detail-section';
-                    section.innerHTML = `
-                        <div class="memory-detail-label">${field.label}</div>
-                        <div class="memory-detail-value">${field.value}</div>
-                    `;
-                    modalContent.appendChild(section);
-                }
+
+            // Create editable fields for all existing data
+            Object.entries(memory).forEach(([key, value]) => {
+                if (key === 'id' || key === 'user_id' || key === 'created_at' || key === 'modified') return;
+                if (value === null || value === undefined || value === '') return;
+
+                const fieldDef = memoryFieldDefinitions[key];
+                if (!fieldDef) return; // Skip unknown fields
+
+                const section = createEditableField(key, value, fieldDef);
+                modalContent.appendChild(section);
             });
+
+            updateSaveStatus('saved');
+        }
+
+        function createEditableField(fieldKey, value, fieldDef) {
+            const section = document.createElement('div');
+            section.className = 'memory-detail-section';
+            section.setAttribute('data-field', fieldKey);
+
+            const label = document.createElement('div');
+            label.className = 'memory-detail-label';
+            label.innerHTML = `
+                ${fieldDef.label}
+                ${!fieldDef.required ? `<button class="field-remove-btn" onclick="removeField('${fieldKey}')" title="Remove field">
+                    <i class="fas fa-times"></i>
+                </button>` : ''}
+            `;
+
+            let input;
+            if (fieldDef.type === 'textarea') {
+                input = document.createElement('textarea');
+                input.className = 'memory-detail-input large';
+                input.rows = 3;
+            } else if (fieldDef.type === 'select') {
+                input = document.createElement('select');
+                input.className = 'memory-detail-select';
+                fieldDef.options.forEach(option => {
+                    const optionEl = document.createElement('option');
+                    optionEl.value = option;
+                    optionEl.textContent = option.charAt(0).toUpperCase() + option.slice(1);
+                    if (option == value) optionEl.selected = true;
+                    input.appendChild(optionEl);
+                });
+            } else {
+                input = document.createElement('input');
+                input.className = 'memory-detail-input';
+                input.type = fieldDef.type || 'text';
+                if (fieldDef.step) input.step = fieldDef.step;
+                if (fieldDef.min) input.min = fieldDef.min;
+                if (fieldDef.max) input.max = fieldDef.max;
+            }
+
+            input.value = value || '';
+            input.addEventListener('input', () => handleFieldChange(fieldKey, input.value));
+            input.addEventListener('blur', () => autoSaveChanges());
+
+            section.appendChild(label);
+            section.appendChild(input);
+
+            return section;
+        }
+
+        function handleFieldChange(fieldKey, value) {
+            memoryChanges[fieldKey] = value;
+            updateSaveStatus('unsaved');
+
+            // Clear auto-save timeout and set new one
+            if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(autoSaveChanges, 2000);
+        }
+
+        function updateSaveStatus(status) {
+            const statusEl = document.getElementById('saveStatus');
+            statusEl.className = `save-status ${status}`;
             
-            // Show modal
-            document.getElementById('memoryModal').classList.add('show');
+            switch (status) {
+                case 'saved':
+                    statusEl.innerHTML = '<i class="fas fa-check"></i> Saved';
+                    break;
+                case 'saving':
+                    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                    break;
+                case 'unsaved':
+                    statusEl.innerHTML = '<i class="fas fa-clock"></i> Unsaved';
+                    break;
+                case 'error':
+                    statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+                    break;
+            }
+        }
+
+        async function autoSaveChanges() {
+            if (Object.keys(memoryChanges).length === 0) return;
+            
+            updateSaveStatus('saving');
+            const success = await saveMemoryChanges(false);
+            updateSaveStatus(success ? 'saved' : 'error');
+        }
+
+        async function saveMemoryChanges(showAlert = true) {
+            if (!selectedMemory || Object.keys(memoryChanges).length === 0) {
+                if (showAlert) showAlert('No changes to save', 'success');
+                return true;
+            }
+
+            try {
+                const response = await fetch(`/api/memories/${selectedMemory.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(memoryChanges)
+                });
+
+                if (response.ok) {
+                    const updatedMemory = await response.json();
+                    
+                    // Update local memory object
+                    const memoryIndex = userMemories.findIndex(m => m.id === selectedMemory.id);
+                    if (memoryIndex !== -1) {
+                        userMemories[memoryIndex] = updatedMemory;
+                        selectedMemory = updatedMemory;
+                    }
+
+                    memoryChanges = {};
+                    updateMemoryDisplay();
+                    
+                    if (showAlert) showAlert('Memory updated successfully', 'success');
+                    return true;
+                } else {
+                    const error = await response.json();
+                    if (showAlert) showAlert('Failed to save: ' + (error.error || 'Unknown error'), 'error');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                if (showAlert) showAlert('Error saving changes: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        function removeField(fieldKey) {
+            // Mark field for removal
+            memoryChanges[fieldKey] = null;
+            
+            // Remove from UI
+            const section = document.querySelector(`[data-field="${fieldKey}"]`);
+            if (section) section.remove();
+            
+            updateSaveStatus('unsaved');
+            autoSaveChanges();
+        }
+
+        // Add Fields Modal Functions
+        function openAddFieldsModal() {
+            populateAddFieldsModal();
+            document.getElementById('addFieldsModal').classList.add('show');
+        }
+
+        function closeAddFieldsModal() {
+            document.getElementById('addFieldsModal').classList.remove('show');
+        }
+
+        function populateAddFieldsModal() {
+            const fieldsGrid = document.getElementById('fieldsGrid');
+            fieldsGrid.innerHTML = '';
+
+            // Get fields that are not currently in the memory
+            const currentFields = Object.keys(selectedMemory || {});
+            
+            Object.entries(memoryFieldDefinitions).forEach(([fieldKey, fieldDef]) => {
+                if (currentFields.includes(fieldKey)) return; // Skip existing fields
+
+                const fieldOption = document.createElement('div');
+                fieldOption.className = 'field-option';
+                fieldOption.onclick = () => addField(fieldKey, fieldDef);
+
+                fieldOption.innerHTML = `
+                    <div class="field-option-icon">
+                        <i class="${fieldDef.icon}"></i>
+                    </div>
+                    <div class="field-option-name">${fieldDef.label}</div>
+                    <div class="field-option-desc">Add ${fieldDef.label.toLowerCase()} information</div>
+                `;
+
+                fieldsGrid.appendChild(fieldOption);
+            });
+
+            if (fieldsGrid.children.length === 0) {
+                fieldsGrid.innerHTML = '<div style="text-align: center; padding: 2rem; color: #888;">All available fields are already added</div>';
+            }
+        }
+
+        function addField(fieldKey, fieldDef) {
+            // Add field to memory modal
+            const modalContent = document.getElementById('memoryModalContent');
+            const newField = createEditableField(fieldKey, '', fieldDef);
+            modalContent.appendChild(newField);
+
+            // Focus on the new field
+            const input = newField.querySelector('.memory-detail-input, .memory-detail-select');
+            if (input) input.focus();
+
+            closeAddFieldsModal();
+            updateSaveStatus('unsaved');
         }
         
         function closeMemoryModal() {
+            // Check for unsaved changes
+            if (Object.keys(memoryChanges).length > 0) {
+                showConfirmDialog(
+                    'Unsaved Changes',
+                    'You have unsaved changes. Are you sure you want to close without saving?',
+                    () => {
+                        document.getElementById('memoryModal').classList.remove('show');
+                        selectedMemory = null;
+                        memoryChanges = {};
+                    }
+                );
+                return;
+            }
+
             document.getElementById('memoryModal').classList.remove('show');
             selectedMemory = null;
+            memoryChanges = {};
+        }
+
+        // Configuration Modal Functions
+        function openConfigMode(mode) {
+            currentConfigMode = mode;
+            configData = {};
+            closeSidebar();
+
+            const configurations = {
+                'plan-day': {
+                    title: 'Plan Your Day',
+                    subtitle: 'Set up your daily planning preferences',
+                    steps: [
+                        {
+                            title: 'Planning Focus',
+                            options: [
+                                { id: 'comprehensive', title: 'Comprehensive Planning', desc: 'Full day schedule with time blocks and priorities' },
+                                { id: 'priorities', title: 'Priority Focus', desc: 'Identify top 3-5 priorities for the day' },
+                                { id: 'routine', title: 'Routine Check', desc: 'Review and adjust existing routines' }
+                            ]
+                        },
+                        {
+                            title: 'Time Frame',
+                            options: [
+                                { id: 'today', title: 'Today Only', desc: 'Plan just for today' },
+                                { id: 'week', title: 'This Week', desc: 'Plan for the entire week' },
+                                { id: 'custom', title: 'Custom Period', desc: 'Specify custom time frame' }
+                            ]
+                        }
+                    ]
+                },
+                'set-goals': {
+                    title: 'Set Goals',
+                    subtitle: 'Define and structure your objectives',
+                    steps: [
+                        {
+                            title: 'Goal Type',
+                            options: [
+                                { id: 'short-term', title: 'Short-term Goal', desc: 'Achievable within days or weeks' },
+                                { id: 'long-term', title: 'Long-term Goal', desc: 'Major objective taking months or years' },
+                                { id: 'habit', title: 'Habit Goal', desc: 'Building or breaking a habit' },
+                                { id: 'project', title: 'Project Goal', desc: 'Specific project with milestones' }
+                            ]
+                        },
+                        {
+                            title: 'Priority Level',
+                            options: [
+                                { id: '5', title: 'Critical Priority', desc: 'Must achieve - highest importance' },
+                                { id: '4', title: 'High Priority', desc: 'Very important to achieve' },
+                                { id: '3', title: 'Medium Priority', desc: 'Important but flexible' },
+                                { id: '2', title: 'Low Priority', desc: 'Nice to achieve when possible' }
+                            ]
+                        }
+                    ]
+                },
+                'create-routine': {
+                    title: 'Create Routine',
+                    subtitle: 'Build sustainable daily or weekly habits',
+                    steps: [
+                        {
+                            title: 'Routine Type',
+                            options: [
+                                { id: 'morning', title: 'Morning Routine', desc: 'Start your day with purpose' },
+                                { id: 'evening', title: 'Evening Routine', desc: 'Wind down and prepare for tomorrow' },
+                                { id: 'work', title: 'Work Routine', desc: 'Productivity during work hours' },
+                                { id: 'exercise', title: 'Exercise Routine', desc: 'Physical fitness and health' },
+                                { id: 'custom', title: 'Custom Routine', desc: 'Specific activity or habit' }
+                            ]
+                        },
+                        {
+                            title: 'Frequency',
+                            options: [
+                                { id: 'daily', title: 'Daily', desc: 'Every day without exception' },
+                                { id: 'weekdays', title: 'Weekdays', desc: 'Monday through Friday' },
+                                { id: 'weekly', title: 'Weekly', desc: 'Specific days of the week' },
+                                { id: 'flexible', title: 'Flexible', desc: 'Target frequency with flexibility' }
+                            ]
+                        }
+                    ]
+                },
+                'daily-review': {
+                    title: 'Daily Review',
+                    subtitle: 'Reflect on your progress and plan improvements',
+                    steps: [
+                        {
+                            title: 'Review Focus',
+                            options: [
+                                { id: 'goals', title: 'Goals Progress', desc: 'Review progress on your goals' },
+                                { id: 'routines', title: 'Routines Check', desc: 'Assess routine completion and consistency' },
+                                { id: 'overall', title: 'Overall Day', desc: 'General reflection on the entire day' },
+                                { id: 'planning', title: 'Tomorrow Planning', desc: 'Focus on planning tomorrow' }
+                            ]
+                        },
+                        {
+                            title: 'Review Depth',
+                            options: [
+                                { id: 'quick', title: 'Quick Check', desc: '5-10 minute brief review' },
+                                { id: 'standard', title: 'Standard Review', desc: '15-20 minute thorough review' },
+                                { id: 'detailed', title: 'Detailed Analysis', desc: '30+ minute deep reflection' }
+                            ]
+                        }
+                    ]
+                }
+            };
+
+            const config = configurations[mode];
+            if (!config) return;
+
+            populateConfigModal(config);
+            document.getElementById('configModal').classList.add('show');
+        }
+
+        function populateConfigModal(config) {
+            document.getElementById('configTitle').textContent = config.title;
+            document.getElementById('configSubtitle').textContent = config.subtitle;
+
+            const configBody = document.getElementById('configBody');
+            configBody.innerHTML = '';
+
+            config.steps.forEach((step, stepIndex) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'config-step';
+
+                const stepTitle = document.createElement('div');
+                stepTitle.className = 'config-step-title';
+                stepTitle.textContent = `${stepIndex + 1}. ${step.title}`;
+
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'config-options';
+
+                step.options.forEach(option => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'config-option';
+                    optionDiv.onclick = () => selectConfigOption(stepIndex, option.id, optionDiv);
+
+                    optionDiv.innerHTML = `
+                        <div class="config-option-title">${option.title}</div>
+                        <div class="config-option-desc">${option.desc}</div>
+                    `;
+
+                    optionsDiv.appendChild(optionDiv);
+                });
+
+                stepDiv.appendChild(stepTitle);
+                stepDiv.appendChild(optionsDiv);
+                configBody.appendChild(stepDiv);
+
+                // Add custom input form if needed
+                if (step.options.some(opt => opt.id === 'custom')) {
+                    const customForm = document.createElement('div');
+                    customForm.className = 'config-form hidden';
+                    customForm.id = `customForm_${stepIndex}`;
+                    
+                    customForm.innerHTML = `
+                        <div class="config-form-group">
+                            <label class="config-form-label">Specify details:</label>
+                            <input type="text" class="config-form-input" placeholder="Enter your preference..." />
+                        </div>
+                    `;
+
+                    stepDiv.appendChild(customForm);
+                }
+            });
+        }
+
+        function selectConfigOption(stepIndex, optionId, optionElement) {
+            // Remove selection from siblings
+            optionElement.parentElement.querySelectorAll('.config-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Select this option
+            optionElement.classList.add('selected');
+
+            // Store selection
+            configData[`step_${stepIndex}`] = optionId;
+
+            // Show/hide custom form if needed
+            const customForm = document.getElementById(`customForm_${stepIndex}`);
+            if (customForm) {
+                if (optionId === 'custom') {
+                    customForm.classList.remove('hidden');
+                    const input = customForm.querySelector('input');
+                    input.addEventListener('input', (e) => {
+                        configData[`step_${stepIndex}_custom`] = e.target.value;
+                    });
+                } else {
+                    customForm.classList.add('hidden');
+                    delete configData[`step_${stepIndex}_custom`];
+                }
+            }
+
+            // Enable proceed button if all steps are selected
+            updateConfigProceedButton();
+        }
+
+        function updateConfigProceedButton() {
+            const requiredSteps = document.querySelectorAll('.config-step').length;
+            const selectedSteps = Object.keys(configData).filter(key => key.startsWith('step_') && !key.includes('_custom')).length;
+            
+            const proceedBtn = document.getElementById('configProceedBtn');
+            proceedBtn.disabled = selectedSteps < requiredSteps;
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').classList.remove('show');
+            currentConfigMode = null;
+            configData = {};
+        }
+
+        function processConfigAndChat() {
+            if (!currentConfigMode || Object.keys(configData).length === 0) return;
+
+            // Build a structured prompt based on configuration
+            let prompt = buildConfigPrompt(currentConfigMode, configData);
+
+            closeConfigModal();
+
+            // Send to chat
+            document.getElementById('messageInput').value = prompt;
+            sendMessage();
+        }
+
+        function buildConfigPrompt(mode, data) {
+            const prompts = {
+                'plan-day': () => {
+                    let prompt = "I'd like help planning my day with the following preferences:\n\n";
+                    
+                    if (data.step_0 === 'comprehensive') {
+                        prompt += "**Planning Style**: Comprehensive planning with time blocks and priorities\n";
+                    } else if (data.step_0 === 'priorities') {
+                        prompt += "**Planning Style**: Focus on identifying top 3-5 priorities\n";
+                    } else if (data.step_0 === 'routine') {
+                        prompt += "**Planning Style**: Review and adjust my existing routines\n";
+                    }
+
+                    if (data.step_1 === 'today') {
+                        prompt += "**Time Frame**: Today only\n";
+                    } else if (data.step_1 === 'week') {
+                        prompt += "**Time Frame**: This entire week\n";
+                    } else if (data.step_1 === 'custom' && data.step_1_custom) {
+                        prompt += `**Time Frame**: ${data.step_1_custom}\n`;
+                    }
+
+                    prompt += "\nPlease use my stored memories about goals, routines, and preferences to create a personalized plan.";
+                    return prompt;
+                },
+                'set-goals': () => {
+                    let prompt = "I want to set a new goal with these specifications:\n\n";
+                    
+                    const goalTypes = {
+                        'short-term': 'Short-term goal (days/weeks)',
+                        'long-term': 'Long-term goal (months/years)',
+                        'habit': 'Habit-building goal',
+                        'project': 'Project-based goal'
+                    };
+                    
+                    if (data.step_0) {
+                        prompt += `**Goal Type**: ${goalTypes[data.step_0]}\n`;
+                    }
+
+                    if (data.step_1) {
+                        prompt += `**Priority Level**: ${data.step_1}/5 priority\n`;
+                    }
+
+                    prompt += "\nPlease help me define this goal clearly, set success criteria, and create an action plan. Consider my existing goals and routines from my stored memories.";
+                    return prompt;
+                },
+                'create-routine': () => {
+                    let prompt = "I want to create a new routine with these details:\n\n";
+                    
+                    const routineTypes = {
+                        'morning': 'Morning routine',
+                        'evening': 'Evening routine',
+                        'work': 'Work/productivity routine',
+                        'exercise': 'Exercise routine',
+                        'custom': 'Custom routine'
+                    };
+
+                    if (data.step_0) {
+                        prompt += `**Routine Type**: ${routineTypes[data.step_0]}`;
+                        if (data.step_0 === 'custom' && data.step_0_custom) {
+                            prompt += ` - ${data.step_0_custom}`;
+                        }
+                        prompt += "\n";
+                    }
+
+                    const frequencies = {
+                        'daily': 'Daily (every day)',
+                        'weekdays': 'Weekdays only',
+                        'weekly': 'Specific days of the week',
+                        'flexible': 'Flexible frequency'
+                    };
+
+                    if (data.step_1) {
+                        prompt += `**Frequency**: ${frequencies[data.step_1]}\n`;
+                    }
+
+                    prompt += "\nPlease help me design this routine, considering my existing routines and goals. Include specific actions, timing, and success tracking.";
+                    return prompt;
+                },
+                'daily-review': () => {
+                    let prompt = "I'd like to do a daily review with this focus:\n\n";
+                    
+                    const focuses = {
+                        'goals': 'Goals progress review',
+                        'routines': 'Routines completion check',
+                        'overall': 'Overall day reflection',
+                        'planning': 'Tomorrow planning focus'
+                    };
+
+                    if (data.step_0) {
+                        prompt += `**Review Focus**: ${focuses[data.step_0]}\n`;
+                    }
+
+                    const depths = {
+                        'quick': 'Quick check (5-10 minutes)',
+                        'standard': 'Standard review (15-20 minutes)',
+                        'detailed': 'Detailed analysis (30+ minutes)'
+                    };
+
+                    if (data.step_1) {
+                        prompt += `**Review Depth**: ${depths[data.step_1]}\n`;
+                    }
+
+                    prompt += "\nPlease guide me through this review using my stored memories about goals, routines, and recent activities.";
+                    return prompt;
+                }
+            };
+
+            return prompts[mode] ? prompts[mode]() : `Help me with ${mode} based on my stored memories and preferences.`;
         }
         
-        // NEW: Open chat about specific memory
+        // Open chat about specific memory
         function openMemoryChat() {
             if (!selectedMemory) return;
             
@@ -1279,7 +2599,7 @@ Please provide full context about this memory and help me with any modifications
             sendMessage();
         }
         
-        // NEW: Memory deletion functionality
+        // Memory deletion functionality
         function confirmDeleteMemoryDirect(memoryId) {
             const memory = userMemories.find(m => m.id === memoryId);
             if (!memory) return;
@@ -1327,6 +2647,11 @@ Please provide full context about this memory and help me with any modifications
                     lastMessage.appendChild(indicator);
                     
                     showAlert('Memory deleted successfully', 'success');
+                    
+                    // Refresh all memories modal if open
+                    if (document.getElementById('allMemoriesModal').classList.contains('show')) {
+                        populateMemoriesModal();
+                    }
                 } else {
                     const error = await response.json();
                     showAlert('Failed to delete memory: ' + (error.error || 'Unknown error'), 'error');
@@ -1361,7 +2686,7 @@ Please provide full context about this memory and help me with any modifications
         function addWelcomeMessage() {
             const messagesContainer = document.getElementById('messages');
             if (messagesContainer.children.length === 0) {
-                addMessage('assistant', `Hello! I'm MindOS, your personal AI assistant with memory capabilities. I can remember our conversations, your goals, routines, and preferences to provide personalized assistance.\n\nI currently have ${userMemories.length} stored memories about you. You can view, discuss, or delete any memory by clicking on them in the sidebar.\n\nWhat would you like to work on today?`);
+                addMessage('assistant', `Hello! I'm MindOS, your personal AI assistant with memory capabilities. I can remember our conversations, your goals, routines, and preferences to provide personalized assistance.\n\nI currently have ${userMemories.length} stored memories about you. You can view, edit, and manage any memory through the sidebar or by using "View All Memories".\n\nWhat would you like to work on today?`);
             }
         }
         
@@ -1381,36 +2706,6 @@ Please provide full context about this memory and help me with any modifications
         function closeSidebar() {
             document.getElementById('sidebar').classList.remove('open');
             document.getElementById('overlay').classList.remove('show');
-        }
-        
-        // Quick actions
-        function quickAction(action) {
-            const actions = {
-                'plan-day': 'Help me plan my day based on my goals, routines, and priorities. Consider my stored memories and preferences.',
-                'set-goals': 'I want to set some new goals. Help me define them clearly and create a plan to achieve them.',
-                'create-routine': 'Help me create a new daily or weekly routine that aligns with my goals and lifestyle.',
-                'daily-review': 'Let\'s do a daily review. How did I do today with my goals and routines? What can I improve?'
-            };
-            
-            const message = actions[action];
-            if (message) {
-                document.getElementById('messageInput').value = message;
-                sendMessage();
-            }
-            closeSidebar();
-        }
-        
-        async function viewAllMemories() {
-            if (userMemories.length === 0) {
-                addMessage('assistant', 'You don\'t have any stored memories yet. As we chat and you share important information about your goals, routines, and preferences, I\'ll automatically store relevant details for future reference.');
-            } else {
-                const memoryText = userMemories.map(m => 
-                    `**${m.type?.toUpperCase() || 'GENERAL'}**: ${m.content_short || m.content?.substring(0, 100) || 'No content'}${m.notes ? `\n   _${m.notes}_` : ''}`
-                ).join('\n\n');
-                
-                addMessage('assistant', `Here are all your stored memories:\n\n${memoryText}\n\nI use these memories to provide personalized assistance and remember important details about your goals and preferences. You can click on any memory in the sidebar to view full details, discuss it with me, or delete it if needed.`);
-            }
-            closeSidebar();
         }
         
         async function refreshMemories() {
@@ -1590,6 +2885,15 @@ Please provide full context about this memory and help me with any modifications
             if (event.target.classList.contains('confirm-dialog')) {
                 closeConfirmDialog();
             }
+            if (event.target.classList.contains('all-memories-modal')) {
+                closeAllMemoriesModal();
+            }
+            if (event.target.classList.contains('add-fields-modal')) {
+                closeAddFieldsModal();
+            }
+            if (event.target.classList.contains('config-modal')) {
+                closeConfigModal();
+            }
         });
         
         // Keyboard shortcuts
@@ -1597,6 +2901,9 @@ Please provide full context about this memory and help me with any modifications
             if (event.key === 'Escape') {
                 closeMemoryModal();
                 closeConfirmDialog();
+                closeAllMemoriesModal();
+                closeAddFieldsModal();
+                closeConfigModal();
                 closeSidebar();
             }
         });
