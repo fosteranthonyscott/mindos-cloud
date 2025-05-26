@@ -1216,3 +1216,704 @@
     color: #666;
     line-height: 1.4;
 }
+/* Enhanced Planning Interface Styles - Add to modals.css */
+
+/* Planning Interface Container */
+.planning-interface {
+    width: 100%;
+}
+
+/* Planning Configuration Grid */
+.planning-config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.planning-config-section {
+    background: #f8f9ff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 2px solid #e0e6ff;
+}
+
+.planning-config-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.planning-config-label::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: #667eea;
+    border-radius: 2px;
+}
+
+/* Memory Selection Header */
+.memory-selection-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.memory-selection-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.selection-count {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.selection-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.selection-action-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.selection-action-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.selection-action-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.selection-action-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Suggested Memories Container */
+.suggested-memories {
+    max-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid #e0e6ff;
+    border-radius: 12px;
+    background: white;
+}
+
+.loading-memories {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #666;
+}
+
+.loading-memories .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+.no-memories-found {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #666;
+}
+
+.no-memories-icon {
+    font-size: 3rem;
+    color: #ccc;
+    margin-bottom: 1rem;
+}
+
+.no-memories-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.no-memories-desc {
+    font-size: 0.9rem;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.error-loading-memories {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #e74c3c;
+}
+
+.error-loading-memories i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Memory Category Sections */
+.memory-category-section {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.memory-category-section:last-child {
+    border-bottom: none;
+}
+
+.memory-category-header {
+    background: #f8f9ff;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e0e6ff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.memory-category-title {
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+
+.memory-category-count {
+    color: #667eea;
+    font-weight: 500;
+}
+
+.memory-category-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.category-select-all {
+    background: none;
+    border: 1px solid #667eea;
+    color: #667eea;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.category-select-all:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* Memory Selection Grid */
+.memory-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+/* Selectable Memory Cards */
+.selectable-memory-card {
+    background: white;
+    border: 2px solid #e0e6ff;
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.2s;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.selectable-memory-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+}
+
+.selectable-memory-card.selected {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+
+/* Memory Card Checkbox */
+.memory-card-checkbox {
+    flex-shrink: 0;
+    padding-top: 0.25rem;
+}
+
+.memory-checkbox {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.memory-checkbox:checked {
+    background: #667eea;
+    border-color: #667eea;
+}
+
+.memory-checkbox:checked::before {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.memory-checkbox:hover {
+    border-color: #667eea;
+}
+
+.memory-checkbox-label {
+    display: none; /* Hidden but accessible */
+}
+
+/* Memory Card Content */
+.memory-card-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.memory-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    gap: 0.5rem;
+}
+
+.memory-type-badge {
+    background: #667eea;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.memory-type-badge.type-goal { background: #4CAF50; }
+.memory-type-badge.type-routine { background: #FF9800; }
+.memory-type-badge.type-preference { background: #9C27B0; }
+.memory-type-badge.type-insight { background: #2196F3; }
+.memory-type-badge.type-event { background: #F44336; }
+.memory-type-badge.type-system { background: #607D8B; }
+
+.memory-priority-badge {
+    background: #FFC107;
+    color: #333;
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.memory-priority-badge.priority-5 { background: #F44336; color: white; }
+.memory-priority-badge.priority-4 { background: #FF9800; color: white; }
+.memory-priority-badge.priority-3 { background: #FFC107; color: #333; }
+.memory-priority-badge.priority-2 { background: #4CAF50; color: white; }
+.memory-priority-badge.priority-1 { background: #9E9E9E; color: white; }
+
+.memory-card-title {
+    font-weight: 600;
+    color: #333;
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+    word-wrap: break-word;
+}
+
+.memory-card-relevance {
+    background: #e8f5e8;
+    color: #2e7d32;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.memory-card-due,
+.memory-card-time {
+    font-size: 0.8rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.memory-card-due:last-child,
+.memory-card-time:last-child {
+    margin-bottom: 0;
+}
+
+.memory-card-due i,
+.memory-card-time i {
+    color: #667eea;
+}
+
+/* Add Others Modal Styles */
+.add-others-interface {
+    width: 100%;
+}
+
+.memory-type-filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    padding: 0 1rem;
+    border-bottom: 1px solid #e0e6ff;
+    padding-bottom: 1rem;
+}
+
+.add-others-search {
+    padding: 0 1rem 1rem;
+    border-bottom: 1px solid #e0e6ff;
+}
+
+.memory-search-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e0e6ff;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.memory-search-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.memory-search-input::placeholder {
+    color: #999;
+}
+
+.add-others-memories {
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* Browsable Memories Grid */
+.browsable-memories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.browsable-memory-card {
+    background: white;
+    border: 2px solid #e0e6ff;
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.2s;
+    display: flex;
+    gap: 0.75rem;
+    position: relative;
+}
+
+.browsable-memory-card:hover:not(.already-selected) {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+}
+
+.browsable-memory-card.already-selected {
+    background: #f0f8f0;
+    border-color: #4CAF50;
+    opacity: 0.7;
+}
+
+.browsable-memory-checkbox {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.25rem;
+}
+
+.browsable-memory-checkbox:checked {
+    background: #667eea;
+    border-color: #667eea;
+}
+
+.browsable-memory-checkbox:checked::before {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.browsable-memory-checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.memory-card-notes {
+    font-size: 0.8rem;
+    color: #666;
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+}
+
+.memory-card-meta {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+}
+
+.memory-card-meta span {
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    background: #f0f0f0;
+    color: #666;
+}
+
+.memory-card-meta .status-active { background: #e8f5e8; color: #2e7d32; }
+.memory-card-meta .status-completed { background: #e3f2fd; color: #1976d2; }
+.memory-card-meta .status-paused { background: #fff3e0; color: #f57c00; }
+.memory-card-meta .status-archived { background: #f5f5f5; color: #666; }
+
+.memory-card-meta .due-date {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.already-selected-indicator {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: #4CAF50;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Responsive Design for Planning Interface */
+@media (max-width: 768px) {
+    .planning-config-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .memory-selection-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .selection-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .selection-action-btn {
+        justify-content: center;
+    }
+    
+    .memory-selection-grid {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+    
+    .browsable-memories-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .memory-category-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .memory-type-filters {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .selectable-memory-card,
+    .browsable-memory-card {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .memory-card-checkbox {
+        align-self: flex-start;
+    }
+    
+    .memory-card-header {
+        flex-wrap: wrap;
+    }
+    
+    .selection-actions {
+        gap: 0.5rem;
+    }
+    
+    .selection-action-btn {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+}
+
+/* Animation for smooth transitions */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.memory-category-section {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.selectable-memory-card,
+.browsable-memory-card {
+    animation: fadeInUp 0.2s ease-out;
+}
+
+/* Focus states for accessibility */
+.memory-checkbox:focus,
+.browsable-memory-checkbox:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+.selection-action-btn:focus,
+.category-select-all:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+}
+
+.memory-search-input:focus {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+/* Loading state for memory cards */
+.memory-card-loading {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Enhanced visual feedback for interactions */
+.config-option.planning-focus-option,
+.config-option.planning-timeframe-option {
+    position: relative;
+    overflow: hidden;
+}
+
+.config-option.planning-focus-option::before,
+.config-option.planning-timeframe-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+    transition: left 0.6s;
+}
+
+.config-option.planning-focus-option:hover::before,
+.config-option.planning-timeframe-option:hover::before {
+    left: 100%;
+}
+
+/* Success states */
+.memory-card-selected-flash {
+    animation: selectedFlash 0.6s ease-out;
+}
+
+@keyframes selectedFlash {
+    0% {
+        background: #e8f5e8;
+        transform: scale(1);
+    }
+    50% {
+        background: #c8e6c9;
+        transform: scale(1.02);
+    }
+    100% {
+        background: #f8f9ff;
+        transform: scale(1);
+    }
+}
