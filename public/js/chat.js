@@ -1,7 +1,6 @@
 // Chat Module
 const Chat = {
     
-    
     // Add message to chat display
     addMessage(type, content) {
         const messagesContainer = document.getElementById('messages');
@@ -29,81 +28,128 @@ const Chat = {
     },
     
     // Send message to Claude
-async sendMessage() {
-    const input = document.getElementById('messageInput');
-    const message = input.value.trim();
-    
-    if (!message || MindOS.isLoading) return;
-    
-    this.addMessage('user', message);
-    input.value = '';
-    this.autoResize(input);
-    
-    UI.setLoading(true);
-    
-    try {
-        const response = await API.post('/api/claude', {
-            messages: [{
-                role: 'user', 
-                content: message
-            }]
-        });
+    async sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
         
-        const assistantMessage = response.content[0].text;
-        const toolUses = response.content.filter(content => 
-            content.type === 'tool_use' && content.name === 'storeMemory'
-        );
+        if (!message || MindOS.isLoading) return;
         
-        if (toolUses.length > 0) {
-            MindOS.pendingMemories = toolUses.map(tool => ({
-                type: tool.input.type,
-                content: tool.input.content,
-                additionalData: { ...tool.input },
-                id: Utils.generateId()
-            }));
+        this.addMessage('user', message);
+        input.value = '';
+        this.autoResize(input);
+        
+        UI.setLoading(true);
+        
+        try {
+            const response = await API.post('/api/claude', {
+                messages: [{
+                    role: 'user', 
+                    content: message
+                }]
+            });
             
-            // Handle based on user's memory preference
-            const memoryMode = MemoryConfig.getMode();
+            const assistantMessage = response.content[0].text;
+            const toolUses = response.content.filter(content => 
+                content.type === 'tool_use' && content.name === 'storeMemory'
+            );
             
-            switch (memoryMode) {
-                case MemoryConfig.MODES.AUTO:
-                    await Memory.storePendingMemories();
-                    this.addMessage('assistant', assistantMessage);
-                    this.addMemoryIndicator(toolUses.length, 'stored');
-                    break;
-                    
-                case MemoryConfig.MODES.CONFIRM:
-                    Memory.showMemoryConfirmationWithContinuation(
-                        MindOS.pendingMemories, 
-                        assistantMessage,
-                        () => {}, 
-                        () => {}
-                    );
-                    break;
-                    
-                case MemoryConfig.MODES.MANUAL:
-                default:
-                    Memory.showMemoryConfirmation(MindOS.pendingMemories, () => {
-                        Memory.storePendingMemories();
+            if (toolUses.length > 0) {
+                MindOS.pendingMemories = toolUses.map(tool => ({
+                    type: tool.input.type,
+                    content: tool.input.content,
+                    additionalData: { ...tool.input },
+                    id: Utils.generateId()
+                }));
+                
+                // Handle based on user's memory preference
+                const memoryMode = MemoryConfig.getMode();
+                
+                switch (memoryMode) {
+                    case MemoryConfig.MODES.AUTO:
+                        await Memory.storePendingMemories();
                         this.addMessage('assistant', assistantMessage);
-                    }, () => {
-                        this.addMessage('assistant', assistantMessage);
-                    });
-                    break;
+                        this.addMemoryIndicator(toolUses.length, 'stored');
+                        break;
+                        
+                    case MemoryConfig.MODES.CONFIRM:
+                        Memory.showMemoryConfirmationWithContinuation(
+                            MindOS.pendingMemories, 
+                            assistantMessage,
+                            () => {}, 
+                            () => {}
+                        );
+                        break;
+                        
+                    case MemoryConfig.MODES.MANUAL:
+                    default:
+                        Memory.showMemoryConfirmation(MindOS.pendingMemories, () => {
+                            Memory.storePendingMemories();
+                            this.addMessage('assistant', assistantMessage);
+                        }, () => {
+                            this.addMessage('assistant', assistantMessage);
+                        });
+                        break;
+                }
+            } else {
+                this.addMessage('assistant', assistantMessage);
             }
-        } else {
-            this.addMessage('assistant', assistantMessage);
+            
+            MindOS.sessionInfo.messageCount = (MindOS.sessionInfo.messageCount || 0) + 2;
+            UI.updateSessionDisplay();
+            
+        } catch (error) {
+            Utils.showAlert('Failed to send message: ' + error.message, 'error');
+        } finally {
+            UI.setLoading(false);
         }
+    },
+
+    // Send continuation message
+    async sendContinuationMessage(message) {
+        UI.setLoading(true);
         
-        MindOS.sessionInfo.messageCount = (MindOS.sessionInfo.messageCount || 0) + 2;
-        UI.updateSessionDisplay();
-        
-    } catch (error) {
-        Utils.showAlert('Failed to send message: ' + error.message, 'error');
-    } finally {
-        UI.setLoading(false);
-    }
-},
+        try {
+            const response = await API.post('/api/claude', {
+                messages: [{
+                    role: 'user',
+                    content: message
+                }]
+            });
+            
+            const assistantMessage = response.content[0].text;
+            
+            // Handle any new memories from continuation
+            const toolUses = response.content.filter(content => 
+                content.type === 'tool_use' && content.name === 'storeMemory'
+            );
+            
+            if (toolUses.length > 0) {
+                // For continuation, auto-store any new memories to avoid another interruption
+                MindOS.pendingMemories = toolUses.map(tool => ({
+                    type: tool.input.type,
+                    content: tool.input.content,
+                    additionalData: { ...tool.input },
+                    id: Utils.generateId()
+                }));
+                
+                await Memory.storePendingMemories();
+                this.addMessage('assistant', assistantMessage);
+                this.addMemoryIndicator(toolUses.length, 'stored');
+            } else {
+                this.addMessage('assistant', assistantMessage);
+            }
+            
+            // Update session info
+            MindOS.sessionInfo.messageCount = (MindOS.sessionInfo.messageCount || 0) + 2;
+            UI.updateSessionDisplay();
+            
+        } catch (error) {
+            Utils.showAlert('Failed to continue conversation: ' + error.message, 'error');
+        } finally {
+            UI.setLoading(false);
+        }
+    },
+    
     // Format message content with markdown support
     formatMessageContent(content) {
         return content
@@ -316,50 +362,3 @@ What would you like to work on today?`;
         return context;
     }
 };
-
-// Add this at the END of chat.js
-// Send continuation message
-sendContinuationMessage: async function(message) {
-    UI.setLoading(true);
-    
-    try {
-        const response = await API.post('/api/claude', {
-            messages: [{
-                role: 'user',
-                content: message
-            }]
-        });
-        
-        const assistantMessage = response.content[0].text;
-        
-        // Handle any new memories from continuation
-        const toolUses = response.content.filter(content => 
-            content.type === 'tool_use' && content.name === 'storeMemory'
-        );
-        
-        if (toolUses.length > 0) {
-            // For continuation, auto-store any new memories to avoid another interruption
-            MindOS.pendingMemories = toolUses.map(tool => ({
-                type: tool.input.type,
-                content: tool.input.content,
-                additionalData: { ...tool.input },
-                id: Utils.generateId()
-            }));
-            
-            await Memory.storePendingMemories();
-            this.addMessage('assistant', assistantMessage);
-            this.addMemoryIndicator(toolUses.length, 'stored');
-        } else {
-            this.addMessage('assistant', assistantMessage);
-        }
-        
-        // Update session info
-        MindOS.sessionInfo.messageCount = (MindOS.sessionInfo.messageCount || 0) + 2;
-        UI.updateSessionDisplay();
-        
-    } catch (error) {
-        Utils.showAlert('Failed to continue conversation: ' + error.message, 'error');
-    } finally {
-        UI.setLoading(false);
-    }
-}
