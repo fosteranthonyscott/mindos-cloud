@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindOS - AI Assistant</title>
+    <title>MindOS - AI Assistant with Memory</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -19,7 +19,7 @@
             overflow: hidden;
         }
         
-        /* Auth Screen */
+        /* Auth Screen - keeping existing styles */
         .auth-screen {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
@@ -124,7 +124,7 @@
             background: #f5f5f5;
         }
         
-        /* Header */
+        /* Header with session info */
         .chat-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -159,6 +159,19 @@
             opacity: 0.8;
         }
         
+        .session-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.8rem;
+        }
+        
+        .memory-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+        }
+        
         .online-indicator {
             width: 8px;
             height: 8px;
@@ -167,7 +180,7 @@
             margin-left: 1rem;
         }
         
-        /* Sidebar */
+        /* Enhanced Sidebar */
         .sidebar {
             position: fixed;
             top: 0;
@@ -212,6 +225,19 @@
         .sidebar-menu {
             flex: 1;
             padding: 1rem 0;
+            overflow-y: auto;
+        }
+        
+        .menu-section {
+            margin-bottom: 1rem;
+        }
+        
+        .menu-section-title {
+            padding: 0.5rem 1.5rem;
+            font-size: 0.8rem;
+            color: #888;
+            font-weight: 600;
+            text-transform: uppercase;
         }
         
         .menu-item {
@@ -235,6 +261,27 @@
             width: 20px;
             margin-right: 1rem;
             color: #667eea;
+        }
+        
+        .memory-item {
+            padding: 0.75rem 1.5rem;
+            border-left: 3px solid #667eea;
+            margin: 0.5rem 1rem;
+            background: #f8f9ff;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9rem;
+        }
+        
+        .memory-type {
+            font-weight: 600;
+            color: #667eea;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+        }
+        
+        .memory-content {
+            color: #333;
+            margin-top: 0.25rem;
         }
         
         .sidebar-footer {
@@ -315,6 +362,16 @@
             opacity: 0.6;
             margin-top: 0.25rem;
             text-align: center;
+        }
+        
+        .memory-stored-indicator {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            margin-top: 0.5rem;
         }
         
         /* Typing indicator */
@@ -460,7 +517,7 @@
         <div class="auth-card">
             <div class="auth-header">
                 <h1>MindOS</h1>
-                <p>Your Personal AI Assistant</p>
+                <p>Your Personal AI Assistant with Memory</p>
             </div>
             
             <div class="auth-tabs">
@@ -510,6 +567,10 @@
             <div class="header-info">
                 <div class="header-title">MindOS</div>
                 <div class="header-subtitle" id="headerStatus">AI Assistant Ready</div>
+                <div class="session-info">
+                    <span id="sessionMessages">0 messages</span>
+                    <span class="memory-count" id="memoryCount">0 memories</span>
+                </div>
             </div>
             <div class="online-indicator"></div>
         </div>
@@ -529,35 +590,56 @@
             </div>
             
             <div class="sidebar-menu">
-                <button class="menu-item" onclick="quickAction('plan-day')">
-                    <i class="fas fa-calendar-day"></i>
-                    Plan My Day
-                </button>
-                <button class="menu-item" onclick="quickAction('daily-report')">
-                    <i class="fas fa-chart-line"></i>
-                    Daily Report
-                </button>
-                <button class="menu-item" onclick="quickAction('review-goals')">
-                    <i class="fas fa-bullseye"></i>
-                    Review Goals
-                </button>
-                <button class="menu-item" onclick="quickAction('system-health')">
-                    <i class="fas fa-heartbeat"></i>
-                    System Health
-                </button>
-                <hr style="margin: 0.5rem 0; border: none; border-top: 1px solid #eee;">
-                <button class="menu-item" onclick="viewMemories()">
-                    <i class="fas fa-brain"></i>
-                    View Memories
-                </button>
-                <button class="menu-item" onclick="clearSession()">
-                    <i class="fas fa-broom"></i>
-                    Clear Session
-                </button>
-                <button class="menu-item" onclick="exportChat()">
-                    <i class="fas fa-download"></i>
-                    Export Chat
-                </button>
+                <div class="menu-section">
+                    <div class="menu-section-title">Quick Actions</div>
+                    <button class="menu-item" onclick="quickAction('plan-day')">
+                        <i class="fas fa-calendar-day"></i>
+                        Plan My Day
+                    </button>
+                    <button class="menu-item" onclick="quickAction('set-goals')">
+                        <i class="fas fa-bullseye"></i>
+                        Set Goals
+                    </button>
+                    <button class="menu-item" onclick="quickAction('create-routine')">
+                        <i class="fas fa-repeat"></i>
+                        Create Routine
+                    </button>
+                    <button class="menu-item" onclick="quickAction('daily-review')">
+                        <i class="fas fa-chart-line"></i>
+                        Daily Review
+                    </button>
+                </div>
+                
+                <div class="menu-section">
+                    <div class="menu-section-title">Memory Management</div>
+                    <button class="menu-item" onclick="viewAllMemories()">
+                        <i class="fas fa-brain"></i>
+                        View All Memories
+                    </button>
+                    <button class="menu-item" onclick="refreshMemories()">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh Memories
+                    </button>
+                </div>
+                
+                <div class="menu-section">
+                    <div class="menu-section-title">Recent Memories</div>
+                    <div id="recentMemories">
+                        <!-- Recent memories will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="menu-section">
+                    <div class="menu-section-title">Session</div>
+                    <button class="menu-item" onclick="clearSession()">
+                        <i class="fas fa-broom"></i>
+                        Clear Session
+                    </button>
+                    <button class="menu-item" onclick="exportChat()">
+                        <i class="fas fa-download"></i>
+                        Export Chat
+                    </button>
+                </div>
             </div>
             
             <div class="sidebar-footer">
@@ -611,6 +693,8 @@
         let token = localStorage.getItem('mindos_token');
         let user = JSON.parse(localStorage.getItem('mindos_user') || '{}');
         let isLoading = false;
+        let sessionInfo = {};
+        let userMemories = [];
         
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
@@ -647,7 +731,7 @@
             user = {};
         }
         
-        // Auth functions
+        // Auth functions (keeping existing)
         function showLogin() {
             document.getElementById('loginForm').classList.remove('hidden');
             document.getElementById('registerForm').classList.add('hidden');
@@ -738,21 +822,82 @@
             document.getElementById('chatApp').classList.add('hidden');
         }
         
-        function showChatApp() {
-            console.log('showChatApp called'); // Debug
+        async function showChatApp() {
             document.getElementById('authScreen').classList.add('hidden');
             const chatApp = document.getElementById('chatApp');
             chatApp.classList.remove('hidden');
-            chatApp.style.display = 'flex'; // Force display
-            console.log('Chat app display:', chatApp.style.display); // Debug
+            chatApp.style.display = 'flex';
             document.getElementById('sidebarUsername').textContent = user.username || 'User';
+            
+            // Load session info and memories
+            await loadSessionInfo();
+            await loadMemories();
+            
             addWelcomeMessage();
+        }
+        
+        async function loadSessionInfo() {
+            try {
+                const response = await fetch('/api/session-info', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    sessionInfo = await response.json();
+                    updateSessionDisplay();
+                }
+            } catch (error) {
+                console.log('Failed to load session info:', error);
+            }
+        }
+        
+        async function loadMemories() {
+            try {
+                const response = await fetch('/api/memories', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    userMemories = await response.json();
+                    updateMemoryDisplay();
+                }
+            } catch (error) {
+                console.log('Failed to load memories:', error);
+            }
+        }
+        
+        function updateSessionDisplay() {
+            const messagesCount = sessionInfo.messageCount || 0;
+            document.getElementById('sessionMessages').textContent = `${messagesCount} messages`;
+        }
+        
+        function updateMemoryDisplay() {
+            document.getElementById('memoryCount').textContent = `${userMemories.length} memories`;
+            
+            // Update recent memories in sidebar
+            const recentMemoriesDiv = document.getElementById('recentMemories');
+            recentMemoriesDiv.innerHTML = '';
+            
+            const recentMemories = userMemories.slice(0, 5);
+            recentMemories.forEach(memory => {
+                const memoryDiv = document.createElement('div');
+                memoryDiv.className = 'memory-item';
+                memoryDiv.innerHTML = `
+                    <div class="memory-type">${memory.type}</div>
+                    <div class="memory-content">${memory.content_short}</div>
+                `;
+                recentMemoriesDiv.appendChild(memoryDiv);
+            });
+            
+            if (recentMemories.length === 0) {
+                recentMemoriesDiv.innerHTML = '<div style="padding: 1rem; text-align: center; color: #888; font-size: 0.9rem;">No memories yet</div>';
+            }
         }
         
         function addWelcomeMessage() {
             const messagesContainer = document.getElementById('messages');
             if (messagesContainer.children.length === 0) {
-                addMessage('assistant', 'Hello! I\'m MindOS, your personal AI assistant. I\'m here to help you manage your life, plan your day, and stay organized. What would you like to work on today?');
+                addMessage('assistant', `Hello! I'm MindOS, your personal AI assistant with memory capabilities. I can remember our conversations, your goals, routines, and preferences to provide personalized assistance.\n\nI currently have ${userMemories.length} stored memories about you. What would you like to work on today?`);
             }
         }
         
@@ -777,10 +922,10 @@
         // Quick actions
         function quickAction(action) {
             const actions = {
-                'plan-day': 'Help me plan my day based on my priorities and schedule',
-                'daily-report': 'Generate my daily report and system status',
-                'review-goals': 'Help me review my goals and progress',
-                'system-health': 'Show me my system health and any areas that need attention'
+                'plan-day': 'Help me plan my day based on my goals, routines, and priorities. Consider my stored memories and preferences.',
+                'set-goals': 'I want to set some new goals. Help me define them clearly and create a plan to achieve them.',
+                'create-routine': 'Help me create a new daily or weekly routine that aligns with my goals and lifestyle.',
+                'daily-review': 'Let\'s do a daily review. How did I do today with my goals and routines? What can I improve?'
             };
             
             const message = actions[action];
@@ -791,25 +936,23 @@
             closeSidebar();
         }
         
-        async function viewMemories() {
-            try {
-                const response = await fetch('/api/memories', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+        async function viewAllMemories() {
+            if (userMemories.length === 0) {
+                addMessage('assistant', 'You don\'t have any stored memories yet. As we chat and you share important information about your goals, routines, and preferences, I\'ll automatically store relevant details for future reference.');
+            } else {
+                const memoryText = userMemories.map(m => 
+                    `**${m.type.toUpperCase()}**: ${m.content_short}${m.notes ? `\n   _${m.notes}_` : ''}`
+                ).join('\n\n');
                 
-                if (response.ok) {
-                    const memories = await response.json();
-                    const memoryText = memories.length > 0 
-                        ? memories.map(m => `[${m.type}] ${m.content}`).join('\n\n')
-                        : 'No memories stored yet.';
-                    
-                    addMessage('assistant', `Your stored memories:\n\n${memoryText}`);
-                } else {
-                    showAlert('Failed to load memories', 'error');
-                }
-            } catch (error) {
-                showAlert('Error loading memories: ' + error.message, 'error');
+                addMessage('assistant', `Here are all your stored memories:\n\n${memoryText}\n\nI use these memories to provide personalized assistance and remember important details about your goals and preferences.`);
             }
+            closeSidebar();
+        }
+        
+        async function refreshMemories() {
+            await loadMemories();
+            await loadSessionInfo();
+            showAlert('Memories refreshed successfully', 'success');
             closeSidebar();
         }
         
@@ -822,6 +965,8 @@
                 
                 if (response.ok) {
                     document.getElementById('messages').innerHTML = '';
+                    sessionInfo = { messageCount: 0 };
+                    updateSessionDisplay();
                     addWelcomeMessage();
                     showAlert('Session cleared successfully', 'success');
                 } else {
@@ -850,7 +995,7 @@
             closeSidebar();
         }
         
-        // Chat functions
+        // Enhanced chat functions
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
@@ -881,6 +1026,26 @@
                     const data = await response.json();
                     const assistantMessage = data.content[0].text;
                     addMessage('assistant', assistantMessage);
+                    
+                    // Check if memory was stored (tool use indicates this)
+                    const hasToolUse = data.content.some(content => content.type === 'tool_use');
+                    if (hasToolUse) {
+                        // Refresh memories and session info
+                        await loadMemories();
+                        await loadSessionInfo();
+                        
+                        // Add indicator that memory was stored
+                        const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
+                        const indicator = document.createElement('div');
+                        indicator.className = 'memory-stored-indicator';
+                        indicator.innerHTML = '<i class="fas fa-brain"></i> Memory stored';
+                        lastMessage.appendChild(indicator);
+                    }
+                    
+                    // Update session info
+                    sessionInfo.messageCount = (sessionInfo.messageCount || 0) + 2; // user + assistant
+                    updateSessionDisplay();
+                    
                 } else {
                     const errorData = await response.json();
                     showAlert('Failed to send message: ' + (errorData.error || response.statusText), 'error');
@@ -905,7 +1070,7 @@
                     ${type === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>'}
                 </div>
                 <div>
-                    <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
+                    <div class="message-content">${content.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/_(.*?)_/g, '<em>$1</em>')}</div>
                     <div class="message-time">${timeString}</div>
                 </div>
             `;
