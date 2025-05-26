@@ -57,9 +57,9 @@
         <div id="authAlert"></div>
     </div>
     
-    <!-- Main Card App with ScrollCards -->
+    <!-- Main Card App with Enhanced Header -->
     <div id="cardApp" class="card-app">
-        <!-- Header with Profile -->
+        <!-- Enhanced Header with Action Buttons -->
         <div class="app-header">
             <div class="user-info">
                 <div class="user-avatar">
@@ -70,6 +70,40 @@
                     <div class="memory-count" id="memoryCount">0 items</div>
                 </div>
             </div>
+            
+            <!-- NEW: Action Buttons Section -->
+            <div class="action-buttons">
+                <button class="action-btn" data-action="add-task" title="Add or manage tasks">
+                    <i class="fas fa-tasks"></i>
+                    <span>Tasks</span>
+                </button>
+                
+                <button class="action-btn" data-action="add-routine" title="Add or manage routines">
+                    <i class="fas fa-repeat"></i>
+                    <span>Routines</span>
+                </button>
+                
+                <button class="action-btn" data-action="add-goal" title="Add or manage goals">
+                    <i class="fas fa-bullseye"></i>
+                    <span>Goals</span>
+                </button>
+                
+                <button class="action-btn" data-action="add-event" title="Add or manage events">
+                    <i class="fas fa-calendar-plus"></i>
+                    <span>Events</span>
+                </button>
+                
+                <button class="action-btn" data-action="add-memory" title="Add or manage memories">
+                    <i class="fas fa-brain"></i>
+                    <span>Memories</span>
+                </button>
+                
+                <button class="action-btn primary" data-action="show-all" title="View all items">
+                    <i class="fas fa-th-list"></i>
+                    <span>Show All</span>
+                </button>
+            </div>
+            
             <div class="header-actions">
                 <button class="header-btn" id="settingsBtn">
                     <i class="fas fa-cog"></i>
