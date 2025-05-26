@@ -59,7 +59,7 @@
     
     <!-- Main Card App with ScrollCards -->
     <div id="cardApp" class="card-app">
-        <!-- Header with Profile -->
+        <!-- Enhanced Header with Creation Buttons -->
         <div class="app-header">
             <div class="user-info">
                 <div class="user-avatar">
@@ -70,11 +70,60 @@
                     <div class="memory-count" id="memoryCount">0 items</div>
                 </div>
             </div>
+            
+            <!-- Create/Manage Buttons -->
+            <div class="header-create-buttons">
+                <button class="create-btn" data-type="routine" title="Create Routine">
+                    <i class="fas fa-repeat"></i>
+                    <span>Routine</span>
+                </button>
+                <button class="create-btn" data-type="task" title="Create Task">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Task</span>
+                </button>
+                <button class="create-btn" data-type="habit" title="Create/Break Habit">
+                    <i class="fas fa-heart"></i>
+                    <span>Habit</span>
+                </button>
+                <button class="create-btn" data-type="goal" title="Create Goal">
+                    <i class="fas fa-bullseye"></i>
+                    <span>Goal</span>
+                </button>
+                <button class="create-btn" data-type="event" title="Create Event">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Event</span>
+                </button>
+                <button class="create-btn" data-type="memory" title="Add Memory">
+                    <i class="fas fa-brain"></i>
+                    <span>Memory</span>
+                </button>
+            </div>
+            
+            <!-- View Filter Buttons -->
+            <div class="header-filter-buttons">
+                <button class="filter-btn active" data-filter="all" title="All Items">
+                    <i class="fas fa-th-large"></i>
+                </button>
+                <button class="filter-btn" data-filter="routine" title="Routines Only">
+                    <i class="fas fa-repeat"></i>
+                </button>
+                <button class="filter-btn" data-filter="task" title="Tasks Only">
+                    <i class="fas fa-clipboard-check"></i>
+                </button>
+                <button class="filter-btn" data-filter="goal" title="Goals Only">
+                    <i class="fas fa-bullseye"></i>
+                </button>
+                <button class="filter-btn" data-filter="priority" title="High Priority">
+                    <i class="fas fa-star"></i>
+                </button>
+            </div>
+            
+            <!-- Settings & Logout -->
             <div class="header-actions">
-                <button class="header-btn" id="settingsBtn">
+                <button class="header-btn" id="settingsBtn" title="Settings">
                     <i class="fas fa-cog"></i>
                 </button>
-                <button class="header-btn" id="logoutBtn">
+                <button class="header-btn" id="logoutBtn" title="Logout">
                     <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
@@ -103,6 +152,27 @@
         <!-- Card Navigation Dots -->
         <div class="card-navigation" id="cardNavigation">
             <!-- Navigation dots will be generated dynamically -->
+        </div>
+    </div>
+
+    <!-- Item Creation Modal -->
+    <div class="creation-modal" id="creationModal">
+        <div class="creation-modal-content">
+            <div class="creation-modal-header">
+                <div class="creation-modal-title" id="creationModalTitle">Create Item</div>
+                <button class="creation-modal-close" id="creationModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="creation-modal-body" id="creationModalBody">
+                <!-- Form will be generated based on item type -->
+            </div>
+            
+            <div class="creation-modal-actions">
+                <button class="modal-btn secondary" id="creationModalCancel">Cancel</button>
+                <button class="modal-btn primary" id="creationModalSave">Save</button>
+            </div>
         </div>
     </div>
 
