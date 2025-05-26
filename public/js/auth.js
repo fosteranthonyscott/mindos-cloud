@@ -1,4 +1,4 @@
-// Authentication Module
+// Authentication Module - FIXED VERSION
 const Auth = {
     // Initialize auth event listeners
     init() {
@@ -26,6 +26,16 @@ const Auth = {
                 }
             });
         });
+    },
+    
+    // Helper function to safely show alerts
+    showAlert(message, type = 'error') {
+        if (typeof Utils !== 'undefined' && Utils.showAlert) {
+            Utils.showAlert(message, type);
+        } else {
+            // Fallback to native alert if Utils not available
+            alert(message);
+        }
     },
     
     // Login function
@@ -56,10 +66,10 @@ const Auth = {
             // Show chat app
             await App.showChatApp();
             
-            Utils.showAlert(`Welcome back, ${MindOS.user.username}!`, 'success');
+            this.showAlert(`Welcome back, ${MindOS.user.username}!`, 'success');
             
         } catch (error) {
-            Utils.showAlert(error.message, 'error');
+            this.showAlert(error.message, 'error');
         } finally {
             this.setButtonLoading(loginBtn, false);
         }
@@ -94,10 +104,10 @@ const Auth = {
             // Show chat app
             await App.showChatApp();
             
-            Utils.showAlert(`Welcome to MindOS, ${MindOS.user.username}!`, 'success');
+            this.showAlert(`Welcome to MindOS, ${MindOS.user.username}!`, 'success');
             
         } catch (error) {
-            Utils.showAlert(error.message, 'error');
+            this.showAlert(error.message, 'error');
         } finally {
             this.setButtonLoading(registerBtn, false);
         }
@@ -125,58 +135,64 @@ const Auth = {
         }
         
         // Close sidebar and modals
-        UI.closeSidebar();
-        Modals.closeAllModals();
+        if (typeof UI !== 'undefined' && UI.closeSidebar) UI.closeSidebar();
+        if (typeof Modals !== 'undefined' && Modals.closeAllModals) Modals.closeAllModals();
         
         // Show auth screen
-        UI.showAuthScreen();
+        if (typeof UI !== 'undefined' && UI.showAuthScreen) UI.showAuthScreen();
         
-        Utils.showAlert('Logged out successfully', 'success');
+        this.showAlert('Logged out successfully', 'success');
     },
     
-    // Validate login form
+    // Validate login form - FIXED
     validateLoginForm(email, password) {
         if (!email || !password) {
-            Utils.showAlert('Please fill in all fields', 'error');
+            this.showAlert('Please fill in all fields', 'error');
             return false;
         }
         
-        if (!Utils.isValidEmail(email)) {
-            Utils.showAlert('Please enter a valid email address', 'error');
+        if (!this.isValidEmail(email)) {
+            this.showAlert('Please enter a valid email address', 'error');
             return false;
         }
         
         return true;
     },
     
-    // Validate register form
+    // Validate register form - FIXED
     validateRegisterForm(username, email, password) {
         if (!username || !email || !password) {
-            Utils.showAlert('Please fill in all fields', 'error');
+            this.showAlert('Please fill in all fields', 'error');
             return false;
         }
         
         if (username.length < 3) {
-            Utils.showAlert('Username must be at least 3 characters long', 'error');
+            this.showAlert('Username must be at least 3 characters long', 'error');
             return false;
         }
         
-        if (!Utils.isValidEmail(email)) {
-            Utils.showAlert('Please enter a valid email address', 'error');
+        if (!this.isValidEmail(email)) {
+            this.showAlert('Please enter a valid email address', 'error');
             return false;
         }
         
         if (password.length < 6) {
-            Utils.showAlert('Password must be at least 6 characters long', 'error');
+            this.showAlert('Password must be at least 6 characters long', 'error');
             return false;
         }
         
         // Check for basic password strength
         if (!this.isPasswordStrong(password)) {
-            Utils.showAlert('Password should contain at least one letter and one number', 'warning');
+            this.showAlert('Password should contain at least one letter and one number', 'warning');
         }
         
         return true;
+    },
+    
+    // Email validation helper
+    isValidEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
     },
     
     // Check password strength
@@ -204,13 +220,12 @@ const Auth = {
         }
     },
     
-    // Clear login form
+    // Clear forms
     clearLoginForm() {
         document.getElementById('loginEmail').value = '';
         document.getElementById('loginPassword').value = '';
     },
     
-    // Clear register form
     clearRegisterForm() {
         document.getElementById('registerUsername').value = '';
         document.getElementById('registerEmail').value = '';
@@ -225,84 +240,6 @@ const Auth = {
     // Get current user
     getCurrentUser() {
         return MindOS.user;
-    },
-    
-    // Update user profile (for future use)
-    async updateProfile(updates) {
-        try {
-            const response = await API.put('/api/user/profile', updates);
-            MindOS.user = { ...MindOS.user, ...response.user };
-            localStorage.setItem('mindos_user', JSON.stringify(MindOS.user));
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
-    
-    // Change password (for future use)
-    async changePassword(currentPassword, newPassword) {
-        try {
-            const response = await API.post('/api/user/change-password', {
-                currentPassword,
-                newPassword
-            });
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
-    
-    // Request password reset (for future use)
-    async requestPasswordReset(email) {
-        try {
-            const response = await API.post('/api/auth/forgot-password', { email });
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
-    
-    // Reset password with token (for future use)
-    async resetPassword(token, newPassword) {
-        try {
-            const response = await API.post('/api/auth/reset-password', {
-                token,
-                newPassword
-            });
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
-    
-    // Validate session (check if token is still valid)
-    async validateSession() {
-        if (!this.isAuthenticated()) {
-            return false;
-        }
-        
-        try {
-            const response = await API.get('/api/user-status');
-            return response.user ? true : false;
-        } catch (error) {
-            return false;
-        }
-    },
-    
-    // Auto-refresh token (for future implementation)
-    async refreshToken() {
-        try {
-            const response = await API.post('/api/auth/refresh');
-            if (response.token) {
-                MindOS.token = response.token;
-                localStorage.setItem('mindos_token', MindOS.token);
-            }
-            return response;
-        } catch (error) {
-            // If refresh fails, logout user
-            this.logout();
-            throw error;
-        }
     }
 };
 
