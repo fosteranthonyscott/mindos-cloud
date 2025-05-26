@@ -481,279 +481,11 @@ const API = {
     }
 };
 
-// Event Handlers
-const EventHandlers = {
-    // Initialize all event listeners
-    init() {
-        this.setupAuthTabHandlers();
-        this.setupSidebarHandlers();
-        this.setupChatHandlers();
-        this.setupModalHandlers();
-        this.setupKeyboardShortcuts();
-    },
-    
-    // Auth tab switching
-    setupAuthTabHandlers() {
-        document.querySelectorAll('.auth-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                const tabType = tab.dataset.tab;
-                this.switchAuthTab(tabType);
-            });
-        });
-    },
-    
-    switchAuthTab(tabType) {
-        // Update tab appearance
-        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-        document.querySelector(`[data-tab="${tabType}"]`).classList.add('active');
-        
-        // Show/hide forms
-        if (tabType === 'login') {
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('registerForm').classList.add('hidden');
-        } else {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.remove('hidden');
-        }
-    },
-    
-    // FIXED: Event handler binding in setupSidebarHandlers function
-    setupSidebarHandlers() {
-        // Hamburger menu
-        document.getElementById('hamburgerBtn').addEventListener('click', UI.toggleSidebar);
-        
-        // Overlay click
-        document.getElementById('overlay').addEventListener('click', UI.closeSidebar);
-        
-        // Menu item handlers
-        document.querySelectorAll('.menu-item[data-action]').forEach(item => {
-            item.addEventListener('click', () => {
-                const action = item.dataset.action;
-                Config.openConfigMode(action);
-            });
-        });
-        
-        // Memory management buttons - FIXED: Proper binding
-        document.getElementById('viewAllMemoriesBtn').addEventListener('click', () => Memory.openAllMemoriesModal());
-        document.getElementById('refreshMemoriesBtn').addEventListener('click', () => Memory.refreshMemories());
-        document.getElementById('clearSessionBtn').addEventListener('click', () => Chat.clearSession());
-        document.getElementById('exportChatBtn').addEventListener('click', () => Chat.exportChat());
-        document.getElementById('logoutBtn').addEventListener('click', () => Auth.logout());
-    },
-    
-    // Chat input handlers
-    setupChatHandlers() {
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        
-        // Send button
-        sendBtn.addEventListener('click', Chat.sendMessage);
-        
-        // Input handlers
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                Chat.sendMessage();
-            }
-        });
-        
-        messageInput.addEventListener('input', (e) => {
-            Chat.autoResize(e.target);
-        });
-    },
-    
-    // Modal event handlers
-    setupModalHandlers() {
-        // Close modals when clicking outside
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-overlay')) {
-                Modals.closeAllModals();
-            }
-        });
-    },
-    
-    // Keyboard shortcuts
-    setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            // Escape key closes modals and sidebar
-            if (e.key === 'Escape') {
-                Modals.closeAllModals();
-                UI.closeSidebar();
-            }
-            
-            // Ctrl/Cmd + Enter sends message
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                Chat.sendMessage();
-            }
-        });
-    }
-};
-
-// UI Helper Functions
-const UI = {
-    // Show loading state
-    setLoading(loading) {
-        MindOS.isLoading = loading;
-        const typingIndicator = document.getElementById('typingIndicator');
-        const sendBtn = document.getElementById('sendBtn');
-        
-        if (loading) {
-            typingIndicator.classList.add('show');
-            sendBtn.disabled = true;
-            document.getElementById('headerStatus').textContent = 'MindOS is thinking...';
-        } else {
-            typingIndicator.classList.remove('show');
-            sendBtn.disabled = false;
-            document.getElementById('headerStatus').textContent = 'AI Assistant Ready';
-        }
-    },
-    
-    // Toggle sidebar
-    toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        
-        if (sidebar.classList.contains('open')) {
-            UI.closeSidebar();
-        } else {
-            sidebar.classList.add('open');
-            overlay.classList.add('show');
-        }
-    },
-    
-    // Close sidebar
-    closeSidebar() {
-        document.getElementById('sidebar').classList.remove('open');
-        document.getElementById('overlay').classList.remove('show');
-    },
-    
-    // Show auth screen
-    showAuthScreen() {
-        document.getElementById('authScreen').classList.remove('hidden');
-        document.getElementById('chatApp').classList.add('hidden');
-    },
-    
-    // Show chat app
-    showChatApp() {
-        document.getElementById('authScreen').classList.add('hidden');
-        const chatApp = document.getElementById('chatApp');
-        chatApp.classList.remove('hidden');
-        chatApp.style.display = 'flex';
-        
-        // Update user info
-        document.getElementById('sidebarUsername').textContent = MindOS.user.username || 'User';
-    },
-    
-    // Update session display
-    updateSessionDisplay() {
-        const messagesCount = MindOS.sessionInfo.messageCount || 0;
-        document.getElementById('sessionMessages').textContent = `${messagesCount} messages`;
-    },
-    
-    // Update memory count display
-    updateMemoryDisplay() {
-        document.getElementById('memoryCount').textContent = `${MindOS.userMemories.length} memories`;
-    }
-};
-
-// Application Initialization
-const App = {
-    // Initialize the application
-    async init() {
-        console.log('🚀 Initializing MindOS...');
-        
-        try {
-            // Setup event handlers
-            EventHandlers.init();
-            
-            // Check authentication
-            if (MindOS.token && MindOS.token !== 'null' && MindOS.token !== 'undefined') {
-                await this.attemptAutoLogin();
-            } else {
-                UI.showAuthScreen();
-            }
-            
-            console.log('✅ MindOS initialized successfully');
-        } catch (error) {
-            console.error('❌ Failed to initialize MindOS:', error);
-            Utils.showAlert('Failed to initialize application', 'error');
-        }
-    },
-    
-    // Attempt auto-login with stored token
-    async attemptAutoLogin() {
-        try {
-            const response = await API.get('/api/user-status');
-            if (response.user) {
-                MindOS.user = response.user;
-                await this.showChatApp();
-            } else {
-                this.clearAuth();
-                UI.showAuthScreen();
-            }
-        } catch (error) {
-            console.log('Auto-login failed:', error);
-            this.clearAuth();
-            UI.showAuthScreen();
-        }
-    },
-    
-    // Show chat app and load data
-    async showChatApp() {
-        UI.showChatApp();
-        
-        // Load session info and memories
-        await Promise.all([
-            this.loadSessionInfo(),
-            this.loadMemories()
-        ]);
-        
-        // Add welcome message if no existing messages
-        Chat.addWelcomeMessage();
-    },
-    
-    // Load session information
-    async loadSessionInfo() {
-        try {
-            MindOS.sessionInfo = await API.get('/api/session-info');
-            UI.updateSessionDisplay();
-        } catch (error) {
-            console.log('Failed to load session info:', error);
-        }
-    },
-    
-    // Load user memories
-    async loadMemories() {
-        try {
-            MindOS.userMemories = await API.get('/api/memories');
-            UI.updateMemoryDisplay();
-            Memory.updateSidebarMemories();
-        } catch (error) {
-            console.log('Failed to load memories:', error);
-        }
-    },
-    
-    // Clear authentication data
-    clearAuth() {
-        localStorage.removeItem('mindos_token');
-        localStorage.removeItem('mindos_user');
-        MindOS.token = null;
-        MindOS.user = {};
-    }
-};
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    App.init();
-});
-
-// Chrome Input Container Fix - Add to app.js
-
+// Chrome Browser Fixes
 const ChromeFixes = {
     // Fix input container visibility in Chrome
     ensureInputVisibility() {
-        const inputContainer = document.getElementById('inputContainer') || 
-                              document.querySelector('.input-container');
+        const inputContainer = document.querySelector('.input-container');
         
         if (inputContainer) {
             // Force Chrome to recognize the input container
@@ -798,7 +530,9 @@ const ChromeFixes = {
             // Chrome-specific paste handling
             messageInput.addEventListener('paste', (e) => {
                 setTimeout(() => {
-                    Chat.autoResize(messageInput);
+                    if (typeof Chat !== 'undefined' && Chat.autoResize) {
+                        Chat.autoResize(messageInput);
+                    }
                 }, 10);
             });
         }
@@ -810,50 +544,240 @@ const ChromeFixes = {
         
         if (isChrome) {
             console.log('🔧 Applying Chrome-specific fixes');
-            
-            // Apply fixes after DOM is ready
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => {
-                    this.ensureInputVisibility();
-                    this.fixViewportHeight();
-                    this.setupChromeInputFixes();
-                });
-            } else {
-                this.ensureInputVisibility();
-                this.fixViewportHeight();
-                this.setupChromeInputFixes();
-            }
+            this.ensureInputVisibility();
+            this.fixViewportHeight();
+            this.setupChromeInputFixes();
         }
     }
 };
 
-// Enhanced App initialization with Chrome fixes
-const App = {
-    // ... existing App methods ...
-    
-    // Show chat app and load data - ENHANCED
-    async showChatApp() {
-        UI.showChatApp();
-        
-        // Apply Chrome fixes after showing chat app
-        ChromeFixes.ensureInputVisibility();
-        
-        // Load session info and memories
-        await Promise.all([
-            this.loadSessionInfo(),
-            this.loadMemories()
-        ]);
-        
-        // Add welcome message if no existing messages
-        Chat.addWelcomeMessage();
-        
-        // Ensure input is visible after everything loads
-        setTimeout(() => {
-            ChromeFixes.ensureInputVisibility();
-        }, 100);
+// Event Handlers
+const EventHandlers = {
+    // Initialize all event listeners
+    init() {
+        this.setupAuthTabHandlers();
+        this.setupSidebarHandlers();
+        this.setupChatHandlers();
+        this.setupModalHandlers();
+        this.setupKeyboardShortcuts();
     },
     
-    // Initialize the application - ENHANCED
+    // Auth tab switching
+    setupAuthTabHandlers() {
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabType = tab.dataset.tab;
+                this.switchAuthTab(tabType);
+            });
+        });
+    },
+    
+    switchAuthTab(tabType) {
+        // Update tab appearance
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`[data-tab="${tabType}"]`).classList.add('active');
+        
+        // Show/hide forms
+        if (tabType === 'login') {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+        } else {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+        }
+    },
+    
+    // Sidebar event handlers
+    setupSidebarHandlers() {
+        // Hamburger menu
+        document.getElementById('hamburgerBtn').addEventListener('click', UI.toggleSidebar);
+        
+        // Overlay click
+        document.getElementById('overlay').addEventListener('click', UI.closeSidebar);
+        
+        // Menu item handlers
+        document.querySelectorAll('.menu-item[data-action]').forEach(item => {
+            item.addEventListener('click', () => {
+                const action = item.dataset.action;
+                if (typeof Config !== 'undefined') {
+                    Config.openConfigMode(action);
+                }
+            });
+        });
+        
+        // Memory management buttons
+        const setupButtonHandler = (id, handler) => {
+            const element = document.getElementById(id);
+            if (element && handler) {
+                element.addEventListener('click', handler);
+            }
+        };
+        
+        setupButtonHandler('viewAllMemoriesBtn', () => Memory.openAllMemoriesModal());
+        setupButtonHandler('refreshMemoriesBtn', () => Memory.refreshMemories());
+        setupButtonHandler('clearSessionBtn', () => Chat.clearSession());
+        setupButtonHandler('exportChatBtn', () => Chat.exportChat());
+        setupButtonHandler('logoutBtn', () => Auth.logout());
+    },
+    
+    // Chat input handlers
+    setupChatHandlers() {
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => {
+                if (typeof Chat !== 'undefined') {
+                    Chat.sendMessage();
+                }
+            });
+        }
+        
+        if (messageInput) {
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (typeof Chat !== 'undefined') {
+                        Chat.sendMessage();
+                    }
+                }
+            });
+            
+            messageInput.addEventListener('input', (e) => {
+                if (typeof Chat !== 'undefined' && Chat.autoResize) {
+                    Chat.autoResize(e.target);
+                }
+            });
+        }
+    },
+    
+    // Modal event handlers
+    setupModalHandlers() {
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                if (typeof Modals !== 'undefined') {
+                    Modals.closeAllModals();
+                }
+            }
+        });
+    },
+    
+    // Keyboard shortcuts
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Escape key closes modals and sidebar
+            if (e.key === 'Escape') {
+                if (typeof Modals !== 'undefined') {
+                    Modals.closeAllModals();
+                }
+                UI.closeSidebar();
+            }
+            
+            // Ctrl/Cmd + Enter sends message
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                if (typeof Chat !== 'undefined') {
+                    Chat.sendMessage();
+                }
+            }
+        });
+    }
+};
+
+// UI Helper Functions
+const UI = {
+    // Show loading state
+    setLoading(loading) {
+        MindOS.isLoading = loading;
+        const typingIndicator = document.getElementById('typingIndicator');
+        const sendBtn = document.getElementById('sendBtn');
+        
+        if (loading) {
+            if (typingIndicator) typingIndicator.classList.add('show');
+            if (sendBtn) sendBtn.disabled = true;
+            
+            const headerStatus = document.getElementById('headerStatus');
+            if (headerStatus) headerStatus.textContent = 'MindOS is thinking...';
+        } else {
+            if (typingIndicator) typingIndicator.classList.remove('show');
+            if (sendBtn) sendBtn.disabled = false;
+            
+            const headerStatus = document.getElementById('headerStatus');
+            if (headerStatus) headerStatus.textContent = 'AI Assistant Ready';
+        }
+    },
+    
+    // Toggle sidebar
+    toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        if (sidebar && overlay) {
+            if (sidebar.classList.contains('open')) {
+                UI.closeSidebar();
+            } else {
+                sidebar.classList.add('open');
+                overlay.classList.add('show');
+            }
+        }
+    },
+    
+    // Close sidebar
+    closeSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        if (sidebar) sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('show');
+    },
+    
+    // Show auth screen
+    showAuthScreen() {
+        const authScreen = document.getElementById('authScreen');
+        const chatApp = document.getElementById('chatApp');
+        
+        if (authScreen) authScreen.classList.remove('hidden');
+        if (chatApp) chatApp.classList.add('hidden');
+    },
+    
+    // Show chat app
+    showChatApp() {
+        const authScreen = document.getElementById('authScreen');
+        const chatApp = document.getElementById('chatApp');
+        
+        if (authScreen) authScreen.classList.add('hidden');
+        if (chatApp) {
+            chatApp.classList.remove('hidden');
+            chatApp.style.display = 'flex';
+        }
+        
+        // Update user info
+        const sidebarUsername = document.getElementById('sidebarUsername');
+        if (sidebarUsername) {
+            sidebarUsername.textContent = MindOS.user.username || 'User';
+        }
+    },
+    
+    // Update session display
+    updateSessionDisplay() {
+        const messagesCount = MindOS.sessionInfo.messageCount || 0;
+        const sessionMessages = document.getElementById('sessionMessages');
+        if (sessionMessages) {
+            sessionMessages.textContent = `${messagesCount} messages`;
+        }
+    },
+    
+    // Update memory count display
+    updateMemoryDisplay() {
+        const memoryCount = document.getElementById('memoryCount');
+        if (memoryCount) {
+            memoryCount.textContent = `${MindOS.userMemories.length} memories`;
+        }
+    }
+};
+
+// Application Initialization
+const App = {
+    // Initialize the application
     async init() {
         console.log('🚀 Initializing MindOS...');
         
@@ -876,121 +800,134 @@ const App = {
             console.error('❌ Failed to initialize MindOS:', error);
             Utils.showAlert('Failed to initialize application', 'error');
         }
+    },
+    
+    // Attempt auto-login with stored token
+    async attemptAutoLogin() {
+        try {
+            const response = await API.get('/api/user-status');
+            if (response.user) {
+                MindOS.user = response.user;
+                await this.showChatApp();
+            } else {
+                this.clearAuth();
+                UI.showAuthScreen();
+            }
+        } catch (error) {
+            console.log('Auto-login failed:', error);
+            this.clearAuth();
+            UI.showAuthScreen();
+        }
+    },
+    
+    // Show chat app and load data
+    async showChatApp() {
+        UI.showChatApp();
+        
+        // Apply Chrome fixes after showing chat app
+        ChromeFixes.ensureInputVisibility();
+        
+        // Load session info and memories
+        await Promise.all([
+            this.loadSessionInfo(),
+            this.loadMemories()
+        ]);
+        
+        // Add welcome message if no existing messages
+        if (typeof Chat !== 'undefined') {
+            Chat.addWelcomeMessage();
+        }
+        
+        // Ensure input is visible after everything loads
+        setTimeout(() => {
+            ChromeFixes.ensureInputVisibility();
+        }, 100);
+    },
+    
+    // Load session information
+    async loadSessionInfo() {
+        try {
+            MindOS.sessionInfo = await API.get('/api/session-info');
+            UI.updateSessionDisplay();
+        } catch (error) {
+            console.log('Failed to load session info:', error);
+        }
+    },
+    
+    // Load user memories
+    async loadMemories() {
+        try {
+            MindOS.userMemories = await API.get('/api/memories');
+            UI.updateMemoryDisplay();
+            if (typeof Memory !== 'undefined') {
+                Memory.updateSidebarMemories();
+            }
+        } catch (error) {
+            console.log('Failed to load memories:', error);
+        }
+    },
+    
+    // Clear authentication data
+    clearAuth() {
+        localStorage.removeItem('mindos_token');
+        localStorage.removeItem('mindos_user');
+        MindOS.token = null;
+        MindOS.user = {};
     }
 };
 
-// Initialize Chrome fixes when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    ChromeFixes.init();
-});
-
-// Debug function to test input container - Add to browser console or app.js
-
+// Debug function for Chrome input container
 function debugInputContainer() {
     console.log('🔍 Debugging Input Container...');
     
     const inputContainer = document.querySelector('.input-container');
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
-    const chatApp = document.getElementById('chatApp');
     
     console.log('Input Container Element:', inputContainer);
     console.log('Message Input Element:', messageInput);
     console.log('Send Button Element:', sendBtn);
-    console.log('Chat App Element:', chatApp);
     
     if (inputContainer) {
         const styles = window.getComputedStyle(inputContainer);
+        const rect = inputContainer.getBoundingClientRect();
+        
         console.log('Input Container Styles:', {
             display: styles.display,
             position: styles.position,
             bottom: styles.bottom,
-            left: styles.left,
-            right: styles.right,
             zIndex: styles.zIndex,
             visibility: styles.visibility,
-            opacity: styles.opacity,
-            height: styles.height,
-            width: styles.width
+            opacity: styles.opacity
         });
         
-        const rect = inputContainer.getBoundingClientRect();
         console.log('Input Container Position:', {
             top: rect.top,
             bottom: rect.bottom,
-            left: rect.left,
-            right: rect.right,
             width: rect.width,
             height: rect.height,
             visible: rect.height > 0 && rect.width > 0
         });
         
-        // Test if input container is visible in viewport
-        const isVisible = rect.bottom >= 0 && 
-                         rect.right >= 0 && 
-                         rect.top <= window.innerHeight && 
-                         rect.left <= window.innerWidth;
-        
-        console.log('Is Input Container Visible:', isVisible);
-        
         // Force visibility if not visible
+        const isVisible = rect.bottom >= 0 && rect.top <= window.innerHeight;
         if (!isVisible) {
             console.log('⚠️ Input container not visible, forcing visibility...');
-            inputContainer.style.display = 'flex';
-            inputContainer.style.position = 'fixed';
-            inputContainer.style.bottom = '0';
-            inputContainer.style.left = '0';
-            inputContainer.style.right = '0';
-            inputContainer.style.zIndex = '1000';
-            inputContainer.style.visibility = 'visible';
-            inputContainer.style.opacity = '1';
-            console.log('✅ Forced input container visibility');
+            ChromeFixes.ensureInputVisibility();
         }
-        
     } else {
         console.error('❌ Input container not found!');
-        
-        // Try to find it by different selectors
-        const alternatives = [
-            '.input-group',
-            '#messageInput',
-            '[class*="input"]'
-        ];
-        
-        alternatives.forEach(selector => {
-            const element = document.querySelector(selector);
-            if (element) {
-                console.log(`Found alternative element with selector "${selector}":`, element);
-            }
-        });
     }
     
-    // Browser detection
-    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    console.log('Browser Info:', {
-        isChrome: isChrome,
-        isMobile: isMobile,
-        userAgent: navigator.userAgent,
-        viewport: {
-            width: window.innerWidth,
-            height: window.innerHeight
-        }
-    });
-    
-    return {
-        inputContainer,
-        messageInput,
-        sendBtn,
-        isChrome,
-        isMobile
-    };
+    return { inputContainer, messageInput, sendBtn };
 }
 
-// Auto-run debug on page load for Chrome
-if (/Chrome/.test(navigator.userAgent)) {
-    window.addEventListener('load', () => {
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+    
+    // Auto-debug for Chrome users
+    if (/Chrome/.test(navigator.userAgent)) {
         setTimeout(debugInputContainer, 1000);
-    });
-}
+    }
+});
