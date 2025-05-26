@@ -224,6 +224,104 @@ const Utils = {
     }
 };
 
+javascript// Add this AFTER the Utils object in app.js
+const MemorySettings = {
+    showSettingsModal() {
+        const modal = Modals.createModal('memorySettingsModal', 'Memory Settings', `
+            <div style="padding: 1rem;">
+                <h3 style="margin-bottom: 1rem; color: #333;">How should I handle memories during conversations?</h3>
+                
+                <div class="config-options" style="display: grid; gap: 1rem;">
+                    <div class="config-option memory-mode-option" data-mode="${MemoryConfig.MODES.AUTO}" 
+                         ${MemoryConfig.getMode() === MemoryConfig.MODES.AUTO ? 'style="border-color: #667eea; background: #667eea; color: white;"' : ''}>
+                        <div class="config-option-title">
+                            <i class="fas fa-magic"></i> Automatic Storage
+                        </div>
+                        <div class="config-option-desc">
+                            Store memories automatically without interruption. Conversations flow smoothly.
+                        </div>
+                    </div>
+                    
+                    <div class="config-option memory-mode-option" data-mode="${MemoryConfig.MODES.CONFIRM}"
+                         ${MemoryConfig.getMode() === MemoryConfig.MODES.CONFIRM ? 'style="border-color: #667eea; background: #667eea; color: white;"' : ''}>
+                        <div class="config-option-title">
+                            <i class="fas fa-comments"></i> Confirm & Continue (Recommended)
+                        </div>
+                        <div class="config-option-desc">
+                            Review memories before storing, then continue the conversation automatically.
+                        </div>
+                    </div>
+                    
+                    <div class="config-option memory-mode-option" data-mode="${MemoryConfig.MODES.MANUAL}"
+                         ${MemoryConfig.getMode() === MemoryConfig.MODES.MANUAL ? 'style="border-color: #667eea; background: #667eea; color: white;"' : ''}>
+                        <div class="config-option-title">
+                            <i class="fas fa-hand-paper"></i> Manual Control
+                        </div>
+                        <div class="config-option-desc">
+                            Review and confirm each memory. Conversations pause until you decide.
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1.5rem; padding: 1rem; background: #f8f9ff; border-radius: 8px; font-size: 0.9rem;">
+                    <strong>Current Mode:</strong> 
+                    <span id="currentModeDisplay">${this.getModeDisplayName(MemoryConfig.getMode())}</span>
+                </div>
+            </div>
+        `, [
+            {
+                text: 'Cancel',
+                class: 'secondary',
+                onclick: "Modals.removeModal('memorySettingsModal')"
+            },
+            {
+                text: 'Save Settings',
+                class: 'primary',
+                onclick: "MemorySettings.saveSettings()"
+            }
+        ]);
+        
+        // Add click handlers for mode selection
+        modal.querySelectorAll('.memory-mode-option').forEach(option => {
+            option.addEventListener('click', () => {
+                // Remove selection from all options
+                modal.querySelectorAll('.memory-mode-option').forEach(opt => {
+                    opt.style.borderColor = '#e0e6ff';
+                    opt.style.background = '#f8f9ff';
+                    opt.style.color = '#333';
+                });
+                
+                // Select clicked option
+                option.style.borderColor = '#667eea';
+                option.style.background = '#667eea';
+                option.style.color = 'white';
+                
+                // Update display
+                const mode = option.dataset.mode;
+                document.getElementById('currentModeDisplay').textContent = this.getModeDisplayName(mode);
+            });
+        });
+    },
+    
+    saveSettings() {
+        const selectedOption = document.querySelector('.memory-mode-option[style*="background: rgb(102, 126, 234)"]');
+        if (selectedOption) {
+            const newMode = selectedOption.dataset.mode;
+            MemoryConfig.setMode(newMode);
+            Utils.showAlert(`Memory mode set to: ${this.getModeDisplayName(newMode)}`, 'success');
+        }
+        Modals.removeModal('memorySettingsModal');
+    },
+    
+    getModeDisplayName(mode) {
+        switch (mode) {
+            case MemoryConfig.MODES.AUTO: return 'Automatic Storage';
+            case MemoryConfig.MODES.CONFIRM: return 'Confirm & Continue';
+            case MemoryConfig.MODES.MANUAL: return 'Manual Control';
+            default: return 'Unknown';
+        }
+    }
+};
 // API Helper Functions
 const API = {
     // Base fetch wrapper
