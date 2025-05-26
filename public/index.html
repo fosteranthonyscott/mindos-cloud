@@ -19,7 +19,7 @@
             overflow: hidden;
         }
         
-        /* Auth Screen */
+        /* Auth Screen - keeping existing styles */
         .auth-screen {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
@@ -111,6 +111,11 @@
             transform: translateY(-2px);
         }
         
+        .auth-btn:disabled {
+            opacity: 0.6;
+            transform: none;
+        }
+        
         /* Chat Interface */
         .chat-app {
             display: none;
@@ -119,6 +124,7 @@
             background: #f5f5f5;
         }
         
+        /* Header with session info */
         .chat-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -126,6 +132,7 @@
             display: flex;
             align-items: center;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 100;
         }
         
         .hamburger {
@@ -165,7 +172,15 @@
             border-radius: 12px;
         }
         
-        /* Sidebar */
+        .online-indicator {
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            margin-left: 1rem;
+        }
+        
+        /* Enhanced Sidebar */
         .sidebar {
             position: fixed;
             top: 0;
@@ -248,7 +263,7 @@
             color: #667eea;
         }
         
-        /* Memory items */
+        /* Enhanced memory item with actions */
         .memory-item {
             padding: 0.75rem 1rem;
             border-left: 3px solid #667eea;
@@ -258,6 +273,7 @@
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s;
+            position: relative;
         }
         
         .memory-item:hover {
@@ -321,6 +337,11 @@
             font-size: 0.7rem;
             color: #666;
             margin-top: 0.25rem;
+        }
+        
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid #eee;
         }
         
         /* Chat Messages */
@@ -418,6 +439,40 @@
             margin-top: 0.5rem;
         }
         
+        /* Typing indicator */
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ccc;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        
         /* Input Area */
         .input-container {
             padding: 1rem;
@@ -467,6 +522,11 @@
             transform: scale(1.05);
         }
         
+        .send-btn:disabled {
+            opacity: 0.5;
+            transform: none;
+        }
+        
         /* Overlay */
         .overlay {
             position: fixed;
@@ -483,94 +543,8 @@
             display: block;
         }
 
-        /* Memory Confirmation Dialog - NEW */
-        .memory-confirm-dialog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2400;
-            padding: 2rem;
-        }
-        
-        .memory-confirm-dialog.show {
-            display: flex;
-        }
-        
-        .memory-confirm-content {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
-            max-width: 600px;
-            width: 100%;
-            max-height: 85vh;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .memory-confirm-header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #eee;
-        }
-        
-        .memory-confirm-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 0.5rem;
-        }
-        
-        .memory-confirm-subtitle {
-            color: #666;
-            font-size: 0.9rem;
-        }
-        
-        .memory-preview {
-            background: #f8f9ff;
-            border: 2px solid #e0e6ff;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .memory-preview-field {
-            margin-bottom: 1rem;
-        }
-        
-        .memory-preview-label {
-            font-weight: 600;
-            color: #667eea;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            margin-bottom: 0.25rem;
-        }
-        
-        .memory-preview-value {
-            color: #333;
-            font-size: 0.9rem;
-            background: white;
-            padding: 0.5rem;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-        }
-        
-        .memory-confirm-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: space-between;
-        }
-
-        /* Task Creation Modal - NEW */
-        .task-modal {
+        /* All Memories Modal */
+        .all-memories-modal {
             position: fixed;
             top: 0;
             left: 0;
@@ -583,135 +557,178 @@
             z-index: 2000;
             padding: 2rem;
         }
-        
-        .task-modal.show {
+
+        .all-memories-modal.show {
             display: flex;
         }
-        
-        .task-content {
+
+        .all-memories-content {
             background: white;
             border-radius: 20px;
             padding: 2rem;
-            max-width: 600px;
+            max-width: 900px;
             width: 100%;
             max-height: 85vh;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
-        
-        .task-header {
-            text-align: center;
-            margin-bottom: 2rem;
+
+        .all-memories-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
             padding-bottom: 1rem;
             border-bottom: 2px solid #eee;
         }
-        
-        .task-title {
+
+        .all-memories-title {
             font-size: 1.5rem;
             font-weight: 600;
             color: #333;
-            margin-bottom: 0.5rem;
-        }
-        
-        .task-form {
-            flex: 1;
-            overflow-y: auto;
-        }
-        
-        .task-form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .task-form-label {
-            display: block;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-        
-        .task-form-input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e0e6ff;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 0.9rem;
-            transition: border-color 0.2s;
-        }
-        
-        .task-form-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .task-form-textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        
-        .task-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: space-between;
-            border-top: 2px solid #eee;
-            padding-top: 1.5rem;
-            margin-top: 1.5rem;
         }
 
-        /* Button styles */
-        .btn {
-            padding: 0.75rem 1.5rem;
+        .all-memories-close {
+            background: none;
             border: none;
-            border-radius: 8px;
-            font-weight: 600;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: #666;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .all-memories-close:hover {
+            background: #f5f5f5;
+        }
+
+        .memory-type-filters {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 20px;
             cursor: pointer;
             transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-        }
-        
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #5a6fd8;
-        }
-        
-        .btn-success {
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #45a049;
-        }
-        
-        .btn-secondary {
-            background: #f5f5f5;
-            color: #333;
-        }
-        
-        .btn-secondary:hover {
-            background: #e9e9e9;
-        }
-        
-        .btn-danger {
-            background: #e74c3c;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #c0392b;
+            font-size: 0.85rem;
         }
 
-        /* Memory modal with UPDATED buttons */
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+        }
+
+        .memories-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .memory-type-section {
+            margin-bottom: 2rem;
+        }
+
+        .memory-type-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .memory-card {
+            background: #f8f9ff;
+            border: 1px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .memory-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+            border-color: #667eea;
+        }
+
+        .memory-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .memory-card-priority {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .priority-1, .priority-2 { background: #e8f5e8; color: #2e7d32; }
+        .priority-3 { background: #fff3e0; color: #f57c00; }
+        .priority-4, .priority-5 { background: #ffebee; color: #c62828; }
+
+        .memory-card-actions {
+            display: flex;
+            gap: 0.25rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .memory-card:hover .memory-card-actions {
+            opacity: 1;
+        }
+
+        .memory-card-content {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: #333;
+            margin-bottom: 0.75rem;
+        }
+
+        .memory-card-meta {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.75rem;
+            color: #666;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .meta-item i {
+            width: 12px;
+        }
+        
+        /* Enhanced Memory Detail Modal - Now Editable */
         .memory-modal {
             position: fixed;
             top: 0;
@@ -742,7 +759,143 @@
             display: flex;
             flex-direction: column;
         }
+        
+        .memory-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .memory-modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
 
+        .memory-modal-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-right: 1rem;
+        }
+
+        .save-status {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .save-status.saved {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .save-status.saving {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .save-status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .memory-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: #666;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .memory-modal-close:hover {
+            background: #f5f5f5;
+        }
+
+        .memory-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+        
+        .memory-detail-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .memory-detail-label {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .field-remove-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            transition: background 0.2s;
+        }
+
+        .field-remove-btn:hover {
+            background: rgba(231, 76, 60, 0.1);
+        }
+        
+        .memory-detail-input {
+            width: 100%;
+            background: #f8f9ff;
+            padding: 0.75rem;
+            border: 2px solid #e0e6ff;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+            resize: vertical;
+            min-height: auto;
+        }
+
+        .memory-detail-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .memory-detail-input.large {
+            min-height: 80px;
+        }
+
+        .memory-detail-select {
+            width: 100%;
+            background: #f8f9ff;
+            padding: 0.75rem;
+            border: 2px solid #e0e6ff;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+
+        .memory-detail-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
         .memory-modal-actions {
             display: flex;
             gap: 1rem;
@@ -773,19 +926,23 @@
             align-items: center;
             gap: 0.5rem;
         }
-
-        .modal-btn.save-close {
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .modal-btn.save-close:hover {
-            background: #45a049;
-        }
         
         .modal-btn.primary {
             background: #667eea;
             color: white;
+        }
+        
+        .modal-btn.primary:hover {
+            background: #5a6fd8;
+        }
+        
+        .modal-btn.danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .modal-btn.danger:hover {
+            background: #c0392b;
         }
         
         .modal-btn.secondary {
@@ -793,13 +950,552 @@
             color: #333;
         }
         
-        .modal-btn.danger {
-            background: #e74c3c;
+        .modal-btn.secondary:hover {
+            background: #e9e9e9;
+        }
+
+        .modal-btn.success {
+            background: #4CAF50;
             color: white;
         }
 
+        .modal-btn.success:hover {
+            background: #45a049;
+        }
+
+        /* Add Fields Modal */
+        .add-fields-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2200;
+            padding: 2rem;
+        }
+
+        .add-fields-modal.show {
+            display: flex;
+        }
+
+        .add-fields-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 70vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .add-fields-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .add-fields-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .add-fields-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+            max-height: 50vh;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .field-option {
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .field-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .field-option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f5f5f5;
+        }
+
+        .field-option.disabled:hover {
+            transform: none;
+            border-color: #ddd;
+            background: #f5f5f5;
+        }
+
+        .field-option-icon {
+            font-size: 1.5rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .field-option-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            text-transform: capitalize;
+        }
+
+        .field-option-desc {
+            font-size: 0.75rem;
+            color: #666;
+            line-height: 1.3;
+        }
+
+        .add-fields-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Configuration Modes */
+        .config-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 2rem;
+        }
+
+        .config-modal.show {
+            display: flex;
+        }
+
+        .config-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 85vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+        }
+
+        .config-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .config-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .config-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .config-step {
+            margin-bottom: 2rem;
+        }
+
+        .config-step-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .config-options {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .config-option {
+            background: #f8f9ff;
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .config-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .config-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .config-option-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .config-option-desc {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .config-form {
+            background: #f8f9ff;
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .config-form.hidden {
+            display: none;
+        }
+
+        .config-form-group {
+            margin-bottom: 1rem;
+        }
+
+        .config-form-label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .config-form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+
+        .config-form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .config-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: space-between;
+            border-top: 2px solid #eee;
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Choice Dialog */
+        .choice-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2400;
+            padding: 2rem;
+        }
+
+        .choice-dialog-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 70vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .choice-dialog-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+        }
+
+        .choice-dialog-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .choice-dialog-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .choice-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .choice-option {
+            background: #f8f9ff;
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .choice-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .choice-icon {
+            width: 50px;
+            height: 50px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .choice-content {
+            flex: 1;
+        }
+
+        .choice-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+            color: #333;
+        }
+
+        .choice-desc {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Memory Confirmation Dialog */
+        .memory-confirmation-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2500;
+            padding: 2rem;
+        }
+
+        .memory-confirmation-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .memory-confirmation-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+        }
+
+        .memory-confirmation-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .memory-confirmation-title i {
+            color: #667eea;
+        }
+
+        .memory-confirmation-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .memory-preview-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1.5rem;
+            max-height: 400px;
+        }
+
+        .memory-preview-item {
+            background: #f8f9ff;
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+
+        .memory-preview-item:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .memory-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .memory-preview-type {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .memory-preview-edit {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .memory-preview-edit:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .memory-preview-content {
+            color: #333;
+            line-height: 1.4;
+            font-size: 0.9rem;
+        }
+
+        .memory-confirmation-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            border-top: 2px solid #eee;
+            padding-top: 1.5rem;
+        }
+
+        .memory-confirmation-actions .modal-btn {
+            min-width: 120px;
+        }
+        
+        /* Confirmation Dialog */
+        .confirm-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2300;
+        }
+        
+        .confirm-dialog.show {
+            display: flex;
+        }
+        
+        .confirm-dialog-content {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .confirm-dialog-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .confirm-dialog-message {
+            color: #666;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+        
+        .confirm-dialog-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
         /* Utilities */
         .hidden { display: none !important; }
+        .loading { opacity: 0.6; }
         
         /* Alert */
         .alert {
@@ -819,6 +1515,30 @@
             background: #efe;
             color: #3c3;
             border: 1px solid #cfc;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 280px;
+                left: -280px;
+            }
+            
+            .memory-modal, .all-memories-modal, .config-modal, .add-fields-modal {
+                padding: 1rem;
+            }
+            
+            .memory-modal-content, .all-memories-content, .config-content, .add-fields-content {
+                padding: 1.5rem;
+            }
+
+            .memory-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .fields-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -883,6 +1603,7 @@
                     <span class="memory-count" id="memoryCount">0 memories</span>
                 </div>
             </div>
+            <div class="online-indicator"></div>
         </div>
         
         <!-- Sidebar -->
@@ -902,10 +1623,6 @@
             <div class="sidebar-menu">
                 <div class="menu-section">
                     <div class="menu-section-title">Quick Actions</div>
-                    <button class="menu-item" onclick="openTaskModal()">
-                        <i class="fas fa-plus-circle"></i>
-                        Create Task
-                    </button>
                     <button class="menu-item" onclick="openConfigMode('plan-day')">
                         <i class="fas fa-calendar-day"></i>
                         Plan My Day
@@ -918,6 +1635,10 @@
                         <i class="fas fa-repeat"></i>
                         Create Routine
                     </button>
+                    <button class="menu-item" onclick="openConfigMode('create-task')">
+                        <i class="fas fa-plus-circle"></i>
+                        Quick Task
+                    </button>
                     <button class="menu-item" onclick="openConfigMode('daily-review')">
                         <i class="fas fa-chart-line"></i>
                         Daily Review
@@ -926,6 +1647,10 @@
                 
                 <div class="menu-section">
                     <div class="menu-section-title">Memory Management</div>
+                    <button class="menu-item" onclick="openAllMemoriesModal()">
+                        <i class="fas fa-brain"></i>
+                        View All Memories
+                    </button>
                     <button class="menu-item" onclick="refreshMemories()">
                         <i class="fas fa-sync-alt"></i>
                         Refresh Memories
@@ -945,99 +1670,54 @@
                         <i class="fas fa-broom"></i>
                         Clear Session
                     </button>
-                    <button class="menu-item" onclick="logout()">
-                        <i class="fas fa-sign-out-alt"></i>
-                        Logout
+                    <button class="menu-item" onclick="exportChat()">
+                        <i class="fas fa-download"></i>
+                        Export Chat
                     </button>
                 </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button class="menu-item" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
             </div>
         </div>
         
         <!-- Overlay -->
         <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
         
-        <!-- Memory Confirmation Dialog - NEW -->
-        <div class="memory-confirm-dialog" id="memoryConfirmDialog">
-            <div class="memory-confirm-content">
-                <div class="memory-confirm-header">
-                    <div class="memory-confirm-title">
-                        <i class="fas fa-brain"></i> Remember This?
-                    </div>
-                    <div class="memory-confirm-subtitle">
-                        I'd like to store this information as a memory. You can edit it before saving.
-                    </div>
-                </div>
-                
-                <div class="memory-preview" id="memoryPreview">
-                    <!-- Memory preview will be populated here -->
-                </div>
-                
-                <div class="memory-confirm-actions">
-                    <button class="btn btn-secondary" onclick="dismissMemory()">
-                        <i class="fas fa-times"></i> Dismiss
-                    </button>
-                    <button class="btn btn-primary" onclick="editMemoryBeforeSaving()">
-                        <i class="fas fa-edit"></i> Edit & Save
-                    </button>
-                    <button class="btn btn-success" onclick="confirmMemorySave()">
-                        <i class="fas fa-check"></i> Save As-Is
+        <!-- All Memories Modal -->
+        <div class="all-memories-modal" id="allMemoriesModal">
+            <div class="all-memories-content">
+                <div class="all-memories-header">
+                    <div class="all-memories-title">All Memories</div>
+                    <button class="all-memories-close" onclick="closeAllMemoriesModal()">
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Task Creation Modal - NEW -->
-        <div class="task-modal" id="taskModal">
-            <div class="task-content">
-                <div class="task-header">
-                    <div class="task-title">
-                        <i class="fas fa-tasks"></i> Create Task
-                    </div>
+                
+                <div class="memory-type-filters" id="memoryTypeFilters">
+                    <!-- Filter buttons will be generated here -->
                 </div>
                 
-                <div class="task-form" id="taskForm">
-                    <div class="task-form-group">
-                        <label class="task-form-label">Task Name *</label>
-                        <input type="text" class="task-form-input" id="taskName" placeholder="What needs to be done?">
-                    </div>
-                    
-                    <div class="task-form-group">
-                        <label class="task-form-label">Due Date</label>
-                        <input type="date" class="task-form-input" id="taskDueDate">
-                    </div>
-                    
-                    <div class="task-form-group">
-                        <label class="task-form-label">Description</label>
-                        <textarea class="task-form-input task-form-textarea" id="taskDescription" placeholder="Additional details about this task"></textarea>
-                    </div>
-                    
-                    <div class="task-form-group">
-                        <label class="task-form-label">Notes</label>
-                        <textarea class="task-form-input task-form-textarea" id="taskNotes" placeholder="Any notes or reminders"></textarea>
-                    </div>
-                </div>
-                
-                <div class="task-actions">
-                    <div>
-                        <button class="btn btn-secondary" onclick="addTaskFields()">
-                            <i class="fas fa-plus"></i> Add Fields
-                        </button>
-                    </div>
-                    <div style="display: flex; gap: 1rem;">
-                        <button class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
-                        <button class="btn btn-success" onclick="saveAndCloseTask()">
-                            <i class="fas fa-save"></i> Save & Close
-                        </button>
-                    </div>
+                <div class="memories-grid" id="memoriesGrid">
+                    <!-- Memory cards will be loaded here -->
                 </div>
             </div>
         </div>
 
-        <!-- Enhanced Memory Detail Modal with FIXED buttons -->
+        <!-- Enhanced Memory Detail Modal -->
         <div class="memory-modal" id="memoryModal">
             <div class="memory-modal-content">
                 <div class="memory-modal-header">
                     <div class="memory-modal-title">Memory Details</div>
+                    <div class="memory-modal-status">
+                        <div class="save-status saved" id="saveStatus">
+                            <i class="fas fa-check"></i> Saved
+                        </div>
+                    </div>
                     <button class="memory-modal-close" onclick="closeMemoryModal()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -1049,22 +1729,75 @@
                 
                 <div class="memory-modal-actions">
                     <div class="modal-actions-left">
+                        <button class="modal-btn success" onclick="saveMemoryChanges(true, true)">
+                            <i class="fas fa-save"></i> Save & Close
+                        </button>
                         <button class="modal-btn secondary" onclick="openAddFieldsModal()">
                             <i class="fas fa-plus"></i> Add Fields
                         </button>
                     </div>
                     <div class="modal-actions-right">
-                        <button class="modal-btn save-close" onclick="saveAndCloseMemory()">
-                            <i class="fas fa-save"></i> Save & Close
-                        </button>
-                        <button class="modal-btn secondary" onclick="closeMemoryModal()">Close</button>
                         <button class="modal-btn primary" onclick="openMemoryChat()">
                             <i class="fas fa-comments"></i> Discuss with AI
                         </button>
                         <button class="modal-btn danger" onclick="confirmDeleteMemory()">
                             <i class="fas fa-trash"></i> Delete Memory
                         </button>
+                        <button class="modal-btn secondary" onclick="closeMemoryModal()">Close</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Fields Modal -->
+        <div class="add-fields-modal" id="addFieldsModal">
+            <div class="add-fields-content">
+                <div class="add-fields-header">
+                    <div class="add-fields-title">Add Memory Fields</div>
+                    <div class="add-fields-subtitle">Select additional fields to add to this memory</div>
+                </div>
+                
+                <div class="fields-grid" id="fieldsGrid">
+                    <!-- Available fields will be loaded here -->
+                </div>
+                
+                <div class="add-fields-actions">
+                    <button class="modal-btn secondary" onclick="closeAddFieldsModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Modal -->
+        <div class="config-modal" id="configModal">
+            <div class="config-content">
+                <div class="config-header">
+                    <div class="config-title" id="configTitle">Configure Action</div>
+                    <div class="config-subtitle" id="configSubtitle">Set up your preferences before engaging AI</div>
+                </div>
+                
+                <div class="config-body" id="configBody">
+                    <!-- Configuration steps will be loaded here -->
+                </div>
+                
+                <div class="config-actions">
+                    <button class="modal-btn secondary" onclick="closeConfigModal()">Cancel</button>
+                    <button class="modal-btn primary" onclick="processConfigAndChat()" id="configProceedBtn">
+                        <i class="fas fa-robot"></i> Proceed with AI
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Confirmation Dialog -->
+        <div class="confirm-dialog" id="confirmDialog">
+            <div class="confirm-dialog-content">
+                <div class="confirm-dialog-title">Confirm Action</div>
+                <div class="confirm-dialog-message" id="confirmMessage">
+                    Are you sure you want to proceed?
+                </div>
+                <div class="confirm-dialog-actions">
+                    <button class="modal-btn secondary" onclick="closeConfirmDialog()">Cancel</button>
+                    <button class="modal-btn danger" id="confirmActionBtn" onclick="executeConfirmedAction()">Confirm</button>
                 </div>
             </div>
         </div>
@@ -1075,6 +1808,17 @@
                 <!-- Welcome message will be added here -->
             </div>
             
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+            
             <div class="input-container">
                 <div class="input-group">
                     <textarea 
@@ -1083,6 +1827,7 @@
                         placeholder="Message MindOS..."
                         rows="1"
                         onkeydown="handleKeyDown(event)"
+                        oninput="autoResize(this)"
                     ></textarea>
                 </div>
                 <button class="send-btn" id="sendBtn" onclick="sendMessage()">
@@ -1100,10 +1845,14 @@
         let sessionInfo = {};
         let userMemories = [];
         let selectedMemory = null;
-        let pendingMemory = null;
+        let pendingAction = null;
         let memoryChanges = {};
-        
-        // Define memory field definitions
+        let autoSaveTimeout = null;
+        let currentConfigMode = null;
+        let configData = {};
+        let pendingMemories = [];
+
+        // Define all available memory fields with their properties
         const memoryFieldDefinitions = {
             type: { label: 'Type', icon: 'fas fa-tag', type: 'select', options: ['goal', 'routine', 'preference', 'insight', 'event', 'system'], required: true },
             content: { label: 'Full Content', icon: 'fas fa-align-left', type: 'textarea', required: true },
@@ -1112,6 +1861,8 @@
             priority: { label: 'Priority', icon: 'fas fa-star', type: 'select', options: ['1', '2', '3', '4', '5'] },
             status: { label: 'Status', icon: 'fas fa-flag', type: 'select', options: ['active', 'completed', 'paused', 'archived'] },
             stage: { label: 'Stage', icon: 'fas fa-layer-group', type: 'select', options: ['planned', 'current', 'completed', 'paused'] },
+            performance_streak: { label: 'Current Streak', icon: 'fas fa-fire', type: 'number' },
+            performance_rate: { label: 'Success Rate', icon: 'fas fa-percentage', type: 'number', step: '0.01', min: '0', max: '1' },
             due: { label: 'Due Date', icon: 'fas fa-calendar-alt', type: 'date' },
             trigger: { label: 'Trigger', icon: 'fas fa-play', type: 'text' },
             energy_requirements: { label: 'Energy Level', icon: 'fas fa-battery-three-quarters', type: 'select', options: ['low', 'medium', 'high'] },
@@ -1119,7 +1870,10 @@
             success_criteria: { label: 'Success Criteria', icon: 'fas fa-check-circle', type: 'textarea' },
             resources: { label: 'Resources', icon: 'fas fa-tools', type: 'textarea' },
             location: { label: 'Location', icon: 'fas fa-map-marker-alt', type: 'text' },
+            weather: { label: 'Weather Context', icon: 'fas fa-cloud-sun', type: 'text' },
             mood: { label: 'Mood', icon: 'fas fa-smile', type: 'text' },
+            emotion: { label: 'Emotion', icon: 'fas fa-heart', type: 'text' },
+            search_query: { label: 'Related Searches', icon: 'fas fa-search', type: 'text' },
             shoppingideas: { label: 'Shopping Ideas', icon: 'fas fa-shopping-cart', type: 'textarea' }
         };
         
@@ -1131,6 +1885,32 @@
                 showAuthScreen();
             }
         });
+        
+        async function attemptAutoLogin() {
+            try {
+                const response = await fetch('/api/user-status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    showChatApp();
+                } else {
+                    clearAuth();
+                    showAuthScreen();
+                }
+            } catch (error) {
+                console.log('Auto-login failed:', error);
+                clearAuth();
+                showAuthScreen();
+            }
+        }
+        
+        function clearAuth() {
+            localStorage.removeItem('mindos_token');
+            localStorage.removeItem('mindos_user');
+            token = null;
+            user = {};
+        }
         
         // Auth functions
         function showLogin() {
@@ -1212,31 +1992,6 @@
             }
         }
         
-        async function attemptAutoLogin() {
-            try {
-                const response = await fetch('/api/user-status', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (response.ok) {
-                    showChatApp();
-                } else {
-                    clearAuth();
-                    showAuthScreen();
-                }
-            } catch (error) {
-                clearAuth();
-                showAuthScreen();
-            }
-        }
-        
-        function clearAuth() {
-            localStorage.removeItem('mindos_token');
-            localStorage.removeItem('mindos_user');
-            token = null;
-            user = {};
-        }
-        
         function logout() {
             clearAuth();
             showAuthScreen();
@@ -1255,8 +2010,26 @@
             chatApp.style.display = 'flex';
             document.getElementById('sidebarUsername').textContent = user.username || 'User';
             
+            // Load session info and memories
+            await loadSessionInfo();
             await loadMemories();
+            
             addWelcomeMessage();
+        }
+        
+        async function loadSessionInfo() {
+            try {
+                const response = await fetch('/api/session-info', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    sessionInfo = await response.json();
+                    updateSessionDisplay();
+                }
+            } catch (error) {
+                console.log('Failed to load session info:', error);
+            }
         }
         
         async function loadMemories() {
@@ -1274,9 +2047,15 @@
             }
         }
         
+        function updateSessionDisplay() {
+            const messagesCount = sessionInfo.messageCount || 0;
+            document.getElementById('sessionMessages').textContent = `${messagesCount} messages`;
+        }
+        
         function updateMemoryDisplay() {
             document.getElementById('memoryCount').textContent = `${userMemories.length} memories`;
             
+            // Update recent memories in sidebar with enhanced UI
             const recentMemoriesDiv = document.getElementById('recentMemories');
             recentMemoriesDiv.innerHTML = '';
             
@@ -1286,6 +2065,14 @@
                 memoryDiv.className = 'memory-item';
                 memoryDiv.setAttribute('data-memory-id', memory.id);
                 
+                // Build metadata string
+                let metadata = '';
+                if (memory.priority && memory.priority > 3) metadata += '⭐ ';
+                if (memory.performance_streak && memory.performance_streak > 0) {
+                    metadata += `🔥${memory.performance_streak}d `;
+                }
+                if (memory.stage) metadata += `[${memory.stage}] `;
+                
                 memoryDiv.innerHTML = `
                     <div class="memory-item-header">
                         <div class="memory-type">${memory.type || 'general'}</div>
@@ -1293,14 +2080,16 @@
                             <button class="memory-action-btn" onclick="viewMemoryDetails(${memory.id})" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button class="memory-action-btn delete" onclick="deleteMemory(${memory.id})" title="Delete">
+                            <button class="memory-action-btn delete" onclick="confirmDeleteMemoryDirect(${memory.id})" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
                     <div class="memory-content">${memory.content_short || memory.content?.substring(0, 80) || 'No content'}</div>
+                    ${metadata ? `<div class="memory-metadata">${metadata}</div>` : ''}
                 `;
                 
+                // Add click handler for memory details
                 memoryDiv.addEventListener('click', (e) => {
                     if (!e.target.closest('.memory-actions')) {
                         viewMemoryDetails(memory.id);
@@ -1314,57 +2103,142 @@
                 recentMemoriesDiv.innerHTML = '<div style="padding: 1rem; text-align: center; color: #888; font-size: 0.9rem;">No memories yet</div>';
             }
         }
-        
-        // FIX 1: Corrected Add Fields functionality
-        function populateAddFieldsModal() {
-            const fieldsGrid = document.getElementById('fieldsGrid');
-            fieldsGrid.innerHTML = '';
 
-            if (!selectedMemory) return;
+        // All Memories Modal Functions
+        function openAllMemoriesModal() {
+            closeSidebar();
+            populateMemoriesModal();
+            document.getElementById('allMemoriesModal').classList.add('show');
+        }
 
-            // Get fields that are currently populated in the memory (not null/undefined/empty)
-            const currentFields = Object.keys(selectedMemory).filter(key => {
-                const value = selectedMemory[key];
-                return value !== null && value !== undefined && value !== '';
-            });
-            
-            console.log('Current fields:', currentFields);
-            
-            // Show fields that exist in definitions but not currently populated
-            const availableFields = Object.entries(memoryFieldDefinitions).filter(([fieldKey, fieldDef]) => {
-                return !currentFields.includes(fieldKey);
-            });
-            
-            console.log('Available fields:', availableFields.map(([key]) => key));
+        function closeAllMemoriesModal() {
+            document.getElementById('allMemoriesModal').classList.remove('show');
+        }
 
-            availableFields.forEach(([fieldKey, fieldDef]) => {
-                const fieldOption = document.createElement('div');
-                fieldOption.className = 'field-option';
-                fieldOption.onclick = () => addField(fieldKey, fieldDef);
-
-                fieldOption.innerHTML = `
-                    <div class="field-option-icon">
-                        <i class="${fieldDef.icon}"></i>
-                    </div>
-                    <div class="field-option-name">${fieldDef.label}</div>
-                    <div class="field-option-desc">Add ${fieldDef.label.toLowerCase()} information</div>
-                `;
-
-                fieldsGrid.appendChild(fieldOption);
+        function populateMemoriesModal() {
+            // Group memories by type
+            const memoryGroups = {};
+            userMemories.forEach(memory => {
+                const type = memory.type || 'general';
+                if (!memoryGroups[type]) memoryGroups[type] = [];
+                memoryGroups[type].push(memory);
             });
 
-            if (availableFields.length === 0) {
-                fieldsGrid.innerHTML = '<div style="text-align: center; padding: 2rem; color: #888;">All available fields are already added</div>';
+            // Create filter buttons
+            const filtersDiv = document.getElementById('memoryTypeFilters');
+            filtersDiv.innerHTML = '<button class="filter-btn active" onclick="filterMemories(\'all\')">All</button>';
+            
+            Object.keys(memoryGroups).forEach(type => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn';
+                btn.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} (${memoryGroups[type].length})`;
+                btn.onclick = () => filterMemories(type);
+                filtersDiv.appendChild(btn);
+            });
+
+            // Display all memories
+            displayMemoriesGrid(memoryGroups);
+        }
+
+        function filterMemories(filterType) {
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filter memories
+            const memoryGroups = {};
+            userMemories.forEach(memory => {
+                const type = memory.type || 'general';
+                if (filterType === 'all' || type === filterType) {
+                    if (!memoryGroups[type]) memoryGroups[type] = [];
+                    memoryGroups[type].push(memory);
+                }
+            });
+
+            displayMemoriesGrid(memoryGroups);
+        }
+
+        function displayMemoriesGrid(memoryGroups) {
+            const gridDiv = document.getElementById('memoriesGrid');
+            gridDiv.innerHTML = '';
+
+            if (Object.keys(memoryGroups).length === 0) {
+                gridDiv.innerHTML = '<div style="text-align: center; padding: 3rem; color: #888;">No memories found</div>';
+                return;
             }
+
+            Object.entries(memoryGroups).forEach(([type, memories]) => {
+                const section = document.createElement('div');
+                section.className = 'memory-type-section';
+                
+                const header = document.createElement('div');
+                header.className = 'memory-type-header';
+                header.textContent = `${type} (${memories.length})`;
+                section.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'memory-grid';
+                
+                memories.forEach(memory => {
+                    const card = createMemoryCard(memory);
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                gridDiv.appendChild(section);
+            });
+        }
+
+        function createMemoryCard(memory) {
+            const card = document.createElement('div');
+            card.className = 'memory-card';
+            card.onclick = (e) => {
+                if (!e.target.closest('.memory-card-actions')) {
+                    viewMemoryDetails(memory.id);
+                    closeAllMemoriesModal();
+                }
+            };
+
+            let metadata = [];
+            if (memory.performance_streak && memory.performance_streak > 0) {
+                metadata.push(`<div class="meta-item"><i class="fas fa-fire"></i> ${memory.performance_streak} days</div>`);
+            }
+            if (memory.stage) {
+                metadata.push(`<div class="meta-item"><i class="fas fa-layer-group"></i> ${memory.stage}</div>`);
+            }
+            if (memory.location) {
+                metadata.push(`<div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${memory.location}</div>`);
+            }
+            if (memory.mood) {
+                metadata.push(`<div class="meta-item"><i class="fas fa-smile"></i> ${memory.mood}</div>`);
+            }
+
+            card.innerHTML = `
+                <div class="memory-card-header">
+                    ${memory.priority ? `<div class="memory-card-priority priority-${memory.priority}">Priority ${memory.priority}</div>` : '<div></div>'}
+                    <div class="memory-card-actions">
+                        <button class="memory-action-btn" onclick="viewMemoryDetails(${memory.id}); closeAllMemoriesModal();" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="memory-action-btn delete" onclick="confirmDeleteMemoryDirect(${memory.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="memory-card-content">${memory.content_short || memory.content?.substring(0, 120) || 'No content'}</div>
+                ${metadata.length > 0 ? `<div class="memory-card-meta">${metadata.join('')}</div>` : ''}
+            `;
+
+            return card;
         }
         
-        // Memory Modal Functions
+        // Enhanced Memory Detail Modal Functions
         function viewMemoryDetails(memoryId) {
             const memory = userMemories.find(m => m.id === memoryId);
             if (!memory) return;
             
             selectedMemory = memory;
-            memoryChanges = {};
+            memoryChanges = {}; // Reset changes
             
             populateMemoryModal(memory);
             document.getElementById('memoryModal').classList.add('show');
@@ -1374,16 +2248,19 @@
             const modalContent = document.getElementById('memoryModalContent');
             modalContent.innerHTML = '';
 
+            // Create editable fields for all existing data
             Object.entries(memory).forEach(([key, value]) => {
                 if (key === 'id' || key === 'user_id' || key === 'created_at' || key === 'modified') return;
                 if (value === null || value === undefined || value === '') return;
 
                 const fieldDef = memoryFieldDefinitions[key];
-                if (!fieldDef) return;
+                if (!fieldDef) return; // Skip unknown fields
 
                 const section = createEditableField(key, value, fieldDef);
                 modalContent.appendChild(section);
             });
+
+            updateSaveStatus('saved');
         }
 
         function createEditableField(fieldKey, value, fieldDef) {
@@ -1393,7 +2270,12 @@
 
             const label = document.createElement('div');
             label.className = 'memory-detail-label';
-            label.innerHTML = fieldDef.label;
+            label.innerHTML = `
+                ${fieldDef.label}
+                ${!fieldDef.required ? `<button class="field-remove-btn" onclick="removeField('${fieldKey}')" title="Remove field">
+                    <i class="fas fa-times"></i>
+                </button>` : ''}
+            `;
 
             let input;
             if (fieldDef.type === 'textarea') {
@@ -1414,10 +2296,14 @@
                 input = document.createElement('input');
                 input.className = 'memory-detail-input';
                 input.type = fieldDef.type || 'text';
+                if (fieldDef.step) input.step = fieldDef.step;
+                if (fieldDef.min) input.min = fieldDef.min;
+                if (fieldDef.max) input.max = fieldDef.max;
             }
 
             input.value = value || '';
             input.addEventListener('input', () => handleFieldChange(fieldKey, input.value));
+            input.addEventListener('blur', () => autoSaveChanges());
 
             section.appendChild(label);
             section.appendChild(input);
@@ -1427,19 +2313,45 @@
 
         function handleFieldChange(fieldKey, value) {
             memoryChanges[fieldKey] = value;
+            updateSaveStatus('unsaved');
+
+            // Clear auto-save timeout and set new one
+            if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(autoSaveChanges, 2000);
         }
-        
-        // FIX 2: Save and Close functionality
-        async function saveAndCloseMemory() {
-            const success = await saveMemoryChanges(true);
-            if (success) {
-                closeMemoryModal();
+
+        function updateSaveStatus(status) {
+            const statusEl = document.getElementById('saveStatus');
+            statusEl.className = `save-status ${status}`;
+            
+            switch (status) {
+                case 'saved':
+                    statusEl.innerHTML = '<i class="fas fa-check"></i> Saved';
+                    break;
+                case 'saving':
+                    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                    break;
+                case 'unsaved':
+                    statusEl.innerHTML = '<i class="fas fa-clock"></i> Unsaved';
+                    break;
+                case 'error':
+                    statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+                    break;
             }
         }
 
-        async function saveMemoryChanges(showAlert = true) {
+        async function autoSaveChanges() {
+            if (Object.keys(memoryChanges).length === 0) return;
+            
+            updateSaveStatus('saving');
+            const success = await saveMemoryChanges(false);
+            updateSaveStatus(success ? 'saved' : 'error');
+        }
+
+        async function saveMemoryChanges(showAlert = true, closeAfter = false) {
             if (!selectedMemory || Object.keys(memoryChanges).length === 0) {
                 if (showAlert) showAlert('No changes to save', 'success');
+                if (closeAfter) closeMemoryModal();
                 return true;
             }
 
@@ -1456,6 +2368,7 @@
                 if (response.ok) {
                     const updatedMemory = await response.json();
                     
+                    // Update local memory object
                     const memoryIndex = userMemories.findIndex(m => m.id === selectedMemory.id);
                     if (memoryIndex !== -1) {
                         userMemories[memoryIndex] = updatedMemory;
@@ -1466,6 +2379,9 @@
                     updateMemoryDisplay();
                     
                     if (showAlert) showAlert('Memory updated successfully', 'success');
+                    if (closeAfter) {
+                        setTimeout(() => closeMemoryModal(), 500); // Brief delay for user feedback
+                    }
                     return true;
                 } else {
                     const error = await response.json();
@@ -1479,118 +2395,706 @@
             }
         }
 
+        function removeField(fieldKey) {
+            // Mark field for removal
+            memoryChanges[fieldKey] = null;
+            
+            // Remove from UI
+            const section = document.querySelector(`[data-field="${fieldKey}"]`);
+            if (section) section.remove();
+            
+            updateSaveStatus('unsaved');
+            autoSaveChanges();
+        }
+
+        // Add Fields Modal Functions - FIXED
+        function openAddFieldsModal() {
+            populateAddFieldsModal();
+            document.getElementById('addFieldsModal').classList.add('show');
+        }
+
+        function closeAddFieldsModal() {
+            document.getElementById('addFieldsModal').classList.remove('show');
+        }
+
+        function populateAddFieldsModal() {
+            const fieldsGrid = document.getElementById('fieldsGrid');
+            fieldsGrid.innerHTML = '';
+
+            // Get fields that are currently displayed in the modal (not just in selectedMemory)
+            const currentFields = Array.from(document.querySelectorAll('[data-field]')).map(el => el.getAttribute('data-field'));
+            
+            Object.entries(memoryFieldDefinitions).forEach(([fieldKey, fieldDef]) => {
+                // Skip if field is already displayed OR if it's a required field
+                if (currentFields.includes(fieldKey) || fieldDef.required) return;
+
+                const fieldOption = document.createElement('div');
+                fieldOption.className = 'field-option';
+                fieldOption.onclick = () => addField(fieldKey, fieldDef);
+
+                fieldOption.innerHTML = `
+                    <div class="field-option-icon">
+                        <i class="${fieldDef.icon}"></i>
+                    </div>
+                    <div class="field-option-name">${fieldDef.label}</div>
+                    <div class="field-option-desc">Add ${fieldDef.label.toLowerCase()} information</div>
+                `;
+
+                fieldsGrid.appendChild(fieldOption);
+            });
+
+            if (fieldsGrid.children.length === 0) {
+                fieldsGrid.innerHTML = '<div style="text-align: center; padding: 2rem; color: #888;">All available fields are already added</div>';
+            }
+        }
+
+        function addField(fieldKey, fieldDef) {
+            // Add field to memory modal
+            const modalContent = document.getElementById('memoryModalContent');
+            const newField = createEditableField(fieldKey, '', fieldDef);
+            modalContent.appendChild(newField);
+
+            // Focus on the new field
+            const input = newField.querySelector('.memory-detail-input, .memory-detail-select');
+            if (input) input.focus();
+
+            closeAddFieldsModal();
+            updateSaveStatus('unsaved');
+        }
+        
         function closeMemoryModal() {
+            // Check for unsaved changes
+            if (Object.keys(memoryChanges).length > 0) {
+                showConfirmDialog(
+                    'Unsaved Changes',
+                    'You have unsaved changes. Are you sure you want to close without saving?',
+                    () => {
+                        document.getElementById('memoryModal').classList.remove('show');
+                        selectedMemory = null;
+                        memoryChanges = {};
+                    }
+                );
+                return;
+            }
+
             document.getElementById('memoryModal').classList.remove('show');
             selectedMemory = null;
             memoryChanges = {};
         }
 
-        // Task Modal Functions
-        function openTaskModal() {
-            document.getElementById('taskModal').classList.add('show');
+        // Configuration Modal Functions - ENHANCED
+        function openConfigMode(mode) {
+            currentConfigMode = mode;
+            configData = {};
+            closeSidebar();
+
+            const configurations = {
+                'plan-day': {
+                    title: 'Plan Your Day',
+                    subtitle: 'Set up your daily planning preferences',
+                    steps: [
+                        {
+                            title: 'Planning Focus',
+                            options: [
+                                { id: 'comprehensive', title: 'Comprehensive Planning', desc: 'Full day schedule with time blocks and priorities' },
+                                { id: 'priorities', title: 'Priority Focus', desc: 'Identify top 3-5 priorities for the day' },
+                                { id: 'routine', title: 'Routine Check', desc: 'Review and adjust existing routines' }
+                            ]
+                        },
+                        {
+                            title: 'Time Frame',
+                            options: [
+                                { id: 'today', title: 'Today Only', desc: 'Plan just for today' },
+                                { id: 'week', title: 'This Week', desc: 'Plan for the entire week' },
+                                { id: 'custom', title: 'Custom Period', desc: 'Specify custom time frame' }
+                            ]
+                        }
+                    ]
+                },
+                'set-goals': {
+                    title: 'Set Goals',
+                    subtitle: 'Define and structure your objectives',
+                    steps: [
+                        {
+                            title: 'Goal Type',
+                            options: [
+                                { id: 'short-term', title: 'Short-term Goal', desc: 'Achievable within days or weeks' },
+                                { id: 'long-term', title: 'Long-term Goal', desc: 'Major objective taking months or years' },
+                                { id: 'habit', title: 'Habit Goal', desc: 'Building or breaking a habit' },
+                                { id: 'project', title: 'Project Goal', desc: 'Specific project with milestones' }
+                            ]
+                        },
+                        {
+                            title: 'Priority Level',
+                            options: [
+                                { id: '5', title: 'Critical Priority', desc: 'Must achieve - highest importance' },
+                                { id: '4', title: 'High Priority', desc: 'Very important to achieve' },
+                                { id: '3', title: 'Medium Priority', desc: 'Important but flexible' },
+                                { id: '2', title: 'Low Priority', desc: 'Nice to achieve when possible' }
+                            ]
+                        }
+                    ]
+                },
+                'create-routine': {
+                    title: 'Create Routine',
+                    subtitle: 'Build sustainable daily or weekly habits',
+                    steps: [
+                        {
+                            title: 'Routine Type',
+                            options: [
+                                { id: 'morning', title: 'Morning Routine', desc: 'Start your day with purpose' },
+                                { id: 'evening', title: 'Evening Routine', desc: 'Wind down and prepare for tomorrow' },
+                                { id: 'work', title: 'Work Routine', desc: 'Productivity during work hours' },
+                                { id: 'exercise', title: 'Exercise Routine', desc: 'Physical fitness and health' },
+                                { id: 'custom', title: 'Custom Routine', desc: 'Specific activity or habit' }
+                            ]
+                        },
+                        {
+                            title: 'Frequency',
+                            options: [
+                                { id: 'daily', title: 'Daily', desc: 'Every day without exception' },
+                                { id: 'weekdays', title: 'Weekdays', desc: 'Monday through Friday' },
+                                { id: 'weekly', title: 'Weekly', desc: 'Specific days of the week' },
+                                { id: 'flexible', title: 'Flexible', desc: 'Target frequency with flexibility' }
+                            ]
+                        }
+                    ]
+                },
+                'create-task': {
+                    title: 'Create Task',
+                    subtitle: 'Add a new task with details',
+                    steps: [
+                        {
+                            title: 'Task Priority',
+                            options: [
+                                { id: '5', title: 'Urgent', desc: 'Must be done today' },
+                                { id: '4', title: 'High Priority', desc: 'Important, due soon' },
+                                { id: '3', title: 'Medium Priority', desc: 'Normal importance' },
+                                { id: '2', title: 'Low Priority', desc: 'When time allows' }
+                            ]
+                        },
+                        {
+                            title: 'Due Date',
+                            options: [
+                                { id: 'today', title: 'Today', desc: 'Due today' },
+                                { id: 'tomorrow', title: 'Tomorrow', desc: 'Due tomorrow' },
+                                { id: 'this_week', title: 'This Week', desc: 'Due within 7 days' },
+                                { id: 'custom', title: 'Custom Date', desc: 'Pick specific date' }
+                            ]
+                        }
+                    ]
+                },
+                'daily-review': {
+                    title: 'Daily Review',
+                    subtitle: 'Reflect on your progress and plan improvements',
+                    steps: [
+                        {
+                            title: 'Review Focus',
+                            options: [
+                                { id: 'goals', title: 'Goals Progress', desc: 'Review progress on your goals' },
+                                { id: 'routines', title: 'Routines Check', desc: 'Assess routine completion and consistency' },
+                                { id: 'overall', title: 'Overall Day', desc: 'General reflection on the entire day' },
+                                { id: 'planning', title: 'Tomorrow Planning', desc: 'Focus on planning tomorrow' }
+                            ]
+                        },
+                        {
+                            title: 'Review Depth',
+                            options: [
+                                { id: 'quick', title: 'Quick Check', desc: '5-10 minute brief review' },
+                                { id: 'standard', title: 'Standard Review', desc: '15-20 minute thorough review' },
+                                { id: 'detailed', title: 'Detailed Analysis', desc: '30+ minute deep reflection' }
+                            ]
+                        }
+                    ]
+                }
+            };
+
+            const config = configurations[mode];
+            if (!config) return;
+
+            populateConfigModal(config);
+            document.getElementById('configModal').classList.add('show');
+        }
+
+        function populateConfigModal(config) {
+            document.getElementById('configTitle').textContent = config.title;
+            document.getElementById('configSubtitle').textContent = config.subtitle;
+
+            const configBody = document.getElementById('configBody');
+            configBody.innerHTML = '';
+
+            config.steps.forEach((step, stepIndex) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'config-step';
+
+                const stepTitle = document.createElement('div');
+                stepTitle.className = 'config-step-title';
+                stepTitle.textContent = `${stepIndex + 1}. ${step.title}`;
+
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'config-options';
+
+                step.options.forEach(option => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'config-option';
+                    optionDiv.onclick = () => selectConfigOption(stepIndex, option.id, optionDiv);
+
+                    optionDiv.innerHTML = `
+                        <div class="config-option-title">${option.title}</div>
+                        <div class="config-option-desc">${option.desc}</div>
+                    `;
+
+                    optionsDiv.appendChild(optionDiv);
+                });
+
+                stepDiv.appendChild(stepTitle);
+                stepDiv.appendChild(optionsDiv);
+                configBody.appendChild(stepDiv);
+
+                // Add custom input form if needed
+                if (step.options.some(opt => opt.id === 'custom')) {
+                    const customForm = document.createElement('div');
+                    customForm.className = 'config-form hidden';
+                    customForm.id = `customForm_${stepIndex}`;
+                    
+                    customForm.innerHTML = `
+                        <div class="config-form-group">
+                            <label class="config-form-label">Specify details:</label>
+                            <input type="text" class="config-form-input" placeholder="Enter your preference..." />
+                        </div>
+                    `;
+
+                    stepDiv.appendChild(customForm);
+                }
+            });
+        }
+
+        function selectConfigOption(stepIndex, optionId, optionElement) {
+            // Remove selection from siblings
+            optionElement.parentElement.querySelectorAll('.config-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Select this option
+            optionElement.classList.add('selected');
+
+            // Store selection
+            configData[`step_${stepIndex}`] = optionId;
+
+            // Show/hide custom form if needed
+            const customForm = document.getElementById(`customForm_${stepIndex}`);
+            if (customForm) {
+                if (optionId === 'custom') {
+                    customForm.classList.remove('hidden');
+                    const input = customForm.querySelector('input');
+                    input.addEventListener('input', (e) => {
+                        configData[`step_${stepIndex}_custom`] = e.target.value;
+                    });
+                } else {
+                    customForm.classList.add('hidden');
+                    delete configData[`step_${stepIndex}_custom`];
+                }
+            }
+
+            // Enable proceed button if all steps are selected
+            updateConfigProceedButton();
+        }
+
+        function updateConfigProceedButton() {
+            const requiredSteps = document.querySelectorAll('.config-step').length;
+            const selectedSteps = Object.keys(configData).filter(key => key.startsWith('step_') && !key.includes('_custom')).length;
+            
+            const proceedBtn = document.getElementById('configProceedBtn');
+            proceedBtn.disabled = selectedSteps < requiredSteps;
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').classList.remove('show');
+            currentConfigMode = null;
+            configData = {};
+        }
+
+        // Enhanced choice system
+        function processConfigAndChat() {
+            if (!currentConfigMode || Object.keys(configData).length === 0) return;
+
+            closeConfigModal();
+
+            // Show choice dialog
+            showChoiceDialog(
+                'How would you like to proceed?',
+                'Choose how you want to set up your ' + currentConfigMode.replace('-', ' '),
+                [
+                    {
+                        id: 'manual',
+                        title: 'Manual Setup',
+                        desc: 'I want to specify details step by step',
+                        icon: 'fas fa-hand-paper'
+                    },
+                    {
+                        id: 'ai_assist',
+                        title: 'AI Assistance',
+                        desc: 'Let AI help me create this',
+                        icon: 'fas fa-robot'
+                    }
+                ],
+                (choice) => {
+                    if (choice === 'manual') {
+                        openManualConfigModal();
+                    } else {
+                        // Use existing AI prompt system
+                        let prompt = buildConfigPrompt(currentConfigMode, configData);
+                        document.getElementById('messageInput').value = prompt;
+                        sendMessage();
+                    }
+                }
+            );
+        }
+
+        // New choice dialog function
+        function showChoiceDialog(title, message, choices, onChoice) {
+            const dialog = document.createElement('div');
+            dialog.className = 'choice-dialog';
+            dialog.innerHTML = `
+                <div class="choice-dialog-content">
+                    <div class="choice-dialog-header">
+                        <div class="choice-dialog-title">${title}</div>
+                        <div class="choice-dialog-subtitle">${message}</div>
+                    </div>
+                    <div class="choice-options">
+                        ${choices.map(choice => `
+                            <div class="choice-option" onclick="selectChoice('${choice.id}')">
+                                <div class="choice-icon">
+                                    <i class="${choice.icon}"></i>
+                                </div>
+                                <div class="choice-content">
+                                    <div class="choice-title">${choice.title}</div>
+                                    <div class="choice-desc">${choice.desc}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(dialog);
+            
+            window.selectChoice = (choiceId) => {
+                document.body.removeChild(dialog);
+                onChoice(choiceId);
+                delete window.selectChoice;
+            };
+        }
+
+        function buildConfigPrompt(mode, data) {
+            const prompts = {
+                'plan-day': () => {
+                    let prompt = "I'd like help planning my day with the following preferences:\n\n";
+                    
+                    if (data.step_0 === 'comprehensive') {
+                        prompt += "**Planning Style**: Comprehensive planning with time blocks and priorities\n";
+                    } else if (data.step_0 === 'priorities') {
+                        prompt += "**Planning Style**: Focus on identifying top 3-5 priorities\n";
+                    } else if (data.step_0 === 'routine') {
+                        prompt += "**Planning Style**: Review and adjust my existing routines\n";
+                    }
+
+                    if (data.step_1 === 'today') {
+                        prompt += "**Time Frame**: Today only\n";
+                    } else if (data.step_1 === 'week') {
+                        prompt += "**Time Frame**: This entire week\n";
+                    } else if (data.step_1 === 'custom' && data.step_1_custom) {
+                        prompt += `**Time Frame**: ${data.step_1_custom}\n`;
+                    }
+
+                    prompt += "\nPlease use my stored memories about goals, routines, and preferences to create a personalized plan.";
+                    return prompt;
+                },
+                'set-goals': () => {
+                    let prompt = "I want to set a new goal with these specifications:\n\n";
+                    
+                    const goalTypes = {
+                        'short-term': 'Short-term goal (days/weeks)',
+                        'long-term': 'Long-term goal (months/years)',
+                        'habit': 'Habit-building goal',
+                        'project': 'Project-based goal'
+                    };
+                    
+                    if (data.step_0) {
+                        prompt += `**Goal Type**: ${goalTypes[data.step_0]}\n`;
+                    }
+
+                    if (data.step_1) {
+                        prompt += `**Priority Level**: ${data.step_1}/5 priority\n`;
+                    }
+
+                    prompt += "\nPlease help me define this goal clearly, set success criteria, and create an action plan. Consider my existing goals and routines from my stored memories.";
+                    return prompt;
+                },
+                'create-routine': () => {
+                    let prompt = "I want to create a new routine with these details:\n\n";
+                    
+                    const routineTypes = {
+                        'morning': 'Morning routine',
+                        'evening': 'Evening routine',
+                        'work': 'Work/productivity routine',
+                        'exercise': 'Exercise routine',
+                        'custom': 'Custom routine'
+                    };
+
+                    if (data.step_0) {
+                        prompt += `**Routine Type**: ${routineTypes[data.step_0]}`;
+                        if (data.step_0 === 'custom' && data.step_0_custom) {
+                            prompt += ` - ${data.step_0_custom}`;
+                        }
+                        prompt += "\n";
+                    }
+
+                    const frequencies = {
+                        'daily': 'Daily (every day)',
+                        'weekdays': 'Weekdays only',
+                        'weekly': 'Specific days of the week',
+                        'flexible': 'Flexible frequency'
+                    };
+
+                    if (data.step_1) {
+                        prompt += `**Frequency**: ${frequencies[data.step_1]}\n`;
+                    }
+
+                    prompt += "\nPlease help me design this routine, considering my existing routines and goals. Include specific actions, timing, and success tracking.";
+                    return prompt;
+                },
+                'create-task': () => {
+                    let prompt = "I want to create a new task with these specifications:\n\n";
+                    
+                    if (data.step_0) {
+                        const priorities = {'5': 'Urgent', '4': 'High Priority', '3': 'Medium Priority', '2': 'Low Priority'};
+                        prompt += `**Priority**: ${priorities[data.step_0]}\n`;
+                    }
+
+                    if (data.step_1) {
+                        if (data.step_1 === 'today') {
+                            prompt += `**Due Date**: Today\n`;
+                        } else if (data.step_1 === 'tomorrow') {
+                            prompt += `**Due Date**: Tomorrow\n`;
+                        } else if (data.step_1 === 'this_week') {
+                            prompt += `**Due Date**: Within this week\n`;
+                        } else if (data.step_1 === 'custom' && data.step_1_custom) {
+                            prompt += `**Due Date**: ${data.step_1_custom}\n`;
+                        }
+                    }
+
+                    prompt += "\nPlease help me create this task with specific details, considering my existing tasks and schedule.";
+                    return prompt;
+                },
+                'daily-review': () => {
+                    let prompt = "I'd like to do a daily review with this focus:\n\n";
+                    
+                    const focuses = {
+                        'goals': 'Goals progress review',
+                        'routines': 'Routines completion check',
+                        'overall': 'Overall day reflection',
+                        'planning': 'Tomorrow planning focus'
+                    };
+
+                    if (data.step_0) {
+                        prompt += `**Review Focus**: ${focuses[data.step_0]}\n`;
+                    }
+
+                    const depths = {
+                        'quick': 'Quick check (5-10 minutes)',
+                        'standard': 'Standard review (15-20 minutes)',
+                        'detailed': 'Detailed analysis (30+ minutes)'
+                    };
+
+                    if (data.step_1) {
+                        prompt += `**Review Depth**: ${depths[data.step_1]}\n`;
+                    }
+
+                    prompt += "\nPlease guide me through this review using my stored memories about goals, routines, and recent activities.";
+                    return prompt;
+                }
+            };
+
+            return prompts[mode] ? prompts[mode]() : `Help me with ${mode} based on my stored memories and preferences.`;
+        }
+        
+        // Open chat about specific memory
+        function openMemoryChat() {
+            if (!selectedMemory) return;
+            
+            closeMemoryModal();
             closeSidebar();
             
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('taskDueDate').value = today;
+            // Create a detailed prompt about this memory
+            const memoryPrompt = `I'd like to discuss this specific memory in detail:
+
+**Type**: ${selectedMemory.type}
+**Content**: ${selectedMemory.content}
+${selectedMemory.notes ? `**Notes**: ${selectedMemory.notes}` : ''}
+${selectedMemory.priority ? `**Priority**: ${selectedMemory.priority}/5` : ''}
+${selectedMemory.status ? `**Status**: ${selectedMemory.status}` : ''}
+${selectedMemory.stage ? `**Stage**: ${selectedMemory.stage}` : ''}
+
+Please provide full context about this memory and help me with any modifications, additional details, or related planning I might need.`;
+            
+            document.getElementById('messageInput').value = memoryPrompt;
+            sendMessage();
         }
         
-        function closeTaskModal() {
-            document.getElementById('taskModal').classList.remove('show');
+        // Memory deletion functionality
+        function confirmDeleteMemoryDirect(memoryId) {
+            const memory = userMemories.find(m => m.id === memoryId);
+            if (!memory) return;
             
-            document.getElementById('taskName').value = '';
-            document.getElementById('taskDueDate').value = '';
-            document.getElementById('taskDescription').value = '';
-            document.getElementById('taskNotes').value = '';
+            showConfirmDialog(
+                'Delete Memory',
+                `Are you sure you want to delete this memory?\n\n"${memory.content_short || memory.content?.substring(0, 100) || 'Memory'}"`,
+                () => deleteMemory(memoryId)
+            );
         }
         
-        async function saveAndCloseTask() {
-            const taskName = document.getElementById('taskName').value.trim();
-            if (!taskName) {
-                showAlert('Task name is required', 'error');
-                return;
-            }
+        function confirmDeleteMemory() {
+            if (!selectedMemory) return;
             
-            const taskData = {
-                type: 'goal',
-                content: taskName,
-                content_short: taskName,
-                due: document.getElementById('taskDueDate').value || null,
-                notes: document.getElementById('taskDescription').value || null,
-                stage: 'planned',
-                priority: 3,
-                status: 'active'
-            };
-            
-            const additionalNotes = document.getElementById('taskNotes').value.trim();
-            if (additionalNotes) {
-                taskData.notes = taskData.notes ? 
-                    `${taskData.notes}\n\nNotes: ${additionalNotes}` : 
-                    additionalNotes;
-            }
-            
+            showConfirmDialog(
+                'Delete Memory',
+                `Are you sure you want to delete this memory?\n\n"${selectedMemory.content_short || selectedMemory.content?.substring(0, 100) || 'Memory'}"`,
+                () => {
+                    deleteMemory(selectedMemory.id);
+                    closeMemoryModal();
+                }
+            );
+        }
+        
+        async function deleteMemory(memoryId) {
             try {
-                const response = await fetch('/api/memories', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(taskData)
+                const response = await fetch(`/api/memories/${memoryId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
                 if (response.ok) {
-                    showAlert('Task created successfully', 'success');
-                    await loadMemories();
-                    closeTaskModal();
+                    // Remove from local array
+                    userMemories = userMemories.filter(m => m.id !== memoryId);
+                    updateMemoryDisplay();
                     
-                    addMessage('assistant', `Task created: "${taskName}". I've added this to your goals and it's ready to track.`);
+                    // Add success message to chat
+                    addMessage('assistant', 'Memory deleted successfully. The information has been removed from my knowledge base.');
+                    
+                    // Add visual indicator
+                    const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
+                    const indicator = document.createElement('div');
+                    indicator.className = 'memory-deleted-indicator';
+                    indicator.innerHTML = '<i class="fas fa-trash"></i> Memory deleted';
+                    lastMessage.appendChild(indicator);
+                    
+                    showAlert('Memory deleted successfully', 'success');
+                    
+                    // Refresh all memories modal if open
+                    if (document.getElementById('allMemoriesModal').classList.contains('show')) {
+                        populateMemoriesModal();
+                    }
                 } else {
                     const error = await response.json();
-                    showAlert('Failed to create task: ' + (error.error || 'Unknown error'), 'error');
+                    showAlert('Failed to delete memory: ' + (error.error || 'Unknown error'), 'error');
                 }
             } catch (error) {
-                showAlert('Error creating task: ' + error.message, 'error');
+                console.error('Delete memory error:', error);
+                showAlert('Error deleting memory: ' + error.message, 'error');
             }
         }
 
-        function addTaskFields() {
-            console.log('Add task fields functionality - to be implemented');
-        }
-        
-        // Memory Confirmation Functions
-        function showMemoryConfirmation(memoryData) {
-            pendingMemory = memoryData;
-            
-            const preview = document.getElementById('memoryPreview');
-            preview.innerHTML = '';
-            
-            Object.entries(memoryData).forEach(([key, value]) => {
-                if (value && key !== 'user_id') {
-                    const fieldDiv = document.createElement('div');
-                    fieldDiv.className = 'memory-preview-field';
+        // Memory confirmation system
+        function showMemoryConfirmation(memories, onConfirm, onDismiss) {
+            const dialog = document.createElement('div');
+            dialog.className = 'memory-confirmation-dialog';
+            dialog.innerHTML = `
+                <div class="memory-confirmation-content">
+                    <div class="memory-confirmation-header">
+                        <div class="memory-confirmation-title">
+                            <i class="fas fa-brain"></i> Store Memories?
+                        </div>
+                        <div class="memory-confirmation-subtitle">
+                            I've identified ${memories.length} memory${memories.length > 1 ? 'ies' : ''} to store
+                        </div>
+                    </div>
                     
-                    const label = memoryFieldDefinitions[key]?.label || key.replace(/_/g, ' ');
+                    <div class="memory-preview-list">
+                        ${memories.map((memory, index) => `
+                            <div class="memory-preview-item">
+                                <div class="memory-preview-header">
+                                    <span class="memory-preview-type">${memory.type}</span>
+                                    <button class="memory-preview-edit" onclick="editPendingMemory(${index})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                                <div class="memory-preview-content">${memory.content}</div>
+                            </div>
+                        `).join('')}
+                    </div>
                     
-                    fieldDiv.innerHTML = `
-                        <div class="memory-preview-label">${label}</div>
-                        <div class="memory-preview-value">${value}</div>
-                    `;
-                    
-                    preview.appendChild(fieldDiv);
-                }
-            });
+                    <div class="memory-confirmation-actions">
+                        <button class="modal-btn secondary" onclick="dismissMemories()">
+                            <i class="fas fa-times"></i> Dismiss
+                        </button>
+                        <button class="modal-btn success" onclick="confirmMemories()">
+                            <i class="fas fa-brain"></i> Remember All
+                        </button>
+                    </div>
+                </div>
+            `;
             
-            document.getElementById('memoryConfirmDialog').classList.add('show');
-        }
-        
-        function dismissMemory() {
-            document.getElementById('memoryConfirmDialog').classList.remove('show');
-            pendingMemory = null;
-        }
-        
-        async function confirmMemorySave() {
-            if (!pendingMemory) return;
+            document.body.appendChild(dialog);
             
+            // Store callbacks globally for button handlers
+            window.currentMemoryCallbacks = { onConfirm, onDismiss };
+            
+            window.confirmMemories = () => {
+                document.body.removeChild(dialog);
+                onConfirm();
+                cleanup();
+            };
+            
+            window.dismissMemories = () => {
+                document.body.removeChild(dialog);
+                onDismiss();
+                cleanup();
+            };
+            
+            window.editPendingMemory = (index) => {
+                document.body.removeChild(dialog);
+                openPendingMemoryEditor(index, onConfirm, onDismiss);
+                cleanup();
+            };
+            
+            function cleanup() {
+                delete window.currentMemoryCallbacks;
+                delete window.confirmMemories;
+                delete window.dismissMemories;
+                delete window.editPendingMemory;
+            }
+        }
+
+        // Actually store the confirmed memories
+        async function storePendingMemories() {
+            for (const memory of pendingMemories) {
+                await storeMemory(user.userId, memory.type, memory.content, memory.additionalData);
+            }
+            
+            // Refresh memories and show indicator
+            await loadMemories();
+            const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
+            const indicator = document.createElement('div');
+            indicator.className = 'memory-stored-indicator';
+            indicator.innerHTML = `<i class="fas fa-brain"></i> ${pendingMemories.length} memory${pendingMemories.length > 1 ? 'ies' : ''} stored`;
+            lastMessage.appendChild(indicator);
+            
+            pendingMemories = [];
+        }
+
+        // Helper function for frontend storage calls
+        async function storeMemory(userId, type, content, additionalData) {
             try {
                 const response = await fetch('/api/memories', {
                     method: 'POST',
@@ -1598,40 +3102,108 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify(pendingMemory)
+                    body: JSON.stringify({ type, content, ...additionalData })
+                });
+                return response.ok;
+            } catch (error) {
+                console.error('Store memory error:', error);
+                return false;
+            }
+        }
+        
+        // Confirmation dialog functions
+        function showConfirmDialog(title, message, onConfirm) {
+            document.querySelector('.confirm-dialog-title').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            pendingAction = onConfirm;
+            document.getElementById('confirmDialog').classList.add('show');
+        }
+        
+        function closeConfirmDialog() {
+            document.getElementById('confirmDialog').classList.remove('show');
+            pendingAction = null;
+        }
+        
+        function executeConfirmedAction() {
+            if (pendingAction) {
+                pendingAction();
+                pendingAction = null;
+            }
+            closeConfirmDialog();
+        }
+        
+        function addWelcomeMessage() {
+            const messagesContainer = document.getElementById('messages');
+            if (messagesContainer.children.length === 0) {
+                addMessage('assistant', `Hello! I'm MindOS, your personal AI assistant with memory capabilities. I can remember our conversations, your goals, routines, and preferences to provide personalized assistance.\n\nI currently have ${userMemories.length} stored memories about you. You can view, edit, and manage any memory through the sidebar or by using "View All Memories".\n\n**Refresh Memories** reloads your stored data from the database to ensure everything is up-to-date.\n\nWhat would you like to work on today?`);
+            }
+        }
+        
+        // Sidebar functions
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            
+            if (sidebar.classList.contains('open')) {
+                closeSidebar();
+            } else {
+                sidebar.classList.add('open');
+                overlay.classList.add('show');
+            }
+        }
+        
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('overlay').classList.remove('show');
+        }
+        
+        async function refreshMemories() {
+            await loadMemories();
+            await loadSessionInfo();
+            showAlert('Memories refreshed successfully', 'success');
+            closeSidebar();
+        }
+        
+        async function clearSession() {
+            try {
+                const response = await fetch('/api/clear-session', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
                 if (response.ok) {
-                    await loadMemories();
-                    
-                    addMessage('assistant', 'Memory saved successfully. The information has been stored in my knowledge base.');
-                    
-                    const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
-                    const indicator = document.createElement('div');
-                    indicator.className = 'memory-stored-indicator';
-                    indicator.innerHTML = '<i class="fas fa-brain"></i> Memory stored';
-                    lastMessage.appendChild(indicator);
+                    document.getElementById('messages').innerHTML = '';
+                    sessionInfo = { messageCount: 0 };
+                    updateSessionDisplay();
+                    addWelcomeMessage();
+                    showAlert('Session cleared successfully', 'success');
+                } else {
+                    showAlert('Failed to clear session', 'error');
                 }
             } catch (error) {
-                showAlert('Error saving memory: ' + error.message, 'error');
+                showAlert('Error clearing session: ' + error.message, 'error');
             }
-            
-            dismissMemory();
+            closeSidebar();
         }
         
-        function editMemoryBeforeSaving() {
-            if (!pendingMemory) return;
+        function exportChat() {
+            const messages = Array.from(document.querySelectorAll('.message')).map(msg => {
+                const isUser = msg.classList.contains('user');
+                const content = msg.querySelector('.message-content').textContent;
+                return `${isUser ? 'You' : 'MindOS'}: ${content}`;
+            }).join('\n\n');
             
-            dismissMemory();
-            
-            selectedMemory = { id: 'temp', ...pendingMemory };
-            memoryChanges = {};
-            
-            populateMemoryModal(selectedMemory);
-            document.getElementById('memoryModal').classList.add('show');
+            const blob = new Blob([messages], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mindos-chat-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            closeSidebar();
         }
         
-        // Chat Functions
+        // Enhanced chat functions with memory confirmation
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
@@ -1639,6 +3211,7 @@
             
             addMessage('user', message);
             input.value = '';
+            autoResize(input);
             
             setLoading(true);
             
@@ -1660,18 +3233,36 @@
                 if (response.ok) {
                     const data = await response.json();
                     const assistantMessage = data.content[0].text;
-                    addMessage('assistant', assistantMessage);
                     
-                    const hasToolUse = data.content.some(content => content.type === 'tool_use');
-                    if (hasToolUse) {
-                        await loadMemories();
+                    // Check for tool use (potential memories) BEFORE adding the message
+                    const toolUses = data.content.filter(content => content.type === 'tool_use' && content.name === 'storeMemory');
+                    
+                    if (toolUses.length > 0) {
+                        // Store tool uses for confirmation instead of auto-saving
+                        pendingMemories = toolUses.map(tool => ({
+                            type: tool.input.type,
+                            content: tool.input.content,
+                            additionalData: { ...tool.input },
+                            id: Math.random().toString(36).substr(2, 9) // temporary ID for management
+                        }));
                         
-                        const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
-                        const indicator = document.createElement('div');
-                        indicator.className = 'memory-stored-indicator';
-                        indicator.innerHTML = '<i class="fas fa-brain"></i> Memory stored';
-                        lastMessage.appendChild(indicator);
+                        // Show memory confirmation dialog
+                        showMemoryConfirmation(pendingMemories, () => {
+                            // On confirm - actually store memories
+                            storePendingMemories();
+                            addMessage('assistant', assistantMessage);
+                        }, () => {
+                            // On dismiss - just show message without storing
+                            addMessage('assistant', assistantMessage);
+                        });
+                    } else {
+                        // No memories, just add the message normally
+                        addMessage('assistant', assistantMessage);
                     }
+                    
+                    // Update session info
+                    sessionInfo.messageCount = (sessionInfo.messageCount || 0) + 2; // user + assistant
+                    updateSessionDisplay();
                     
                 } else {
                     const errorData = await response.json();
@@ -1697,7 +3288,7 @@
                     ${type === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>'}
                 </div>
                 <div>
-                    <div class="message-content">${content.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</div>
+                    <div class="message-content">${content.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/_(.*?)_/g, '<em>$1</em>')}</div>
                     <div class="message-time">${timeString}</div>
                 </div>
             `;
@@ -1708,12 +3299,15 @@
         
         function setLoading(loading) {
             isLoading = loading;
+            const typingIndicator = document.getElementById('typingIndicator');
             const sendBtn = document.getElementById('sendBtn');
             
             if (loading) {
+                typingIndicator.style.display = 'flex';
                 sendBtn.disabled = true;
                 document.getElementById('headerStatus').textContent = 'MindOS is thinking...';
             } else {
+                typingIndicator.style.display = 'none';
                 sendBtn.disabled = false;
                 document.getElementById('headerStatus').textContent = 'AI Assistant Ready';
             }
@@ -1726,85 +3320,9 @@
             }
         }
         
-        function addWelcomeMessage() {
-            const messagesContainer = document.getElementById('messages');
-            if (messagesContainer.children.length === 0) {
-                addMessage('assistant', `Hello! I'm MindOS, your personal AI assistant with memory capabilities. I can remember our conversations, your goals, routines, and preferences to provide personalized assistance.\n\nI currently have ${userMemories.length} stored memories about you. You can view, edit, and manage any memory through the sidebar.\n\nWhat would you like to work on today?`);
-            }
-        }
-        
-        // Sidebar functions
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
-            
-            if (sidebar.classList.contains('open')) {
-                closeSidebar();
-            } else {
-                sidebar.classList.add('open');
-                overlay.classList.add('show');
-            }
-        }
-        
-        function closeSidebar() {
-            document.getElementById('sidebar').classList.remove('open');
-            document.getElementById('overlay').classList.remove('show');
-        }
-        
-        function refreshMemories() {
-            loadMemories();
-            showAlert('Memories refreshed - UI updated with latest data from database', 'success');
-            closeSidebar();
-        }
-        
-        async function clearSession() {
-            try {
-                const response = await fetch('/api/clear-session', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (response.ok) {
-                    document.getElementById('messages').innerHTML = '';
-                    addWelcomeMessage();
-                    showAlert('Session cleared successfully', 'success');
-                } else {
-                    showAlert('Failed to clear session', 'error');
-                }
-            } catch (error) {
-                showAlert('Error clearing session: ' + error.message, 'error');
-            }
-            closeSidebar();
-        }
-        
-        async function deleteMemory(memoryId) {
-            try {
-                const response = await fetch(`/api/memories/${memoryId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (response.ok) {
-                    userMemories = userMemories.filter(m => m.id !== memoryId);
-                    updateMemoryDisplay();
-                    
-                    addMessage('assistant', 'Memory deleted successfully. The information has been removed from my knowledge base.');
-                    
-                    const lastMessage = document.querySelector('.message.assistant:last-child .message-content');
-                    const indicator = document.createElement('div');
-                    indicator.className = 'memory-deleted-indicator';
-                    indicator.innerHTML = '<i class="fas fa-trash"></i> Memory deleted';
-                    lastMessage.appendChild(indicator);
-                    
-                    showAlert('Memory deleted successfully', 'success');
-                } else {
-                    const error = await response.json();
-                    showAlert('Failed to delete memory: ' + (error.error || 'Unknown error'), 'error');
-                }
-            } catch (error) {
-                console.error('Delete memory error:', error);
-                showAlert('Error deleting memory: ' + error.message, 'error');
-            }
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
         }
         
         function showAlert(message, type) {
@@ -1818,31 +3336,36 @@
             setTimeout(() => alertDiv.remove(), 5000);
         }
         
-        // Placeholder functions for other modals that would need to be implemented
-        function openConfigMode(mode) {
-            if (mode === 'create-routine') {
-                // For now, just show task modal as placeholder
-                openTaskModal();
-                return;
-            }
-            console.log('Config mode:', mode);
-            closeSidebar();
-        }
-        
-        function openAddFieldsModal() {
-            console.log('Add fields modal - to be implemented');
-        }
-        
-        function openMemoryChat() {
-            console.log('Memory chat - to be implemented');
-        }
-        
-        function confirmDeleteMemory() {
-            if (selectedMemory) {
-                deleteMemory(selectedMemory.id);
+        // Close modals when clicking outside
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('memory-modal')) {
                 closeMemoryModal();
             }
-        }
+            if (event.target.classList.contains('confirm-dialog')) {
+                closeConfirmDialog();
+            }
+            if (event.target.classList.contains('all-memories-modal')) {
+                closeAllMemoriesModal();
+            }
+            if (event.target.classList.contains('add-fields-modal')) {
+                closeAddFieldsModal();
+            }
+            if (event.target.classList.contains('config-modal')) {
+                closeConfigModal();
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeMemoryModal();
+                closeConfirmDialog();
+                closeAllMemoriesModal();
+                closeAddFieldsModal();
+                closeConfigModal();
+                closeSidebar();
+            }
+        });
     </script>
 </body>
 </html>
