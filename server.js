@@ -148,19 +148,26 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.get('/api/user-status', auth, async (req, res) => {
+    console.log('🔍 User status request for:', req.user.userId);
+    console.log('🔍 Token data:', req.user);
     try {
         const result = await db.query(
             'SELECT user_id, username, email FROM "user" WHERE user_id = $1',
             [req.user.userId]
         );
         
+        console.log('🔍 Database result rows:', result.rows.length);
+        console.log('🔍 Database result:', result.rows);
+        
         if (result.rows.length === 0) {
+            console.log('❌ User not found in database');
             return res.status(404).json({ error: 'User not found' });
         }
         
+        console.log('✅ User status success');
         res.json({ user: result.rows[0] });
     } catch (error) {
-        console.error('User status error:', error);
+        console.error('❌ User status error:', error);
         res.status(500).json({ error: 'Failed to get user status' });
     }
 });
@@ -228,9 +235,24 @@ app.post('/api/clear-session', auth, (req, res) => {
     }
 });
 
+// Debug route
+app.get('/debug', (req, res) => {
+    const fs = require('fs');
+    try {
+        res.json({
+            files: fs.readdirSync(__dirname),
+            publicExists: fs.existsSync('./public'),
+            indexExists: fs.existsSync('./public/index.html'),
+            currentDir: __dirname
+        });
+    } catch (error) {
+        res.json({ error: error.message });
+    }
+});
+
 // Serve index.html for all other routes
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
 app.listen(PORT, () => {
