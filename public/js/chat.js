@@ -316,3 +316,50 @@ What would you like to work on today?`;
         return context;
     }
 };
+
+// Add this at the END of chat.js
+// Send continuation message
+sendContinuationMessage: async function(message) {
+    UI.setLoading(true);
+    
+    try {
+        const response = await API.post('/api/claude', {
+            messages: [{
+                role: 'user',
+                content: message
+            }]
+        });
+        
+        const assistantMessage = response.content[0].text;
+        
+        // Handle any new memories from continuation
+        const toolUses = response.content.filter(content => 
+            content.type === 'tool_use' && content.name === 'storeMemory'
+        );
+        
+        if (toolUses.length > 0) {
+            // For continuation, auto-store any new memories to avoid another interruption
+            MindOS.pendingMemories = toolUses.map(tool => ({
+                type: tool.input.type,
+                content: tool.input.content,
+                additionalData: { ...tool.input },
+                id: Utils.generateId()
+            }));
+            
+            await Memory.storePendingMemories();
+            this.addMessage('assistant', assistantMessage);
+            this.addMemoryIndicator(toolUses.length, 'stored');
+        } else {
+            this.addMessage('assistant', assistantMessage);
+        }
+        
+        // Update session info
+        MindOS.sessionInfo.messageCount = (MindOS.sessionInfo.messageCount || 0) + 2;
+        UI.updateSessionDisplay();
+        
+    } catch (error) {
+        Utils.showAlert('Failed to continue conversation: ' + error.message, 'error');
+    } finally {
+        UI.setLoading(false);
+    }
+}
