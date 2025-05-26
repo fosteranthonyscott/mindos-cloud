@@ -1032,11 +1032,19 @@ Memory Operations Status:
 ${memoryResults.length > 0 ? `Processed ${memoryResults.length} memory operations - acknowledge briefly but focus on helping the user.` : 'No memory operations this message.'}`;
 
         // STEP 4: Get Claude response with enhanced context
+        // Clean messages to remove extra fields that Claude API doesn't accept
+        // Our internal messages have timestamp and id fields for conversation management,
+        // but Claude's API only accepts messages with 'role' and 'content' fields
+        const cleanMessages = contextInfo.messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+        }));
+
         const claudeRequestBody = {
             model: 'claude-3-5-sonnet-20241022',
             max_tokens: 400,
             system: systemPrompt,
-            messages: contextInfo.messages
+            messages: cleanMessages // Use cleaned messages instead of raw contextInfo.messages
         };
         
         const fetch = await import('node-fetch').then(m => m.default);
@@ -1568,5 +1576,5 @@ app.listen(PORT, () => {
     console.log('🎯 Config module input parsing enabled');
     console.log('⚡ Mathematical constraint reasoning active');
     console.log('🔍 Enhanced conversation context with constraint extraction');
-    console.log('🔧 FIXED: Database query adaptivity in analyzeUserInput');
+    console.log('🔧 FIXED: Message cleaning for Claude API compatibility');
 });
