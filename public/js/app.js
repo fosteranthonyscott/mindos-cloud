@@ -48,13 +48,13 @@ const MemoryConfig = {
     }
 };
 
-// ENHANCED Memory Field Definitions with Routine-Specific Fields
+// ENHANCED Memory Field Definitions with Task and Routine-Specific Fields
 const memoryFieldDefinitions = {
     type: { 
         label: 'Type', 
         icon: 'fas fa-tag', 
         type: 'select', 
-        options: ['goal', 'routine', 'preference', 'insight', 'event', 'system'], 
+        options: ['goal', 'routine', 'task', 'preference', 'insight', 'event', 'system'], 
         required: true 
     },
     content: { 
@@ -340,25 +340,6 @@ const API = {
         });
     },
     
-    // Specialized methods for common operations
-    async uploadFile(url, file, additionalData = {}) {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        Object.entries(additionalData).forEach(([key, value]) => {
-            formData.append(key, value);
-        });
-        
-        return this.request(url, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                // Don't set Content-Type for FormData - browser will set it with boundary
-                ...(MindOS.token && { Authorization: `Bearer ${MindOS.token}` })
-            }
-        });
-    },
-    
     // Health check method
     async healthCheck() {
         try {
@@ -528,6 +509,247 @@ const MemorySettings = {
     }
 };
 
+// Enhanced Header Action Buttons
+const ActionButtons = {
+    init() {
+        this.setupActionButtonHandlers();
+    },
+
+    setupActionButtonHandlers() {
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = btn.dataset.action;
+                
+                // Visual feedback
+                this.showClickFeedback(btn);
+                
+                // Handle the action
+                this.handleAction(action);
+            });
+        });
+    },
+
+    showClickFeedback(button) {
+        button.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            button.style.transform = '';
+        }, 150);
+    },
+
+    handleAction(action) {
+        console.log(`🎯 Action clicked: ${action}`);
+        
+        switch(action) {
+            case 'add-task':
+                this.openCreateTask();
+                break;
+            case 'add-routine':
+                this.openCreateRoutine();
+                break;
+            case 'add-goal':
+                this.openCreateGoal();
+                break;
+            case 'add-event':
+                this.openCreateEvent();
+                break;
+            case 'add-memory':
+                this.openCreateMemory();
+                break;
+            case 'show-all':
+                this.showAllMemories();
+                break;
+            default:
+                console.warn(`Unknown action: ${action}`);
+        }
+    },
+
+    // Integration with existing Config module
+    openCreateTask() {
+        if (typeof Config !== 'undefined') {
+            Config.openConfigMode('create-task');
+        } else {
+            this.showQuickCreateDialog('task');
+        }
+    },
+
+    openCreateRoutine() {
+        if (typeof Config !== 'undefined') {
+            Config.openConfigMode('create-routine');
+        } else {
+            this.showQuickCreateDialog('routine');
+        }
+    },
+
+    openCreateGoal() {
+        if (typeof Config !== 'undefined') {
+            Config.openConfigMode('set-goals');
+        } else {
+            this.showQuickCreateDialog('goal');
+        }
+    },
+
+    openCreateEvent() {
+        this.showQuickCreateDialog('event');
+    },
+
+    openCreateMemory() {
+        this.showQuickCreateDialog('memory');
+    },
+
+    showAllMemories() {
+        if (typeof Memory !== 'undefined' && Memory.openAllMemoriesModal) {
+            Memory.openAllMemoriesModal();
+        } else {
+            Utils.showAlert('Memory management not available', 'info');
+        }
+    },
+
+    // Quick create dialog for types without full Config support
+    showQuickCreateDialog(type) {
+        const typeConfig = {
+            task: {
+                title: 'Create Task',
+                icon: 'fas fa-tasks',
+                placeholder: 'What task do you need to complete?',
+                examples: ['Review quarterly reports', 'Call dentist for appointment', 'Prepare presentation for Monday']
+            },
+            routine: {
+                title: 'Create Routine',
+                icon: 'fas fa-repeat',
+                placeholder: 'Describe your routine...',
+                examples: ['Morning workout 30 minutes', 'Evening reading 1 hour', 'Weekly grocery shopping']
+            },
+            goal: {
+                title: 'Create Goal',
+                icon: 'fas fa-bullseye',
+                placeholder: 'What goal do you want to achieve?',
+                examples: ['Learn Spanish in 6 months', 'Run a 5K race', 'Save $5000 for vacation']
+            },
+            event: {
+                title: 'Create Event',
+                icon: 'fas fa-calendar-plus',
+                placeholder: 'Describe the event...',
+                examples: ['Team meeting Thursday 2 PM', 'Birthday party Saturday', 'Doctor appointment next week']
+            },
+            memory: {
+                title: 'Create Memory',
+                icon: 'fas fa-brain',
+                placeholder: 'What would you like to remember?',
+                examples: ['Favorite coffee shop downtown', 'John prefers morning meetings', 'Password reset procedure']
+            }
+        };
+
+        const config = typeConfig[type];
+        if (!config) return;
+
+        if (typeof Modals !== 'undefined') {
+            const modal = Modals.createModal(`create${type}Modal`, config.title, `
+                <div style="padding: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="width: 50px; height: 50px; background: #667eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                            <i class="${config.icon}"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; color: #333;">Quick ${config.title}</h3>
+                            <p style="margin: 0.25rem 0 0 0; color: #666; font-size: 0.9rem;">Describe what you want to create</p>
+                        </div>
+                    </div>
+                    
+                    <textarea id="quickCreate${type}Input" 
+                              placeholder="${config.placeholder}" 
+                              style="width: 100%; min-height: 100px; padding: 0.75rem; border: 2px solid #e0e6ff; border-radius: 8px; font-family: inherit; resize: vertical;"
+                              onkeydown="if(event.key==='Enter' && event.ctrlKey) ActionButtons.submitQuickCreate('${type}')"></textarea>
+                    
+                    <div style="margin-top: 1rem; font-size: 0.8rem; color: #666;">
+                        <strong>Examples:</strong><br>
+                        ${config.examples.map(ex => `• ${ex}`).join('<br>')}
+                    </div>
+                    
+                    <div style="margin-top: 1rem; font-size: 0.8rem; color: #999; text-align: center;">
+                        Press Ctrl+Enter to save quickly
+                    </div>
+                </div>
+            `, [
+                {
+                    text: 'Cancel',
+                    class: 'secondary',
+                    onclick: `Modals.removeModal('create${type}Modal')`
+                },
+                {
+                    text: `Create ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+                    class: 'primary',
+                    onclick: `ActionButtons.submitQuickCreate('${type}')`
+                }
+            ]);
+
+            // Focus the input
+            setTimeout(() => {
+                const input = document.getElementById(`quickCreate${type}Input`);
+                if (input) input.focus();
+            }, 100);
+        }
+    },
+
+    async submitQuickCreate(type) {
+        const input = document.getElementById(`quickCreate${type}Input`);
+        if (!input || !input.value.trim()) {
+            Utils.showAlert('Please enter a description', 'warning');
+            return;
+        }
+
+        const content = input.value.trim();
+        
+        try {
+            // Store as memory using existing Memory module
+            if (typeof Memory !== 'undefined' && Memory.storeMemory) {
+                await Memory.storeMemory(MindOS.user.userId, type, content, {
+                    priority: type === 'task' ? '3' : '2',
+                    status: 'active',
+                    created_via: 'quick_create'
+                });
+                
+                Utils.showAlert(`${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`, 'success');
+                
+                // Refresh cards if available
+                if (typeof Cards !== 'undefined' && Cards.refresh) {
+                    Cards.refresh();
+                }
+                
+                // Close modal
+                Modals.removeModal(`create${type}Modal`);
+                
+            } else {
+                // Fallback: use API directly
+                await API.post('/api/memories', {
+                    type: type,
+                    content: content,
+                    priority: type === 'task' ? '3' : '2',
+                    status: 'active',
+                    created_via: 'quick_create'
+                });
+                
+                Utils.showAlert(`${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`, 'success');
+                Modals.removeModal(`create${type}Modal`);
+                
+                // Refresh the page data
+                if (typeof App !== 'undefined' && App.loadMemories) {
+                    await App.loadMemories();
+                }
+                
+                // Refresh cards if available
+                if (typeof Cards !== 'undefined' && Cards.refresh) {
+                    Cards.refresh();
+                }
+            }
+            
+        } catch (error) {
+            console.error(`Error creating ${type}:`, error);
+            Utils.showAlert(`Failed to create ${type}: ${error.message}`, 'error');
+        }
+    }
+};
+
 // UI Helper Functions
 const UI = {
     // Show loading state
@@ -666,7 +888,7 @@ const UI = {
     updateMemoryDisplay() {
         const memoryCount = document.getElementById('memoryCount');
         if (memoryCount) {
-            memoryCount.textContent = `${MindOS.userMemories.length} memories`;
+            memoryCount.textContent = `${MindOS.userMemories.length} items`;
         }
     }
 };
@@ -750,6 +972,7 @@ const EventHandlers = {
         this.setupChatHandlers();
         this.setupModalHandlers();
         this.setupKeyboardShortcuts();
+        ActionButtons.init(); // Initialize action buttons
     },
     
     // Auth tab switching
@@ -809,11 +1032,21 @@ const EventHandlers = {
             }
         };
         
-        setupButtonHandler('viewAllMemoriesBtn', () => Memory.openAllMemoriesModal());
-        setupButtonHandler('refreshMemoriesBtn', () => Memory.refreshMemories());
-        setupButtonHandler('clearSessionBtn', () => Chat.clearSession());
-        setupButtonHandler('exportChatBtn', () => Chat.exportChat());
-        setupButtonHandler('logoutBtn', () => Auth.logout());
+        setupButtonHandler('viewAllMemoriesBtn', () => {
+            if (typeof Memory !== 'undefined') Memory.openAllMemoriesModal();
+        });
+        setupButtonHandler('refreshMemoriesBtn', () => {
+            if (typeof Memory !== 'undefined') Memory.refreshMemories();
+        });
+        setupButtonHandler('clearSessionBtn', () => {
+            if (typeof Chat !== 'undefined') Chat.clearSession();
+        });
+        setupButtonHandler('exportChatBtn', () => {
+            if (typeof Chat !== 'undefined') Chat.exportChat();
+        });
+        setupButtonHandler('logoutBtn', () => {
+            if (typeof Auth !== 'undefined') Auth.logout();
+        });
     },
     
     // Chat input handlers
@@ -996,52 +1229,6 @@ const App = {
     }
 };
 
-// Debug function for Chrome input container
-function debugInputContainer() {
-    console.log('🔍 Debugging Input Container...');
-    
-    const inputContainer = document.querySelector('.input-container');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    
-    console.log('Input Container Element:', inputContainer);
-    console.log('Message Input Element:', messageInput);
-    console.log('Send Button Element:', sendBtn);
-    
-    if (inputContainer) {
-        const styles = window.getComputedStyle(inputContainer);
-        const rect = inputContainer.getBoundingClientRect();
-        
-        console.log('Input Container Styles:', {
-            display: styles.display,
-            position: styles.position,
-            bottom: styles.bottom,
-            zIndex: styles.zIndex,
-            visibility: styles.visibility,
-            opacity: styles.opacity
-        });
-        
-        console.log('Input Container Position:', {
-            top: rect.top,
-            bottom: rect.bottom,
-            width: rect.width,
-            height: rect.height,
-            visible: rect.height > 0 && rect.width > 0
-        });
-        
-        // Force visibility if not visible
-        const isVisible = rect.bottom >= 0 && rect.top <= window.innerHeight;
-        if (!isVisible) {
-            console.log('⚠️ Input container not visible, forcing visibility...');
-            ChromeFixes.ensureInputVisibility();
-        }
-    } else {
-        console.error('❌ Input container not found!');
-    }
-    
-    return { inputContainer, messageInput, sendBtn };
-}
-
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
@@ -1051,10 +1238,5 @@ document.addEventListener('DOMContentLoaded', () => {
         Cards.init();
     } else {
         console.warn('Cards module not loaded');
-    }
-    
-    // Auto-debug for Chrome users
-    if (/Chrome/.test(navigator.userAgent)) {
-        setTimeout(debugInputContainer, 1000);
     }
 });
