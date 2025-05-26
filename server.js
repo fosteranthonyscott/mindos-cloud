@@ -35,10 +35,89 @@ db.connect()
     .then(() => console.log('✅ Database connected successfully'))
     .catch(err => console.error('❌ Database connection error:', err));
 
-
-
-// In-memory conversation storage (sessions)
+// In-memory conversation storage (sessions) - Enhanced structure
 const activeConversations = new Map();
+
+// MindOS System Prompt
+const MINDOS_SYSTEM_PROMPT = `You are MindOS, a personal AI assistant designed to help users manage their lives, routines, and goals. 
+
+Your capabilities:
+- Remember important information across conversations within this session
+- Help users plan their day, set routines, and achieve goals
+- Store important information as memories for future reference
+- Be proactive in suggesting improvements and optimizations
+
+Your personality:
+- Helpful and proactive
+- Focus on productivity and well-being
+- Remember context and user preferences
+- Professional but friendly
+
+Memory Management Instructions:
+When users share important information (goals, preferences, routines, significant events, decisions, or insights), you should store them as memories using the storeMemory function. Categories include:
+- "goal" - User's objectives and targets
+- "routine" - Daily/weekly habits and routines
+- "preference" - User's likes, dislikes, and preferences
+- "insight" - Important realizations or learnings
+- "event" - Significant occurrences or milestones
+- "system" - System settings or configurations
+
+Always reference relevant stored memories when responding to provide continuity and personalized assistance.`;
+
+// Helper function to get or create conversation session
+function getConversationSession(userId) {
+    if (!activeConversations.has(userId)) {
+        activeConversations.set(userId, {
+            messages: [],
+            sessionId: uuidv4(),
+            startTime: new Date(),
+            lastActivity: new Date()
+        });
+    }
+    
+    const session = activeConversations.get(userId);
+    session.lastActivity = new Date();
+    return session;
+}
+
+// Helper function to build context from stored memories
+async function buildMemoryContext(userId) {
+    try {
+        const result = await db.query(
+            'SELECT type, content_short, notes FROM memories WHERE user_id = $1 ORDER BY date_completed DESC, priority DESC LIMIT 20',
+            [userId]
+        );
+        
+        if (result.rows.length === 0) {
+            return "No stored memories yet.";
+        }
+        
+        const memoryContext = result.rows.map(memory => 
+            `[${memory.type}] ${memory.content_short}${memory.notes ? ` - ${memory.notes}` : ''}`
+        ).join('\n');
+        
+        return `Stored memories:\n${memoryContext}`;
+    } catch (error) {
+        console.error('Error building memory context:', error);
+        return "Error accessing stored memories.";
+    }
+}
+
+// Function to handle memory storage from Claude
+async function storeMemory(userId, type, content, notes = null, priority = 1) {
+    try {
+        await db.query(
+            `INSERT INTO memories (user_id, type, content_short, notes, priority, date_completed, status) 
+             VALUES ($1, $2, $3, $4, $5, NOW(), 'active')`,
+            [userId, type, content, notes, priority]
+        );
+        console.log(`✅ Memory stored: [${type}] ${content}`);
+        return true;
+    } catch (error) {
+        console.error('❌ Error storing memory:', error);
+        return false;
+    }
+}
 
 // Authentication middleware
 const auth = (req, res, next) => {
@@ -55,7 +134,7 @@ const auth = (req, res, next) => {
     }
 };
 
-// API Routes
+// API Routes (keeping existing auth routes)
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -149,15 +228,11 @@ app.post('/api/login', async (req, res) => {
 
 app.get('/api/user-status', auth, async (req, res) => {
     console.log('🔍 User status request for:', req.user.userId);
-    console.log('🔍 Token data:', req.user);
     try {
         const result = await db.query(
             'SELECT user_id, username, email FROM "user" WHERE user_id = $1',
             [req.user.userId]
         );
-        
-        console.log('🔍 Database result rows:', result.rows.length);
-        console.log('🔍 Database result:', result.rows);
         
         if (result.rows.length === 0) {
             console.log('❌ User not found in database');
@@ -172,13 +247,72 @@ app.get('/api/user-status', auth, async (req, res) => {
     }
 });
 
+// Enhanced Claude endpoint with memory and context management
 app.post('/api/claude', auth, async (req, res) => {
     try {
         const { messages } = req.body;
+        const userId = req.user.userId;
         
         if (!messages || !Array.isArray(messages)) {
             return res.status(400).json({ error: 'Messages array is required' });
         }
+        
+        // Get user's conversation session
+        const session = getConversationSession(userId);
+        
+        // Add user's message to session
+        const userMessage = messages[messages.length - 1];
+        session.messages.push(userMessage);
+        
+        // Build memory context
+        const memoryContext = await buildMemoryContext(userId);
+        
+        // Prepare messages for Claude with full context
+        const contextualMessages = [
+            { 
+                role: 'system', 
+                content: `${MINDOS_SYSTEM_PROMPT}\n\nUser Context:\n${memoryContext}\n\nSession started: ${session.startTime.toLocaleString()}` 
+            },
+            ...session.messages
+        ];
+        
+        // Add function calling for memory storage
+        const claudeRequestBody = {
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1500,
+            messages: contextualMessages,
+            tools: [
+                {
+                    name: "storeMemory",
+                    description: "Store important information as a memory for future reference",
+                    input_schema: {
+                        type: "object",
+                        properties: {
+                            type: {
+                                type: "string",
+                                enum: ["goal", "routine", "preference", "insight", "event", "system"],
+                                description: "The category of memory to store"
+                            },
+                            content: {
+                                type: "string",
+                                description: "The main content/summary of the memory"
+                            },
+                            notes: {
+                                type: "string",
+                                description: "Additional notes or details about the memory"
+                            },
+                            priority: {
+                                type: "integer",
+                                minimum: 1,
+                                maximum: 5,
+                                description: "Priority level (1-5, 5 being highest priority)"
+                            }
+                        },
+                        required: ["type", "content"]
+                    }
+                }
+            ]
+        };
         
         const fetch = await import('node-fetch').then(m => m.default);
         
@@ -189,11 +323,7 @@ app.post('/api/claude', auth, async (req, res) => {
                 'x-api-key': process.env.CLAUDE_API_KEY,
                 'anthropic-version': '2023-06-01'
             },
-            body: JSON.stringify({
-                model: 'claude-3-5-sonnet-20241022',
-                max_tokens: 1000,
-                messages: messages
-            })
+            body: JSON.stringify(claudeRequestBody)
         });
         
         const data = await response.json();
@@ -201,6 +331,25 @@ app.post('/api/claude', auth, async (req, res) => {
         if (!response.ok) {
             console.error('Claude API error:', data);
             return res.status(500).json({ error: 'Claude API failed' });
+        }
+        
+        // Process tool calls if any (memory storage)
+        if (data.content) {
+            for (const content of data.content) {
+                if (content.type === 'tool_use' && content.name === 'storeMemory') {
+                    const { type, content: memoryContent, notes = null, priority = 1 } = content.input;
+                    await storeMemory(userId, type, memoryContent, notes, priority);
+                }
+            }
+        }
+        
+        // Add Claude's response to session
+        const assistantMessage = { role: 'assistant', content: data.content[0].text };
+        session.messages.push(assistantMessage);
+        
+        // Keep session messages manageable (last 20 messages)
+        if (session.messages.length > 20) {
+            session.messages = session.messages.slice(-20);
         }
         
         res.json(data);
@@ -211,10 +360,11 @@ app.post('/api/claude', auth, async (req, res) => {
     }
 });
 
+// Enhanced memory endpoints
 app.get('/api/memories', auth, async (req, res) => {
     try {
         const result = await db.query(
-            'SELECT * FROM memories WHERE user_id = $1 ORDER BY created_at DESC',
+            'SELECT * FROM memories WHERE user_id = $1 ORDER BY priority DESC, date_completed DESC',
             [req.user.userId]
         );
         
@@ -225,13 +375,81 @@ app.get('/api/memories', auth, async (req, res) => {
     }
 });
 
+app.post('/api/memories', auth, async (req, res) => {
+    try {
+        const { type, content, notes, priority = 1 } = req.body;
+        const userId = req.user.userId;
+        
+        if (!type || !content) {
+            return res.status(400).json({ error: 'Type and content are required' });
+        }
+        
+        const success = await storeMemory(userId, type, content, notes, priority);
+        
+        if (success) {
+            res.status(201).json({ message: 'Memory stored successfully' });
+        } else {
+            res.status(500).json({ error: 'Failed to store memory' });
+        }
+    } catch (error) {
+        console.error('Store memory error:', error);
+        res.status(500).json({ error: 'Failed to store memory' });
+    }
+});
+
+app.delete('/api/memories/:id', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId;
+        
+        await db.query(
+            'DELETE FROM memories WHERE id = $1 AND user_id = $2',
+            [id, userId]
+        );
+        
+        res.json({ message: 'Memory deleted successfully' });
+    } catch (error) {
+        console.error('Delete memory error:', error);
+        res.status(500).json({ error: 'Failed to delete memory' });
+    }
+});
+
+// Clear session endpoint - enhanced
 app.post('/api/clear-session', auth, (req, res) => {
     try {
-        activeConversations.delete(req.user.userId);
-        res.json({ message: 'Session cleared' });
+        const userId = req.user.userId;
+        activeConversations.delete(userId);
+        console.log(`🧹 Session cleared for user: ${userId}`);
+        res.json({ message: 'Session cleared successfully' });
     } catch (error) {
         console.error('Clear session error:', error);
         res.status(500).json({ error: 'Failed to clear session' });
+    }
+});
+
+// Get session info
+app.get('/api/session-info', auth, (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const session = activeConversations.get(userId);
+        
+        if (!session) {
+            return res.json({ 
+                hasSession: false,
+                messageCount: 0
+            });
+        }
+        
+        res.json({
+            hasSession: true,
+            messageCount: session.messages.length,
+            sessionId: session.sessionId,
+            startTime: session.startTime,
+            lastActivity: session.lastActivity
+        });
+    } catch (error) {
+        console.error('Session info error:', error);
+        res.status(500).json({ error: 'Failed to get session info' });
     }
 });
 
@@ -243,7 +461,8 @@ app.get('/debug', (req, res) => {
             files: fs.readdirSync(__dirname),
             publicExists: fs.existsSync('./public'),
             indexExists: fs.existsSync('./public/index.html'),
-            currentDir: __dirname
+            currentDir: __dirname,
+            activeSessions: activeConversations.size
         });
     } catch (error) {
         res.json({ error: error.message });
@@ -258,5 +477,6 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 MindOS server running on port ${PORT}`);
     console.log('📊 Database: Connected');
-    console.log('🤖 Claude: Ready');
+    console.log('🤖 Claude: Ready with Memory Management');
+    console.log('🧠 Session Storage: Active');
 });
