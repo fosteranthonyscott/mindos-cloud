@@ -1,10 +1,10 @@
-// Configuration Module
+// Configuration Module - FIXED VERSION
 const Config = {
     // Current configuration state
     currentMode: null,
     data: {},
     
-    // Configuration definitions
+    // Configuration definitions (same as before...)
     configurations: {
         'plan-day': {
             title: 'Plan Your Day',
@@ -139,6 +139,7 @@ const Config = {
     
     // Open configuration mode
     openConfigMode(mode) {
+        console.log('🔧 Opening config mode:', mode); // DEBUG
         this.currentMode = mode;
         this.data = {};
         
@@ -206,10 +207,15 @@ const Config = {
                 stepDiv.appendChild(customForm);
             }
         });
+        
+        // Initially disable proceed button
+        this.updateProceedButton();
     },
     
     // Select configuration option
     selectOption(stepIndex, optionId, optionElement) {
+        console.log('🎯 Selected option:', stepIndex, optionId); // DEBUG
+        
         // Remove selection from siblings
         optionElement.parentElement.querySelectorAll('.config-option').forEach(el => {
             el.classList.remove('selected');
@@ -240,7 +246,7 @@ const Config = {
         this.updateProceedButton();
     },
     
-    // Update proceed button state
+    // Update proceed button state - FIXED VERSION
     updateProceedButton() {
         const requiredSteps = document.querySelectorAll('.config-step').length;
         const selectedSteps = Object.keys(this.data).filter(key => 
@@ -248,16 +254,38 @@ const Config = {
         ).length;
         
         const proceedBtn = document.getElementById('proceedConfigBtn');
-        proceedBtn.disabled = selectedSteps < requiredSteps;
+        const isComplete = selectedSteps >= requiredSteps;
+        
+        console.log('📊 Button update - Required:', requiredSteps, 'Selected:', selectedSteps, 'Complete:', isComplete); // DEBUG
+        console.log('📋 Current data:', this.data); // DEBUG
+        
+        proceedBtn.disabled = !isComplete;
+        
+        // Visual feedback
+        if (isComplete) {
+            proceedBtn.style.opacity = '1';
+            proceedBtn.style.cursor = 'pointer';
+        } else {
+            proceedBtn.style.opacity = '0.6';
+            proceedBtn.style.cursor = 'not-allowed';
+        }
     },
     
-    // Process configuration and proceed to chat
+    // Process configuration and proceed to chat - ENHANCED VERSION
     processAndChat() {
-        if (!this.currentMode || Object.keys(this.data).length === 0) return;
+        console.log('🚀 ProcessAndChat called'); // DEBUG
+        console.log('📋 Current mode:', this.currentMode); // DEBUG
+        console.log('📋 Current data:', this.data); // DEBUG
+        
+        if (!this.currentMode || Object.keys(this.data).length === 0) {
+            console.log('❌ Missing mode or data'); // DEBUG
+            Utils.showAlert('Please select all options before proceeding', 'warning');
+            return;
+        }
         
         this.closeModal();
         
-        // Show choice dialog
+        // Show choice dialog with enhanced debugging
         this.showChoiceDialog(
             'How would you like to proceed?',
             'Choose how you want to set up your ' + this.currentMode.replace('-', ' '),
@@ -276,22 +304,38 @@ const Config = {
                 }
             ],
             (choice) => {
+                console.log('🎯 User chose:', choice); // DEBUG
                 if (choice === 'manual') {
                     this.openManualConfig();
                 } else {
                     // Use AI prompt system
                     const prompt = this.buildPrompt(this.currentMode, this.data);
-                    document.getElementById('messageInput').value = prompt;
+                    console.log('📝 Generated prompt:', prompt); // DEBUG
+                    
+                    const messageInput = document.getElementById('messageInput');
+                    messageInput.value = prompt;
+                    
+                    // Trigger the input event to resize textarea
+                    Chat.autoResize(messageInput);
+                    
+                    // Send the message
                     Chat.sendMessage();
                 }
             }
         );
     },
     
-    // Show choice dialog
+    // Show choice dialog - ENHANCED VERSION
     showChoiceDialog(title, message, choices, onChoice) {
+        console.log('🎭 Showing choice dialog'); // DEBUG
+        
+        // Remove any existing choice dialogs
+        const existingDialogs = document.querySelectorAll('.choice-dialog');
+        existingDialogs.forEach(dialog => dialog.remove());
+        
         const dialog = document.createElement('div');
         dialog.className = 'choice-dialog';
+        dialog.style.zIndex = '2500'; // Ensure it's on top
         dialog.innerHTML = `
             <div class="choice-dialog-content">
                 <div class="choice-dialog-header">
@@ -300,7 +344,7 @@ const Config = {
                 </div>
                 <div class="choice-options">
                     ${choices.map(choice => `
-                        <div class="choice-option" onclick="selectChoice('${choice.id}')">
+                        <div class="choice-option" data-choice-id="${choice.id}">
                             <div class="choice-icon">
                                 <i class="${choice.icon}"></i>
                             </div>
@@ -316,15 +360,31 @@ const Config = {
         
         document.body.appendChild(dialog);
         
-        window.selectChoice = (choiceId) => {
-            document.body.removeChild(dialog);
-            onChoice(choiceId);
-            delete window.selectChoice;
-        };
+        // Add event listeners to choice options
+        dialog.querySelectorAll('.choice-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const choiceId = option.getAttribute('data-choice-id');
+                console.log('🎯 Choice clicked:', choiceId); // DEBUG
+                document.body.removeChild(dialog);
+                onChoice(choiceId);
+            });
+        });
+        
+        // Close on background click
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                console.log('🚪 Dialog closed by background click'); // DEBUG
+                document.body.removeChild(dialog);
+            }
+        });
+        
+        console.log('✅ Choice dialog created and added to DOM'); // DEBUG
     },
     
-    // Build AI prompt based on configuration
+    // Build AI prompt based on configuration - SAME AS BEFORE
     buildPrompt(mode, data) {
+        console.log('🔨 Building prompt for mode:', mode, 'with data:', data); // DEBUG
+        
         const prompts = {
             'plan-day': () => {
                 let prompt = "I need help planning my day. Please create a specific, actionable plan and store relevant memories. Here are my preferences:\n\n";
@@ -484,12 +544,13 @@ const Config = {
             }
         };
 
-        return prompts[mode] ? prompts[mode]() : `Help me with ${mode} and store relevant memories with correct types based on my stored memories and preferences.`;
+        const generatedPrompt = prompts[mode] ? prompts[mode]() : `Help me with ${mode} and store relevant memories with correct types based on my stored memories and preferences.`;
+        console.log('✅ Generated prompt:', generatedPrompt); // DEBUG
+        return generatedPrompt;
     },
     
     // Open manual configuration (for future implementation)
     openManualConfig() {
-        // This would open a more detailed configuration form
         Utils.showAlert('Manual configuration coming soon', 'info');
     },
     
