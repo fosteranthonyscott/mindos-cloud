@@ -848,19 +848,43 @@ const App = {
         }
     },
     
-    // Show main app and load data - UPDATED
+    // Show main app and load data - FIXED VERSION
     async showChatApp() {
-        UI.showCardApp(); // Changed from UI.showChatApp()
+        // Show the card interface (function name kept for compatibility)
+        UI.showCardApp();
         
-        // Load session info and memories
-        await Promise.all([
-            this.loadSessionInfo(),
-            this.loadMemories()
-        ]);
-        
-        // Initialize cards instead of chat
-        if (typeof Cards !== 'undefined') {
-            Cards.loadTodaysCards(); // Changed from Chat.addWelcomeMessage()
+        try {
+            // Load session info and memories in parallel
+            await Promise.all([
+                this.loadSessionInfo(),
+                this.loadMemories()
+            ]);
+            
+            // Initialize and load today's cards
+            if (typeof Cards !== 'undefined') {
+                // Ensure Cards module is initialized
+                if (typeof Cards.init === 'function') {
+                    Cards.init();
+                }
+                // Load today's cards
+                await Cards.loadTodaysCards();
+            } else {
+                console.warn('Cards module not loaded - check script loading order');
+                // Fallback: show empty state
+                const emptyState = document.getElementById('emptyState');
+                if (emptyState) {
+                    emptyState.style.display = 'flex';
+                }
+            }
+            
+            console.log('✅ Card app initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Error initializing card app:', error);
+            // Show error state
+            if (typeof Utils !== 'undefined') {
+                Utils.showAlert('Failed to load your items', 'error');
+            }
         }
     },
     
