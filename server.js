@@ -1,4 +1,4 @@
-// ENHANCED MINDOS SERVER.JS - Smart Memory Operations & Conversation Chunking
+// ENHANCED MINDOS SERVER.JS - Smart Memory Operations & Advanced Context Management
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -43,9 +43,127 @@ const db = new Pool({
 let memoriesTableColumns = [];
 let isDbConnected = false;
 
-// In-memory conversation storage
-const activeConversations = new Map();
+// ENHANCED Context Management for MindOS
+class ConversationContext {
+    constructor(userId) {
+        this.userId = userId;
+        this.messages = [];
+        this.sessionId = uuidv4();
+        this.startTime = new Date();
+        this.lastActivity = new Date();
+        this.currentTopic = null;
+        this.userConstraints = new Map(); // Store user's fixed constraints
+        this.pendingOperations = [];
+    }
+
+    addMessage(message) {
+        this.messages.push({
+            ...message,
+            timestamp: new Date(),
+            id: uuidv4()
+        });
+        this.lastActivity = new Date();
+        
+        // Extract constraints from user messages
+        if (message.role === 'user') {
+            this.extractConstraints(message.content);
+        }
+        
+        // Maintain reasonable context window
+        if (this.messages.length > 20) {
+            // Keep system message, recent messages, and constraint-related messages
+            const systemMessages = this.messages.filter(m => m.role === 'system');
+            const constraintMessages = this.messages.filter(m => this.containsConstraints(m.content));
+            const recentMessages = this.messages.slice(-15);
+            
+            this.messages = [...systemMessages, ...constraintMessages, ...recentMessages]
+                .filter((msg, index, arr) => arr.findIndex(m => m.id === msg.id) === index)
+                .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        }
+    }
+
+    extractConstraints(content) {
+        const timeConstraints = [
+            /need to be (?:at work|there) by (\d{1,2}:?\d{0,2}\s*(?:AM|PM|am|pm))/i,
+            /work starts? at (\d{1,2}:?\d{0,2}\s*(?:AM|PM|am|pm))/i,
+            /have to arrive by (\d{1,2}:?\d{0,2}\s*(?:AM|PM|am|pm))/i,
+            /must be there by (\d{1,2}:?\d{0,2}\s*(?:AM|PM|am|pm))/i
+        ];
+
+        timeConstraints.forEach(regex => {
+            const match = content.match(regex);
+            if (match) {
+                this.userConstraints.set('work_arrival_time', match[1]);
+                console.log(`🔒 Constraint detected: Work arrival time = ${match[1]}`);
+            }
+        });
+
+        // Extract commute time
+        const commuteMatch = content.match(/commute (?:takes?|is) (\d+) minutes?/i);
+        if (commuteMatch) {
+            this.userConstraints.set('commute_time', parseInt(commuteMatch[1]));
+            console.log(`🔒 Constraint detected: Commute time = ${commuteMatch[1]} minutes`);
+        }
+
+        // Extract routine duration
+        const durationMatch = content.match(/(?:routine|takes?) (\d+)\s*(?:hour|hr)s?\s*(?:and\s*)?(\d+)?\s*(?:minute|min)s?/i);
+        if (durationMatch) {
+            const hours = parseInt(durationMatch[1]) || 0;
+            const minutes = parseInt(durationMatch[2]) || 0;
+            this.userConstraints.set('routine_duration', hours * 60 + minutes);
+            console.log(`🔒 Constraint detected: Routine duration = ${hours}h ${minutes}m`);
+        }
+
+        // Extract sleep requirements
+        const sleepMatch = content.match(/need (\d+) hours? of sleep/i);
+        if (sleepMatch) {
+            this.userConstraints.set('sleep_hours', parseInt(sleepMatch[1]));
+            console.log(`🔒 Constraint detected: Sleep requirement = ${sleepMatch[1]} hours`);
+        }
+
+        // Extract preparation time
+        const prepMatch = content.match(/(?:get ready|prepare|prep) (?:takes?|is) (\d+) minutes?/i);
+        if (prepMatch) {
+            this.userConstraints.set('prep_time', parseInt(prepMatch[1]));
+            console.log(`🔒 Constraint detected: Preparation time = ${prepMatch[1]} minutes`);
+        }
+    }
+
+    containsConstraints(content) {
+        const constraintKeywords = ['work by', 'arrive by', 'need to be', 'commute', 'takes', 'must', 'sleep', 'get ready'];
+        return constraintKeywords.some(keyword => content.toLowerCase().includes(keyword));
+    }
+
+    getConstraintSummary() {
+        if (this.userConstraints.size === 0) return '';
+        
+        let summary = '\nIMPORTANT USER CONSTRAINTS:\n';
+        for (const [key, value] of this.userConstraints) {
+            summary += `- ${key.replace('_', ' ')}: ${value}\n`;
+        }
+        return summary;
+    }
+
+    getContextForClaude() {
+        return {
+            messages: this.messages.slice(-10), // Last 10 messages for immediate context
+            constraints: this.getConstraintSummary(),
+            currentTopic: this.currentTopic,
+            sessionDuration: Math.floor((new Date() - this.startTime) / 1000 / 60) // minutes
+        };
+    }
+}
+
+// Enhanced conversation session management
+const conversationContexts = new Map();
 const conversationChunks = new Map(); // Store chunked responses by userId
+
+function getEnhancedConversationSession(userId) {
+    if (!conversationContexts.has(userId)) {
+        conversationContexts.set(userId, new ConversationContext(userId));
+    }
+    return conversationContexts.get(userId);
+}
 
 async function initializeDatabase() {
     try {
@@ -113,12 +231,14 @@ Your capabilities:
 - Help users plan their day, set routines, and achieve goals
 - Store important information as memories for future reference
 - Be proactive in suggesting improvements and optimizations
+- Respect user constraints and do accurate time calculations
 
 Your personality:
 - Helpful and proactive
 - Focus on productivity and well-being
 - Remember context and user preferences
 - Professional but friendly
+- Mathematically precise with time calculations
 
 Memory Management Instructions:
 When users share important information (goals, preferences, routines, significant events, decisions, or insights), you should store them as memories using the storeMemory function. Categories include:
@@ -132,22 +252,6 @@ When users share important information (goals, preferences, routines, significan
 Always reference relevant stored memories when responding to provide continuity and personalized assistance.
 
 Note: Users can view, discuss, and delete memories through the interface. If they ask about specific memories or want to modify them, provide helpful guidance and full context.`;
-
-// Helper function to get conversation session
-function getConversationSession(userId) {
-    if (!activeConversations.has(userId)) {
-        activeConversations.set(userId, {
-            messages: [],
-            sessionId: uuidv4(),
-            startTime: new Date(),
-            lastActivity: new Date()
-        });
-    }
-    
-    const session = activeConversations.get(userId);
-    session.lastActivity = new Date();
-    return session;
-}
 
 // ADAPTIVE buildMemoryContext function - works with any column structure
 async function buildMemoryContext(userId) {
@@ -823,7 +927,7 @@ app.get('/api/user-status', auth, async (req, res) => {
     }
 });
 
-// ENHANCED CLAUDE endpoint with multi-memory and chunking
+// ENHANCED CLAUDE endpoint with advanced context management
 app.post('/api/claude', auth, async (req, res) => {
     console.log('🤖 Enhanced Claude request from user:', req.user.userId);
     
@@ -835,11 +939,12 @@ app.post('/api/claude', auth, async (req, res) => {
             return res.status(400).json({ error: 'Messages array is required' });
         }
         
-        const session = getConversationSession(userId);
+        // Get enhanced conversation context
+        const context = getEnhancedConversationSession(userId);
         const userMessage = messages[messages.length - 1];
-        session.messages.push(userMessage);
+        context.addMessage(userMessage);
         
-        // STEP 1: Analyze input for memory operations
+        // STEP 1: Analyze input for memory operations (with enhanced detection)
         const memoryOperations = await analyzeUserInput(userMessage.content, userId);
         let memoryResults = [];
         
@@ -876,43 +981,38 @@ app.post('/api/claude', auth, async (req, res) => {
             }
         }
         
-        // STEP 3: Generate contextual response
+        // STEP 3: Build enhanced context
         const memoryContext = await buildMemoryContext(userId);
+        const contextInfo = context.getContextForClaude();
         
-        // Create memory-aware system prompt
+        // Create memory-aware system prompt with constraints
         let systemPrompt = `${MINDOS_SYSTEM_PROMPT}
 
 User Context:
 ${memoryContext}
 
-Session started: ${session.startTime.toLocaleString()}
+${contextInfo.constraints}
+
+Session Context:
+- Session duration: ${contextInfo.sessionDuration} minutes
+- Current topic: ${contextInfo.currentTopic || 'General conversation'}
 
 IMPORTANT INSTRUCTIONS:
-1. Keep responses conversational and concise (1-3 sentences max)
-2. Ask follow-up questions naturally
-3. Acknowledge completed tasks positively
-4. Be supportive and encouraging
-5. Don't repeat memory storage information - I handle that automatically`;
+1. **RESPECT ALL USER CONSTRAINTS** - Never suggest times that violate fixed requirements
+2. **VERIFY MATH** - Double-check all time calculations before responding
+3. **MAINTAIN CONTEXT** - Reference previous messages and constraints consistently
+4. **AVOID REPETITION** - Don't ask the same questions multiple times
+5. **BE DECISIVE** - Once constraints are clear, provide definitive solutions
 
-        // Add memory operation context
-        if (memoryResults.length > 0) {
-            const updates = memoryResults.filter(r => r.type === 'update' && r.success);
-            const creates = memoryResults.filter(r => r.type === 'create' && r.success);
-            
-            if (updates.length > 0) {
-                systemPrompt += `\n\nI just updated ${updates.length} memory(ies) for completed tasks. Acknowledge this positively.`;
-            }
-            if (creates.length > 0) {
-                systemPrompt += `\n\nI just stored ${creates.length} new memory(ies). Briefly acknowledge this.`;
-            }
-        }
-        
-        // STEP 4: Get Claude response
+Memory Operations Status:
+${memoryResults.length > 0 ? `Processed ${memoryResults.length} memory operations - acknowledge briefly but focus on helping the user.` : 'No memory operations this message.'}`;
+
+        // STEP 4: Get Claude response with enhanced context
         const claudeRequestBody = {
             model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 300, // Shorter responses
+            max_tokens: 400,
             system: systemPrompt,
-            messages: session.messages.slice(-10) // Last 10 messages for context
+            messages: contextInfo.messages
         };
         
         const fetch = await import('node-fetch').then(m => m.default);
@@ -935,37 +1035,19 @@ IMPORTANT INSTRUCTIONS:
         
         let assistantResponse = data.content[0].text;
         
-        // STEP 5: Handle chunking
-        if (request_chunks || assistantResponse.length > 200) {
-            const chunks = chunkResponse(assistantResponse);
-            
-            if (chunks.length > 1) {
-                // Store chunks for this user
-                conversationChunks.set(userId, chunks.slice(1)); // Store remaining chunks
-                
-                // Return first chunk with indication of more
-                return res.json({
-                    content: [{ type: 'text', text: chunks[0] }],
-                    has_more_chunks: true,
-                    total_chunks: chunks.length,
-                    memory_operations: memoryResults.length
-                });
-            }
-        }
-        
-        // STEP 6: Standard response
+        // Add assistant message to context
         const assistantMessage = { role: 'assistant', content: assistantResponse };
-        session.messages.push(assistantMessage);
+        context.addMessage(assistantMessage);
         
-        if (session.messages.length > 20) {
-            session.messages = session.messages.slice(-20);
-        }
-        
-        console.log(`✅ Response sent (${memoryResults.length} memory operations processed)`);
+        console.log(`✅ Enhanced response sent (${memoryResults.length} memory operations processed)`);
         res.json({
             content: [{ type: 'text', text: assistantResponse }],
             has_more_chunks: false,
-            memory_operations: memoryResults.length
+            memory_operations: memoryResults.length,
+            session_info: {
+                constraints_detected: context.userConstraints.size,
+                messages_in_context: context.messages.length
+            }
         });
         
     } catch (error) {
@@ -1198,9 +1280,9 @@ app.put('/api/memories/:id', auth, async (req, res) => {
 app.post('/api/clear-session', auth, (req, res) => {
     try {
         const userId = req.user.userId;
-        activeConversations.delete(userId);
+        conversationContexts.delete(userId); // Use enhanced contexts
         conversationChunks.delete(userId); // Clear conversation chunks too
-        console.log(`🧹 Session cleared for user: ${userId}`);
+        console.log(`🧹 Enhanced session cleared for user: ${userId}`);
         res.json({ message: 'Session cleared successfully' });
     } catch (error) {
         console.error('❌ Clear session error:', error);
@@ -1211,9 +1293,9 @@ app.post('/api/clear-session', auth, (req, res) => {
 app.get('/api/session-info', auth, (req, res) => {
     try {
         const userId = req.user.userId;
-        const session = activeConversations.get(userId);
+        const context = conversationContexts.get(userId);
         
-        if (!session) {
+        if (!context) {
             return res.json({ 
                 hasSession: false,
                 messageCount: 0
@@ -1222,10 +1304,12 @@ app.get('/api/session-info', auth, (req, res) => {
         
         res.json({
             hasSession: true,
-            messageCount: session.messages.length,
-            sessionId: session.sessionId,
-            startTime: session.startTime,
-            lastActivity: session.lastActivity
+            messageCount: context.messages.length,
+            sessionId: context.sessionId,
+            startTime: context.startTime,
+            lastActivity: context.lastActivity,
+            constraintsDetected: context.userConstraints.size,
+            currentTopic: context.currentTopic
         });
     } catch (error) {
         console.error('❌ Session info error:', error);
@@ -1450,7 +1534,8 @@ app.listen(PORT, () => {
     console.log(`🚀 MindOS server running on port ${PORT}`);
     console.log(`📊 Database: ${isDbConnected ? 'Connected' : 'Disconnected'}`);
     console.log('🤖 Claude: Ready with Enhanced Multi-Memory Detection');
-    console.log('🧠 Session Storage: Active with Conversation Chunking');
+    console.log('🧠 Session Storage: Enhanced Context Management Active');
+    console.log('🔒 Constraint Tracking: User constraints detected and preserved');
     console.log('🗑️ Memory Management: Enhanced UPDATE/CREATE detection');
     console.log(`📋 Memory table columns: ${memoriesTableColumns.length} found`);
     console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
@@ -1458,4 +1543,5 @@ app.listen(PORT, () => {
     console.log('✅ Multi-memory operation parsing enabled');
     console.log('🎯 Config module input parsing enabled');
     console.log('⚡ Mathematical constraint reasoning active');
+    console.log('🔍 Enhanced conversation context with constraint extraction');
 });
