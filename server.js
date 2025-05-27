@@ -407,6 +407,89 @@ async function buildMemoryContext(userId) {
     }
 }
 
+// NEW: ENHANCED VALUE PROCESSING FUNCTION FOR EDIT FIXES
+function processValueByType(fieldName, value) {
+    // Handle null/undefined/empty values
+    if (value === null || value === undefined || value === '') {
+        // For some fields, empty string should be null
+        const nullableFields = ['due', 'completed_date', 'notes', 'location', 'frequency'];
+        return nullableFields.includes(fieldName) ? null : value;
+    }
+    
+    // Specific field type handling
+    const fieldTypes = {
+        // Integer fields
+        'id': 'integer',
+        'priority': 'integer', 
+        'performance_streak': 'integer',
+        'required_time_minutes': 'integer',
+        
+        // Date fields
+        'due': 'date',
+        'completed_date': 'date',
+        'modified': 'date',
+        'created_at': 'timestamp',
+        
+        // Boolean fields
+        'active': 'boolean',
+        'archived': 'boolean',
+        
+        // Text fields (default)
+        'content': 'text',
+        'content_short': 'text',
+        'notes': 'text',
+        'type': 'text',
+        'status': 'text'
+    };
+    
+    const fieldType = fieldTypes[fieldName] || 'text';
+    
+    try {
+        switch (fieldType) {
+            case 'integer':
+                const intVal = parseInt(value);
+                return isNaN(intVal) ? null : intVal;
+                
+            case 'float':
+                const floatVal = parseFloat(value);
+                return isNaN(floatVal) ? null : floatVal;
+                
+            case 'boolean':
+                if (typeof value === 'string') {
+                    return value.toLowerCase() === 'true' || value === '1';
+                }
+                return Boolean(value);
+                
+            case 'date':
+                if (value instanceof Date) {
+                    return value.toISOString().split('T')[0];
+                } else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+                    return value.split('T')[0];
+                } else if (typeof value === 'string' && value.trim() !== '') {
+                    const parsed = new Date(value);
+                    return isNaN(parsed.getTime()) ? null : parsed.toISOString().split('T')[0];
+                }
+                return null;
+                
+            case 'timestamp':
+                if (value instanceof Date) {
+                    return value.toISOString();
+                } else if (typeof value === 'string' && value.trim() !== '') {
+                    const parsed = new Date(value);
+                    return isNaN(parsed.getTime()) ? null : parsed.toISOString();
+                }
+                return null;
+                
+            case 'text':
+            default:
+                return String(value).trim();
+        }
+    } catch (error) {
+        console.warn(`⚠️ Error processing field ${fieldName} with value ${value}:`, error);
+        return undefined; // Skip this field
+    }
+}
+
 // NEW: Parse config module input directly with enhanced frequency detection
 function parseConfigInput(userInput) {
     try {
@@ -662,7 +745,7 @@ async function createNewMemory(userId, type, content, additionalData) {
         }
         
         // Use smart text parsing to enhance the data
-        const parsedData = textParser.parseUserInput(content);
+        const parsedData = textParser.parseUserInput ? textParser.parseUserInput(content) : {};
         console.log('🧠 Smart text parsing results:', parsedData);
         
         const baseData = { user_id: userId };
@@ -778,7 +861,7 @@ async function analyzeUserInput(userInput, userId) {
         }
 
         // Use smart text parsing to enhance analysis
-        const parsedData = textParser.parseUserInput(userInput);
+        const parsedData = textParser.parseUserInput ? textParser.parseUserInput(userInput) : {};
         console.log('🧠 Smart parsing results:', parsedData);
 
         // FIXED: Get user's existing memories for context with adaptive query
@@ -1465,51 +1548,95 @@ app.get('/api/memories/:id', auth, async (req, res) => {
     }
 });
 
-// UPDATE memory endpoint with recurring support
+// ENHANCED UPDATE MEMORY ENDPOINT WITH FIXED ID HANDLING AND DATA TYPE PROCESSING
 app.put('/api/memories/:id', auth, async (req, res) => {
     try {
         if (!isDbConnected) {
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
-        const memoryId = req.params.id;
+        // FIXED: Convert ID to integer to ensure proper type matching
+        const memoryId = parseInt(req.params.id);
+        if (isNaN(memoryId)) {
+            return res.status(400).json({ error: 'Invalid item ID format' });
+        }
+        
         const userId = req.user.userId;
         const updateData = req.body;
         
-        // Verify memory belongs to user
+        console.log(`🔄 UPDATE REQUEST - ID: ${memoryId}, User: ${userId}`);
+        console.log('📝 Update data received:', updateData);
+        console.log('📋 Available columns:', memoriesTableColumns);
+        
+        // Verify memory belongs to user before updating
         const checkResult = await db.query(
             'SELECT * FROM memories WHERE id = $1 AND user_id = $2',
             [memoryId, userId]
         );
         
         if (checkResult.rows.length === 0) {
+            console.log('❌ Memory not found or access denied');
             return res.status(404).json({ error: 'Memory not found or access denied' });
         }
         
         const currentItem = checkResult.rows[0];
+        console.log('✅ Current item found:', currentItem.content_short || 'No title');
         
-        // Build update query dynamically based on provided fields and existing columns
+        // ENHANCED: Data type conversion and validation
+        const processedData = {};
+        let validFieldCount = 0;
+        
+        Object.entries(updateData).forEach(([key, value]) => {
+            // Skip system fields
+            if (['id', 'user_id', 'created_at'].includes(key)) {
+                console.log(`⏭️ Skipping system field: ${key}`);
+                return;
+            }
+            
+            // Check if field exists in table
+            if (!memoriesTableColumns.includes(key)) {
+                console.log(`⚠️ Field ${key} not in table columns, skipping`);
+                return;
+            }
+            
+            // Process the value based on field type
+            let processedValue = processValueByType(key, value);
+            
+            if (processedValue !== undefined) {
+                processedData[key] = processedValue;
+                validFieldCount++;
+                console.log(`✅ Processed ${key}: ${processedValue} (type: ${typeof processedValue})`);
+            } else {
+                console.log(`⚠️ Skipped ${key}: invalid value ${value}`);
+            }
+        });
+        
+        console.log(`📊 Processed ${validFieldCount} valid fields out of ${Object.keys(updateData).length} provided`);
+        
+        if (validFieldCount === 0) {
+            return res.status(400).json({ 
+                error: 'No valid fields to update',
+                availableFields: memoriesTableColumns.filter(col => !['id', 'user_id', 'created_at'].includes(col))
+            });
+        }
+        
+        // Build update query dynamically
         const updateFields = [];
         const updateValues = [];
         let paramIndex = 1;
         
-        Object.entries(updateData).forEach(([key, value]) => {
-            if (memoriesTableColumns.includes(key) && key !== 'id' && key !== 'user_id') {
-                updateFields.push(`${key} = $${paramIndex}`);
-                updateValues.push(value);
-                paramIndex++;
-            }
+        Object.entries(processedData).forEach(([key, value]) => {
+            updateFields.push(`${key} = $${paramIndex}`);
+            updateValues.push(value);
+            paramIndex++;
         });
-        
-        if (updateFields.length === 0) {
-            return res.status(400).json({ error: 'No valid fields to update' });
-        }
         
         // Add modified timestamp if column exists
         if (memoriesTableColumns.includes('modified')) {
             updateFields.push(`modified = CURRENT_DATE`);
         }
         
+        // Add WHERE clause parameters
         updateValues.push(memoryId, userId);
         
         const query = `
@@ -1519,28 +1646,40 @@ app.put('/api/memories/:id', auth, async (req, res) => {
             RETURNING *
         `;
         
+        console.log('🔧 Update query:', query);
+        console.log('📝 Update values:', updateValues);
+        
         const result = await db.query(query, updateValues);
         
         if (result.rowCount > 0) {
-            console.log(`✏️ Memory updated: ID ${memoryId} for user ${userId}`);
-            
             const updatedItem = result.rows[0];
+            console.log(`✅ Memory updated successfully: ID ${memoryId}`);
+            console.log('📋 Updated item:', updatedItem.content_short || 'No title');
             
             // Handle recurring tasks if the item was completed
-            if (updateData.status === 'completed' && updatedItem.frequency && updatedItem.frequency.trim() !== '') {
+            if (processedData.status === 'completed' && updatedItem.frequency && updatedItem.frequency.trim() !== '') {
                 console.log(`🔄 Triggering recurring update for completed item ${memoryId}`);
-                // Trigger immediate recurring processing
                 setTimeout(() => recurringManager.triggerDueCheck(), 1000);
             }
             
             res.json(updatedItem);
         } else {
-            res.status(500).json({ error: 'Failed to update memory' });
+            console.log('❌ Update failed - no rows affected');
+            res.status(500).json({ error: 'Failed to update memory - no changes made' });
         }
         
     } catch (error) {
         console.error('❌ Update memory error:', error);
-        res.status(500).json({ error: 'Failed to update memory' });
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            memoryId: req.params.id,
+            userId: req.user?.userId
+        });
+        res.status(500).json({ 
+            error: 'Failed to update memory',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -1728,6 +1867,46 @@ app.get('/api/debug/schema', (req, res) => {
         databaseConnected: isDbConnected,
         recurringManagerStatus: recurringManager.getStatus()
     });
+});
+
+// ENHANCED: Debug endpoint for troubleshooting edits
+app.get('/api/debug/memory/:id', auth, async (req, res) => {
+    try {
+        const memoryId = parseInt(req.params.id);
+        const userId = req.user.userId;
+        
+        const result = await db.query(
+            'SELECT * FROM memories WHERE id = $1 AND user_id = $2',
+            [memoryId, userId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Memory not found' });
+        }
+        
+        const memory = result.rows[0];
+        
+        res.json({
+            memory: memory,
+            schema: {
+                availableColumns: memoriesTableColumns,
+                totalColumns: memoriesTableColumns.length
+            },
+            analysis: {
+                hasContent: !!memory.content,
+                hasType: !!memory.type,
+                hasPriority: memory.priority !== null,
+                hasStatus: !!memory.status,
+                memoryId: memoryId,
+                memoryIdType: typeof memoryId,
+                userId: userId
+            }
+        });
+        
+    } catch (error) {
+        console.error('Debug memory error:', error);
+        res.status(500).json({ error: 'Debug failed', details: error.message });
+    }
 });
 
 // Enhanced API Features for Planning
@@ -1941,7 +2120,9 @@ setInterval(() => {
     }
     
     // Clean up expired feed caches
-    feedManager.clearExpiredCaches();
+    if (feedManager.clearExpiredCaches) {
+        feedManager.clearExpiredCaches();
+    }
 }, 60000); // Clean up every minute
 
 // NEW: Graceful shutdown handling
@@ -1979,6 +2160,7 @@ app.listen(PORT, () => {
     console.log('🧹 NEW: Automated database maintenance and cleanup');
     console.log('📊 NEW: Enhanced analytics and recurring task dashboard');
     console.log('⚙️ NEW: Background processes running for recurring task management');
+    console.log('🔧 FIXED: Edit functionality with proper ID type conversion and data processing');
     
     // Log recurring manager status
     const recurringStatus = recurringManager.getStatus();
