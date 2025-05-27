@@ -1361,11 +1361,6 @@
                     </div>
                     <div class="card-priority">${priorityStars}</div>
                     
-                    <!-- MindOS Brain Logo -->
-                    <div class="card-brain-logo" onclick="openAIChat(${item.id})" title="Chat with MindOS AI about this item">
-                        <i class="fas fa-brain"></i>
-                    </div>
-                    
                     <div class="card-main-content">
                         <h2 class="card-title">${item.content_short || item.content?.substring(0, 100) || 'Untitled'}</h2>
                         <p class="card-description">${item.notes || item.content?.substring(100, 300) || 'No additional details'}</p>
