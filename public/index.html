@@ -18,6 +18,9 @@
             color: #fff;
             overflow-x: hidden;
             height: 100vh;
+            /* FIXED: Prevent scroll bounce */
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* =========================
@@ -129,7 +132,7 @@
         }
 
         /* =========================
-           SOCIAL MEDIA FEED LAYOUT
+           NEVER-ENDING FEED LAYOUT
         ========================= */
         .feed-container {
             display: none;
@@ -213,31 +216,37 @@
             background: linear-gradient(135deg, #667eea, #764ba2);
         }
 
-        /* Feed Scroll Container */
+        /* IMPROVED: Never-ending Feed Scroll Container */
         .feed-scroll {
             height: 100vh;
             width: 100%;
             overflow-y: scroll;
-            scroll-snap-type: y mandatory;
+            /* REMOVED: scroll-snap-type for continuous scrolling */
             scrollbar-width: none;
             -ms-overflow-style: none;
             padding-top: 80px;
+            /* FIXED: Prevent scroll bounce */
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
         }
 
         .feed-scroll::-webkit-scrollbar {
             display: none;
         }
 
-        /* Individual Feed Cards */
+        /* IMPROVED: Flexible Feed Cards */
         .feed-card {
-            height: calc(100vh - 80px);
+            /* CHANGED: Flexible height instead of fixed viewport height */
+            min-height: calc(100vh - 80px);
             width: 100%;
             position: relative;
-            scroll-snap-align: start;
+            /* REMOVED: scroll-snap-align for continuous flow */
             display: flex;
             flex-direction: column;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f4c75 100%);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            /* NEW: Smooth transitions between cards */
+            margin-bottom: 2px;
         }
 
         .feed-card:nth-child(even) {
@@ -246,6 +255,15 @@
 
         .feed-card:nth-child(3n) {
             background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
+        }
+
+        /* NEW: Compact cards for better flow */
+        .feed-card.compact {
+            min-height: 60vh;
+        }
+
+        .feed-card.expanded {
+            min-height: calc(100vh - 80px);
         }
 
         /* Card Content Area */
@@ -280,7 +298,6 @@
             color: #ffd700;
         }
 
-        /* NEW: MindOS Brain Logo on each card */
         .card-brain-logo {
             position: absolute;
             top: 50%;
@@ -375,29 +392,136 @@
             background: linear-gradient(135deg, #667eea, #764ba2);
         }
 
-        /* Progress Indicator */
-        .progress-dots {
+        /* NEW: Scroll Position Indicator */
+        .scroll-indicator {
             position: fixed;
             right: 1rem;
             top: 50%;
             transform: translateY(-50%);
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            align-items: center;
             z-index: 900;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 1rem 0.5rem;
         }
 
-        .progress-dot {
-            width: 8px;
-            height: 8px;
+        .scroll-indicator .current-item {
+            font-size: 0.8rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .scroll-indicator .total-items {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0.5rem;
+        }
+
+        .scroll-progress {
+            width: 4px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .scroll-progress-fill {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 2px;
+            transition: height 0.3s ease;
+            height: 0%;
+        }
+
+        /* NEW: End of Feed Message */
+        .end-of-feed {
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2c1810 0%, #8b4513 100%);
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .end-of-feed .brain-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .end-of-feed h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+
+        .end-of-feed p {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.8);
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        .end-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .end-btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .progress-dot.active {
-            background: white;
-            transform: scale(1.5);
+        .end-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Loading more items indicator */
+        .loading-more {
+            padding: 2rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* =========================
@@ -459,18 +583,6 @@
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 0.9rem;
         }
 
         /* Field management styles */
@@ -836,11 +948,6 @@
             animation: spin 1s linear infinite;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
         /* Toast Notifications */
         .toast {
             position: fixed;
@@ -904,6 +1011,11 @@
             .ai-chat-input-container {
                 padding: 1rem;
             }
+
+            .scroll-indicator {
+                right: 0.5rem;
+                padding: 0.5rem 0.3rem;
+            }
         }
     </style>
 </head>
@@ -955,7 +1067,7 @@
         </div>
     </div>
 
-    <!-- Social Media Feed -->
+    <!-- Never-Ending Feed -->
     <div id="feedContainer" class="feed-container">
         <!-- Fixed Header -->
         <div class="feed-header">
@@ -975,6 +1087,9 @@
                 <button class="header-btn" onclick="refreshFeed()" title="Refresh Feed">
                     <i class="fas fa-refresh"></i>
                 </button>
+                <button class="header-btn" onclick="scrollToTop()" title="Back to Top">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
                 <button class="header-btn" onclick="showProfile()" title="Profile">
                     <i class="fas fa-user"></i>
                 </button>
@@ -989,9 +1104,13 @@
             <!-- Feed cards will be dynamically inserted here -->
         </div>
 
-        <!-- Progress Indicator -->
-        <div class="progress-dots" id="progressDots">
-            <!-- Progress dots will be dynamically inserted here -->
+        <!-- Scroll Position Indicator -->
+        <div class="scroll-indicator" id="scrollIndicator">
+            <div class="current-item" id="currentItemNumber">1</div>
+            <div class="scroll-progress">
+                <div class="scroll-progress-fill" id="scrollProgressFill"></div>
+            </div>
+            <div class="total-items" id="totalItemsCount">0</div>
         </div>
     </div>
 
@@ -1081,11 +1200,17 @@
         let currentEditItem = null;
         let currentAIItem = null;
         let aiChatHistory = [];
-        let currentCardIndex = 0;
         let databaseSchema = null;
         let activeOptionalFields = new Set();
         let debugMode = false;
         let isQuickAdd = false;
+        
+        // NEW: Never-ending feed state
+        let currentScrollPosition = 0;
+        let isLoadingMore = false;
+        let hasMoreItems = true;
+        let currentPage = 0;
+        const ITEMS_PER_PAGE = 10;
 
         // Field Configuration
         const CORE_FIELDS = ['content', 'type', 'status', 'priority'];
@@ -1093,7 +1218,7 @@
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 MindOS AI-Powered Feed Starting...');
+            console.log('🚀 MindOS AI-Powered Never-Ending Feed Starting...');
             
             if (authToken) {
                 const isValid = await validateToken();
@@ -1107,7 +1232,7 @@
             showLogin();
         });
 
-        // Authentication Functions (unchanged)
+        // Authentication Functions
         function showLogin() {
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('registerForm').style.display = 'none';
@@ -1168,6 +1293,7 @@
                     localStorage.setItem('mindos_token', authToken);
                     
                     showToast('Welcome back!', 'success');
+                    await loadDatabaseSchema();
                     showFeed();
                 } else {
                     showToast(data.error || 'Login failed', 'error');
@@ -1217,6 +1343,7 @@
                     localStorage.setItem('mindos_token', authToken);
                     
                     showToast('Account created successfully!', 'success');
+                    await loadDatabaseSchema();
                     showFeed();
                 } else {
                     showToast(data.error || 'Registration failed', 'error');
@@ -1248,7 +1375,7 @@
             }
         }
 
-        // Feed Functions
+        // NEW: Never-Ending Feed Functions
         async function showFeed() {
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('feedContainer').style.display = 'block';
@@ -1261,79 +1388,89 @@
                 await loadDatabaseSchema();
             }
             
-            await loadFeedItems();
-            setupScrollListener();
+            await loadInitialFeed();
+            setupContinuousScrollListener();
         }
 
-        async function loadFeedItems() {
-            try {
-                const [todayResponse, allResponse] = await Promise.all([
-                    fetch('/api/memories/today', {
-                        headers: { 'Authorization': `Bearer ${authToken}` }
-                    }),
-                    fetch('/api/memories?limit=20', {
-                        headers: { 'Authorization': `Bearer ${authToken}` }
-                    })
-                ]);
-                
-                const todayItems = todayResponse.ok ? await todayResponse.json() : [];
-                const allItems = allResponse.ok ? await allResponse.json() : [];
-                
-                const combined = [...todayItems, ...allItems];
-                const unique = combined.filter((item, index, arr) => 
-                    arr.findIndex(i => i.id === item.id) === index
-                );
-                
-                feedItems = shuffleArray(unique);
-                renderFeed();
-                
-            } catch (error) {
-                console.error('Error loading feed:', error);
-                showToast('Error loading feed', 'error');
-            }
-        }
-
-        function shuffleArray(array) {
-            const shuffled = [...array];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return shuffled;
-        }
-
-        function renderFeed() {
+        async function loadInitialFeed() {
+            feedItems = [];
+            currentPage = 0;
+            hasMoreItems = true;
+            
+            // Clear existing content
             const feedScroll = document.getElementById('feedScroll');
-            const progressDots = document.getElementById('progressDots');
-            
-            if (feedItems.length === 0) {
-                feedScroll.innerHTML = `
-                    <div class="feed-card">
-                        <div class="card-content-area">
-                            <div class="card-main-content">
-                                <h2 class="card-title">Welcome to MindOS!</h2>
-                                <p class="card-description">Your personal AI-powered feed is empty. Start by adding your first routine, task, or goal.</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
             feedScroll.innerHTML = '';
-            progressDots.innerHTML = '';
             
-            feedItems.forEach((item, index) => {
-                const card = createFeedCard(item, index);
-                feedScroll.appendChild(card);
+            await loadMoreItems();
+        }
+
+        async function loadMoreItems() {
+            if (isLoadingMore || !hasMoreItems) return;
+            
+            isLoadingMore = true;
+            showLoadingIndicator();
+            
+            try {
+                // Try enhanced endpoint first, fallback to basic
+                const offset = currentPage * ITEMS_PER_PAGE;
+                let response = await fetch(`/api/memories/enhanced?limit=${ITEMS_PER_PAGE}&offset=${offset}&sort_by=priority&sort_order=desc`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
                 
-                const dot = document.createElement('div');
-                dot.className = 'progress-dot';
-                if (index === 0) dot.classList.add('active');
-                progressDots.appendChild(dot);
+                let data;
+                if (response.ok) {
+                    data = await response.json();
+                } else {
+                    // Fallback to basic endpoint
+                    response = await fetch(`/api/memories?limit=${ITEMS_PER_PAGE}`, {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                    if (response.ok) {
+                        const memories = await response.json();
+                        data = { memories: memories.slice(offset, offset + ITEMS_PER_PAGE) };
+                    }
+                }
+                
+                if (response.ok && data) {
+                    const newItems = data.memories || [];
+                    
+                    if (newItems.length === 0) {
+                        hasMoreItems = false;
+                        showEndOfFeed();
+                    } else {
+                        feedItems = [...feedItems, ...newItems];
+                        appendFeedCards(newItems);
+                        currentPage++;
+                        
+                        // Check if we have more items
+                        if (newItems.length < ITEMS_PER_PAGE) {
+                            hasMoreItems = false;
+                            showEndOfFeed();
+                        }
+                    }
+                } else {
+                    showToast('Error loading items', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading more items:', error);
+                showToast('Network error loading items', 'error');
+            } finally {
+                isLoadingMore = false;
+                hideLoadingIndicator();
+                updateScrollIndicator();
+            }
+        }
+
+        function appendFeedCards(items) {
+            const feedScroll = document.getElementById('feedScroll');
+            
+            items.forEach((item, index) => {
+                const card = createFeedCard(item, feedItems.indexOf(item));
+                feedScroll.appendChild(card);
             });
             
             document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
+            document.getElementById('totalItemsCount').textContent = feedItems.length;
         }
 
         function createFeedCard(item, index) {
@@ -1341,6 +1478,13 @@
             card.className = 'feed-card';
             card.dataset.index = index;
             card.dataset.itemId = item.id;
+            
+            // Vary card heights for visual interest
+            if (item.type === 'routine' || (item.content && item.content.length > 100)) {
+                card.classList.add('expanded');
+            } else {
+                card.classList.add('compact');
+            }
             
             const priority = parseInt(item.priority) || 1;
             const priorityStars = '★'.repeat(priority);
@@ -1362,8 +1506,8 @@
                     <div class="card-priority">${priorityStars}</div>
                     
                     <div class="card-main-content">
-                        <h2 class="card-title">${item.content_short || item.content?.substring(0, 100) || 'Untitled'}</h2>
-                        <p class="card-description">${item.notes || item.content?.substring(100, 300) || 'No additional details'}</p>
+                        <h2 class="card-title">${item.content_short || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
+                        <p class="card-description">${item.notes || (item.content ? item.content.substring(100, 300) : 'No additional details')}</p>
                         
                         <div class="card-meta">
                             <span>Status: ${item.status || 'active'}</span>
@@ -1398,21 +1542,103 @@
             return card;
         }
 
-        // Scroll Management
-        function setupScrollListener() {
+        function showLoadingIndicator() {
             const feedScroll = document.getElementById('feedScroll');
-            const progressDots = document.querySelectorAll('.progress-dot');
+            const existingLoader = document.getElementById('loadingMore');
+            
+            if (!existingLoader) {
+                const loader = document.createElement('div');
+                loader.id = 'loadingMore';
+                loader.className = 'loading-more';
+                loader.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <p>Loading more items...</p>
+                `;
+                feedScroll.appendChild(loader);
+            }
+        }
+
+        function hideLoadingIndicator() {
+            const loader = document.getElementById('loadingMore');
+            if (loader) {
+                loader.remove();
+            }
+        }
+
+        function showEndOfFeed() {
+            const feedScroll = document.getElementById('feedScroll');
+            const existingEnd = document.getElementById('endOfFeed');
+            
+            if (!existingEnd && feedItems.length > 0) {
+                const endCard = document.createElement('div');
+                endCard.id = 'endOfFeed';
+                endCard.className = 'end-of-feed';
+                endCard.innerHTML = `
+                    <div class="brain-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h2>You've reached the end!</h2>
+                    <p>Great job staying on top of your tasks and goals. You've reviewed all ${feedItems.length} items in your MindOS feed.</p>
+                    
+                    <div class="end-actions">
+                        <button class="end-btn" onclick="scrollToTop()">
+                            <i class="fas fa-arrow-up"></i> Back to Top
+                        </button>
+                        <button class="end-btn" onclick="showQuickAdd()">
+                            <i class="fas fa-plus"></i> Add New Item
+                        </button>
+                        <button class="end-btn" onclick="refreshFeed()">
+                            <i class="fas fa-refresh"></i> Refresh Feed
+                        </button>
+                    </div>
+                `;
+                feedScroll.appendChild(endCard);
+            }
+        }
+
+        // NEW: Continuous Scroll Management
+        function setupContinuousScrollListener() {
+            const feedScroll = document.getElementById('feedScroll');
             
             feedScroll.addEventListener('scroll', () => {
+                updateScrollIndicator();
+                
+                // Load more items when near bottom
+                const scrollHeight = feedScroll.scrollHeight;
                 const scrollTop = feedScroll.scrollTop;
-                const cardHeight = window.innerHeight - 80;
-                const currentIndex = Math.round(scrollTop / cardHeight);
+                const clientHeight = feedScroll.clientHeight;
                 
-                progressDots.forEach((dot, index) => {
-                    dot.classList.toggle('active', index === currentIndex);
-                });
-                
-                currentCardIndex = currentIndex;
+                if (scrollHeight - scrollTop - clientHeight < 1000) {
+                    loadMoreItems();
+                }
+            });
+        }
+
+        function updateScrollIndicator() {
+            const feedScroll = document.getElementById('feedScroll');
+            const scrollPercentage = (feedScroll.scrollTop / (feedScroll.scrollHeight - feedScroll.clientHeight)) * 100;
+            
+            document.getElementById('scrollProgressFill').style.height = `${Math.max(0, Math.min(100, scrollPercentage))}%`;
+            
+            // Calculate current item based on scroll position
+            const cards = document.querySelectorAll('.feed-card');
+            let currentItem = 1;
+            
+            cards.forEach((card, index) => {
+                const rect = card.getBoundingClientRect();
+                if (rect.top <= window.innerHeight / 2 && rect.bottom >= window.innerHeight / 2) {
+                    currentItem = index + 1;
+                }
+            });
+            
+            document.getElementById('currentItemNumber').textContent = currentItem;
+        }
+
+        function scrollToTop() {
+            const feedScroll = document.getElementById('feedScroll');
+            feedScroll.scrollTo({
+                top: 0,
+                behavior: 'smooth'
             });
         }
 
@@ -1502,7 +1728,7 @@
             if (isQuickAdd) {
                 editTitle.textContent = 'Quick Add New Item';
                 saveBtn.textContent = 'Create Item';
-                fieldControls.style.display = 'none'; // Hide field controls for quick add
+                fieldControls.style.display = 'none';
             } else {
                 editTitle.textContent = 'Edit Item';
                 saveBtn.textContent = 'Save Changes';
@@ -1757,7 +1983,7 @@
             aiChatHistory = item.ai_chat_history ? JSON.parse(item.ai_chat_history) : [];
             
             // Update chat header
-            document.getElementById('aiChatItemTitle').textContent = item.content_short || item.content?.substring(0, 50) || 'Untitled';
+            document.getElementById('aiChatItemTitle').textContent = item.content_short || (item.content ? item.content.substring(0, 50) : 'Untitled');
             document.getElementById('aiChatItemType').textContent = `${item.type || 'item'} • Priority ${item.priority || 1}`;
             
             // Render chat history
@@ -1839,17 +2065,18 @@
             
             try {
                 // Send to Claude API for processing
-                const response = await fetch('/api/ai-chat', {
+                const response = await fetch('/api/claude', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
-                        itemId: currentAIItem.id,
-                        message: message,
-                        chatHistory: aiChatHistory,
-                        currentItem: currentAIItem
+                        messages: [
+                            { role: 'system', content: `You are helping with this item: ${JSON.stringify(currentAIItem)}` },
+                            ...aiChatHistory,
+                            { role: 'user', content: message }
+                        ]
                     })
                 });
                 
@@ -1857,12 +2084,8 @@
                     const data = await response.json();
                     
                     // Add AI response
-                    addAIMessage('assistant', data.response);
-                    
-                    // Handle any suggested updates
-                    if (data.suggestedUpdates && data.suggestedUpdates.length > 0) {
-                        showUpdateSuggestions(data.suggestedUpdates);
-                    }
+                    const aiResponse = data.content[0].text;
+                    addAIMessage('assistant', aiResponse);
                     
                     // Save chat history to item
                     await saveChatHistory();
@@ -1878,77 +2101,6 @@
                 sendBtn.disabled = false;
                 sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
             }
-        }
-
-        function showUpdateSuggestions(suggestions) {
-            const container = document.getElementById('aiChatMessages');
-            const suggestionsDiv = document.createElement('div');
-            suggestionsDiv.className = 'update-suggestions';
-            
-            let suggestionsHTML = `
-                <h4><i class="fas fa-magic"></i> Suggested Updates</h4>
-            `;
-            
-            suggestions.forEach((suggestion, index) => {
-                suggestionsHTML += `
-                    <div class="suggestion-item">
-                        <div class="suggestion-text">${suggestion.description}</div>
-                        <div class="suggestion-actions">
-                            <button class="suggestion-btn accept" onclick="acceptSuggestion(${index})">
-                                <i class="fas fa-check"></i> Accept
-                            </button>
-                            <button class="suggestion-btn reject" onclick="rejectSuggestion(${index})">
-                                <i class="fas fa-times"></i> Decline
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            suggestionsDiv.innerHTML = suggestionsHTML;
-            container.appendChild(suggestionsDiv);
-            scrollChatToBottom();
-            
-            // Store suggestions for later use
-            window.currentSuggestions = suggestions;
-        }
-
-        async function acceptSuggestion(index) {
-            const suggestion = window.currentSuggestions[index];
-            if (!suggestion) return;
-            
-            try {
-                // Apply the suggested update
-                const response = await fetch(`/api/memories/${currentAIItem.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify(suggestion.updates)
-                });
-                
-                if (response.ok) {
-                    const updatedItem = await response.json();
-                    Object.assign(currentAIItem, updatedItem);
-                    
-                    addAIMessage('assistant', `✅ Applied: ${suggestion.description}`);
-                    showToast('Update applied!', 'success');
-                    
-                    // Refresh feed to show changes
-                    await refreshFeed();
-                } else {
-                    addAIMessage('assistant', `❌ Failed to apply: ${suggestion.description}`);
-                }
-            } catch (error) {
-                console.error('Error applying suggestion:', error);
-                addAIMessage('assistant', `❌ Error applying: ${suggestion.description}`);
-            }
-        }
-
-        function rejectSuggestion(index) {
-            const suggestion = window.currentSuggestions[index];
-            addAIMessage('assistant', `Declined: ${suggestion.description}`);
         }
 
         async function saveChatHistory() {
@@ -1982,7 +2134,7 @@
             }
         });
 
-        // Social Media Actions (unchanged)
+        // Social Media Actions
         async function toggleComplete(itemId) {
             try {
                 const item = feedItems.find(i => i.id === itemId);
@@ -2063,19 +2215,34 @@
                 });
                 
                 if (response.ok) {
+                    // Remove from feedItems array
+                    feedItems = feedItems.filter(item => item.id !== itemId);
+                    
+                    // Remove card from DOM
+                    const card = document.querySelector(`[data-item-id="${itemId}"]`);
+                    if (card) {
+                        card.remove();
+                    }
+                    
+                    document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
+                    document.getElementById('totalItemsCount').textContent = feedItems.length;
+                    
                     showToast('Deleted', 'success');
-                    await refreshFeed();
                 } else {
                     showToast('Failed to delete', 'error');
                 }
             } catch (error) {
                 console.error('Error deleting:', error);
+                showToast('Error deleting item', 'error');
             }
         }
 
         // Header Actions
         async function refreshFeed() {
-            await loadFeedItems();
+            const feedScroll = document.getElementById('feedScroll');
+            feedScroll.innerHTML = '';
+            
+            await loadInitialFeed();
             showToast('Feed refreshed!', 'success');
         }
 
@@ -2124,25 +2291,13 @@
                 closeEdit();
                 closeAIChat();
             }
-            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            if (e.key === 'Home') {
                 e.preventDefault();
-                const direction = e.key === 'ArrowUp' ? -1 : 1;
-                scrollToCard(currentCardIndex + direction);
+                scrollToTop();
             }
         });
 
-        function scrollToCard(index) {
-            const feedScroll = document.getElementById('feedScroll');
-            const cardHeight = window.innerHeight - 80;
-            const targetScroll = index * cardHeight;
-            
-            feedScroll.scrollTo({
-                top: targetScroll,
-                behavior: 'smooth'
-            });
-        }
-
-        // Touch/Swipe Support
+        // Touch/Swipe Support (simplified for continuous scroll)
         let touchStartY = 0;
         
         document.addEventListener('touchstart', (e) => {
@@ -2153,9 +2308,12 @@
             const touchEndY = e.changedTouches[0].clientY;
             const diff = touchStartY - touchEndY;
             
-            if (Math.abs(diff) > 50) {
-                const direction = diff > 0 ? 1 : -1;
-                scrollToCard(currentCardIndex + direction);
+            // Only handle large swipes for special actions
+            if (Math.abs(diff) > 100) {
+                if (diff < -100) {
+                    // Large upward swipe - go to top
+                    scrollToTop();
+                }
             }
         });
     </script>
