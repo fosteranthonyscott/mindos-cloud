@@ -1780,134 +1780,6 @@
             }
         }
 
-        // NEW: Format form data according to database schema
-        function formatDataForDatabase(formData, columnTypes) {
-            const formatted = {};
-            
-            Object.entries(formData).forEach(([key, value]) => {
-                if (value === null || value === undefined || value === '') {
-                    formatted[key] = null;
-                    return;
-                }
-                
-                const columnType = columnTypes[key] || 'string';
-                
-                try {
-                    switch (columnType) {
-                        case 'integer':
-                            const intVal = parseInt(value);
-                            formatted[key] = isNaN(intVal) ? null : intVal;
-                            break;
-                            
-                        case 'float':
-                        case 'decimal':
-                            const floatVal = parseFloat(value);
-                            formatted[key] = isNaN(floatVal) ? null : floatVal;
-                            break;
-                            
-                        case 'boolean':
-                            if (typeof value === 'string') {
-                                formatted[key] = value.toLowerCase() === 'true' || value === '1';
-                            } else {
-                                formatted[key] = Boolean(value);
-                            }
-                            break;
-                            
-                        case 'date':
-                            if (value instanceof Date) {
-                                formatted[key] = value.toISOString().split('T')[0];
-                            } else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
-                                formatted[key] = value.split('T')[0];
-                            } else {
-                                formatted[key] = null;
-                            }
-                            break;
-                            
-                        case 'timestamp':
-                        case 'datetime':
-                            if (value instanceof Date) {
-                                formatted[key] = value.toISOString();
-                            } else if (typeof value === 'string') {
-                                const date = new Date(value);
-                                formatted[key] = isNaN(date.getTime()) ? null : date.toISOString();
-                            } else {
-                                formatted[key] = null;
-                            }
-                            break;
-                            
-                        case 'json':
-                        case 'jsonb':
-                            if (typeof value === 'object') {
-                                formatted[key] = JSON.stringify(value);
-                            } else if (typeof value === 'string') {
-                                try {
-                                    JSON.parse(value); // Validate JSON
-                                    formatted[key] = value;
-                                } catch {
-                                    formatted[key] = JSON.stringify(value);
-                                }
-                            } else {
-                                formatted[key] = JSON.stringify(value);
-                            }
-                            break;
-                            
-                        case 'text':
-                        case 'string':
-                        default:
-                            formatted[key] = String(value).trim();
-                            break;
-                    }
-                } catch (error) {
-                    console.warn(`Error formatting field ${key} with value ${value}:`, error);
-                    formatted[key] = value; // Use original value as fallback
-                }
-            });
-            
-            return formatted;
-        }
-
-        // NEW: Validate form data before submission
-        function validateFormData(formData, tableStructure) {
-            const errors = [];
-            const warnings = [];
-            
-            // Check required fields (basic validation)
-            if (!formData.content || formData.content.trim() === '') {
-                errors.push('Content is required');
-            }
-            
-            if (!formData.type || formData.type.trim() === '') {
-                warnings.push('Type should be specified');
-            }
-            
-            // Check field lengths
-            if (formData.content && formData.content.length > 5000) {
-                warnings.push('Content is very long and may be truncated');
-            }
-            
-            if (formData.content_short && formData.content_short.length > 200) {
-                warnings.push('Short content should be under 200 characters');
-            }
-            
-            // Validate priority range
-            if (formData.priority) {
-                const priority = parseInt(formData.priority);
-                if (priority < 1 || priority > 5) {
-                    warnings.push('Priority should be between 1 and 5');
-                }
-            }
-            
-            // Validate date fields
-            if (formData.due) {
-                const dueDate = new Date(formData.due);
-                if (isNaN(dueDate.getTime())) {
-                    errors.push('Due date is not valid');
-                }
-            }
-            
-            return { errors, warnings };
-        }
-
         // ===== UNIFIED EDIT/ADD FUNCTIONS =====
         
         function getAvailableFields() {
@@ -1980,9 +1852,94 @@
             `;
         }
 
-        // UNIFIED: Build form for both add and edit modes - WITH DROPDOWN FIX INTEGRATION
+        // ENHANCED: Field value formatting function
+        function formatFieldValue(fieldName, value) {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+            
+            // Field-specific formatting
+            switch (fieldName) {
+                case 'priority':
+                case 'performance_streak':
+                case 'required_time_minutes':
+                    const numVal = parseInt(value);
+                    return isNaN(numVal) ? null : numVal;
+                    
+                case 'due':
+                case 'completed_date':
+                case 'target_date':
+                    if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+                        return value.split('T')[0]; // Ensure date format
+                    }
+                    return value;
+                    
+                case 'content':
+                case 'notes':
+                    // Ensure content_short is generated if not provided
+                    const trimmed = String(value).trim();
+                    if (fieldName === 'content' && trimmed.length > 100) {
+                        // Auto-generate content_short if not already provided
+                        const shortContent = trimmed.substring(0, 97) + '...';
+                        // This will be handled separately, just return the full content
+                    }
+                    return trimmed;
+                    
+                case 'type':
+                case 'status':
+                case 'routine_type':
+                case 'goal_type':
+                case 'stage':
+                    return String(value).trim().toLowerCase();
+                    
+                default:
+                    return typeof value === 'string' ? value.trim() : value;
+            }
+        }
+
+        // ENHANCED: Debug function for troubleshooting edits
+        async function debugEditItem(itemId) {
+            if (!debugMode) {
+                console.log('Enable debug mode first: debugMode = true');
+                return;
+            }
+            
+            try {
+                console.log('🐛 Debug analysis for item:', itemId);
+                
+                const response = await fetch(`/api/debug/memory/${itemId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const debug = await response.json();
+                    console.log('🐛 Debug results:', debug);
+                    
+                    console.table({
+                        'Memory ID': debug.memory.id,
+                        'Content': debug.memory.content?.substring(0, 50) + '...',
+                        'Type': debug.memory.type,
+                        'Status': debug.memory.status,
+                        'Priority': debug.memory.priority,
+                        'User ID': debug.memory.user_id
+                    });
+                    
+                    console.log('📋 Available columns:', debug.schema.availableColumns);
+                    console.log('🔍 Analysis:', debug.analysis);
+                    
+                    return debug;
+                } else {
+                    console.error('Debug request failed:', response.status);
+                }
+            } catch (error) {
+                console.error('Debug error:', error);
+            }
+        }
+
+        // ENHANCED: Build form for both add and edit modes - WITH DROPDOWN FIX INTEGRATION
         function buildEditForm(item, isAdd = false) {
             console.log('🏗️ Building edit form, isAdd:', isAdd);
+            console.log('📋 Item data:', item);
             
             const coreContainer = document.getElementById('coreFields');
             const optionalContainer = document.getElementById('optionalFields');
@@ -2001,16 +1958,16 @@
             if (isAddMode) {
                 editTitle.textContent = 'Add New Item';
                 saveBtn.textContent = 'Create Item';
-                fieldControls.style.display = 'block'; // Show controls for add mode too
+                fieldControls.style.display = 'block';
             } else {
-                editTitle.textContent = 'Edit Item';
+                editTitle.textContent = `Edit Item #${item.id}`;
                 saveBtn.textContent = 'Save Changes';
                 fieldControls.style.display = 'block';
             }
             
-            // Get available fields
+            // Get available fields from schema
             const availableFields = getAvailableFields();
-            console.log('📋 Available fields:', availableFields);
+            console.log('📋 Available fields from schema:', availableFields);
             
             // Build core fields
             let coreHTML = '';
@@ -2018,7 +1975,9 @@
             
             fieldsToShow.forEach(fieldName => {
                 if (availableFields.includes(fieldName)) {
-                    coreHTML += createFieldElement(fieldName, item[fieldName], true);
+                    const value = item[fieldName] || '';
+                    console.log(`🔧 Building core field ${fieldName} with value:`, value);
+                    coreHTML += createFieldElement(fieldName, value, true);
                 }
             });
             coreContainer.innerHTML = coreHTML;
@@ -2048,8 +2007,10 @@
                 showOptionalFieldsWithValues(item);
             }
             
-            // APPLY DROPDOWN FIX AFTER FORM IS BUILT
+            // Apply dropdown fix after form is built
             setTimeout(fixDropdownVisibility, 150);
+            
+            console.log('✅ Form built successfully');
         }
 
         function showOptionalFieldsWithValues(item) {
@@ -2147,16 +2108,26 @@
             setTimeout(fixDropdownVisibility, 150);
         }
 
+        // ENHANCED: Edit function with better error handling
         function editItem(itemId) {
             console.log('📝 Editing item:', itemId);
             
-            const item = feedItems.find(i => i.id === itemId);
+            // ENSURE ID IS PROPERLY CONVERTED
+            const numericId = parseInt(itemId);
+            if (isNaN(numericId)) {
+                showToast('Invalid item ID', 'error');
+                return;
+            }
+            
+            const item = feedItems.find(i => i.id == numericId); // Use == for type coercion
             if (!item) {
+                console.error('❌ Item not found in feedItems:', numericId);
+                console.log('📋 Available items:', feedItems.map(i => ({ id: i.id, type: typeof i.id })));
                 showToast('Item not found', 'error');
                 return;
             }
             
-            console.log('📝 Editing item:', item);
+            console.log('📝 Found item for editing:', item);
             currentEditItem = item;
             buildEditForm(item, false); // false = edit mode
             document.getElementById('editOverlay').classList.add('show');
@@ -2173,7 +2144,7 @@
             isAddMode = false;
         }
 
-        // ENHANCED: Save with proper data formatting
+        // ENHANCED SAVE FUNCTION WITH BETTER ERROR HANDLING AND DEBUGGING
         async function saveEdit() {
             if (!currentEditItem) {
                 showToast('No item to save', 'error');
@@ -2181,16 +2152,11 @@
             }
             
             console.log('💾 Starting enhanced save process');
+            console.log('📋 Current edit item:', currentEditItem);
+            console.log('🔧 Add mode:', isAddMode);
             
             try {
-                // Get table structure
-                const tableStructure = await getTableStructure();
-                const columnTypes = await getColumnTypes();
-                
-                console.log('📊 Table structure:', tableStructure);
-                console.log('🏗️ Column types:', columnTypes);
-                
-                // Collect form data
+                // Collect form data with better validation
                 const rawData = {};
                 const allInputs = document.querySelectorAll('#coreFields input, #coreFields textarea, #coreFields select, #optionalFields input, #optionalFields textarea, #optionalFields select');
                 
@@ -2198,105 +2164,167 @@
                 
                 allInputs.forEach(input => {
                     const fieldName = input.id.replace('edit_', '');
-                    let value = input.value.trim();
+                    let value = input.value;
                     
-                    if (value === '') {
-                        value = null;
+                    // Handle different input types
+                    if (input.type === 'number') {
+                        value = value === '' ? null : Number(value);
+                    } else if (input.type === 'date') {
+                        value = value === '' ? null : value;
+                    } else if (input.tagName === 'SELECT') {
+                        value = value === '' ? null : value;
+                    } else {
+                        value = value.trim();
+                        if (value === '') value = null;
                     }
                     
                     rawData[fieldName] = value;
-                    console.log(`📝 Raw field ${fieldName}:`, value);
+                    console.log(`📝 Raw field ${fieldName}:`, value, `(type: ${typeof value})`);
                 });
                 
-                // Validate form data
-                const validation = validateFormData(rawData, tableStructure);
+                // ENHANCED: Validate essential fields
+                const validationErrors = [];
                 
-                if (validation.errors.length > 0) {
-                    showToast(`Validation errors: ${validation.errors.join(', ')}`, 'error');
+                if (!rawData.content || (typeof rawData.content === 'string' && rawData.content.trim() === '')) {
+                    validationErrors.push('Content is required');
+                }
+                
+                if (isAddMode && (!rawData.type || rawData.type.trim() === '')) {
+                    validationErrors.push('Type is required for new items');
+                }
+                
+                if (validationErrors.length > 0) {
+                    showToast(`Validation errors: ${validationErrors.join(', ')}`, 'error');
                     return;
                 }
                 
-                if (validation.warnings.length > 0) {
-                    console.warn('Validation warnings:', validation.warnings);
-                    showToast(`Warning: ${validation.warnings[0]}`, 'warning');
-                }
+                // ENHANCED: Data formatting specific to database expectations
+                const formattedData = {};
                 
-                // Format data according to database schema
-                const formattedData = formatDataForDatabase(rawData, columnTypes);
-                console.log('🎯 Formatted data:', formattedData);
-                
-                // Filter out fields that don't exist in the table
-                const finalData = {};
-                Object.entries(formattedData).forEach(([key, value]) => {
-                    if (tableStructure.columns.includes(key)) {
-                        finalData[key] = value;
-                    } else {
-                        console.warn(`⚠️ Excluding field ${key} - not in table structure`);
+                Object.entries(rawData).forEach(([key, value]) => {
+                    // Skip system fields
+                    if (['id', 'user_id', 'created_at'].includes(key)) {
+                        return;
                     }
+                    
+                    // Format based on field type
+                    formattedData[key] = formatFieldValue(key, value);
                 });
                 
-                console.log('✅ Final data for submission:', finalData);
+                console.log('🎯 Formatted data for submission:', formattedData);
                 
                 // Show loading state
                 const saveBtn = document.getElementById('saveEditBtn');
                 const originalText = saveBtn.textContent;
                 saveBtn.textContent = 'Saving...';
                 saveBtn.disabled = true;
+                saveBtn.classList.add('loading');
                 
                 let response;
+                let url;
+                let method;
                 
                 if (isAddMode) {
                     // Create new item
-                    console.log('🆕 Creating new item with data:', finalData);
-                    response = await fetch('/api/memories', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${authToken}`
-                        },
-                        body: JSON.stringify(finalData)
-                    });
+                    console.log('🆕 Creating new item with data:', formattedData);
+                    url = '/api/memories';
+                    method = 'POST';
                 } else {
-                    // Update existing item
-                    console.log(`🔄 Updating item ${currentEditItem.id} with data:`, finalData);
-                    response = await fetch(`/api/memories/${currentEditItem.id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${authToken}`
-                        },
-                        body: JSON.stringify(finalData)
-                    });
+                    // Update existing item - ENSURE ID IS PROPERLY PASSED
+                    const itemId = currentEditItem.id;
+                    console.log(`🔄 Updating item ${itemId} with data:`, formattedData);
+                    
+                    if (!itemId) {
+                        throw new Error('No item ID found for update');
+                    }
+                    
+                    url = `/api/memories/${itemId}`;
+                    method = 'PUT';
                 }
                 
-                console.log('📡 Response status:', response.status);
+                console.log(`📡 Making ${method} request to ${url}`);
                 
+                response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(formattedData)
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                // ENHANCED: Better error handling
                 if (response.ok) {
                     const result = await response.json();
                     console.log('✅ Save successful:', result);
                     
                     if (isAddMode) {
                         showToast('✅ Item created successfully!', 'success');
+                        // Add to feedItems array for immediate UI update
+                        feedItems.unshift(result);
                     } else {
-                        Object.assign(currentEditItem, result);
-                        showToast('✅ Saved successfully!', 'success');
+                        // Update the item in feedItems array
+                        const itemIndex = feedItems.findIndex(item => item.id === currentEditItem.id);
+                        if (itemIndex !== -1) {
+                            feedItems[itemIndex] = { ...feedItems[itemIndex], ...result };
+                        }
+                        showToast('✅ Changes saved successfully!', 'success');
                     }
                     
                     closeEdit();
-                    await refreshFeed();
+                    await refreshFeed(); // Refresh to show changes
                 } else {
-                    const errorData = await response.json();
+                    let errorData;
+                    try {
+                        errorData = await response.json();
+                    } catch (e) {
+                        errorData = { error: `HTTP ${response.status} ${response.statusText}` };
+                    }
+                    
                     console.error('❌ Save failed:', errorData);
-                    showToast(errorData.error || 'Failed to save', 'error');
+                    console.error('❌ Response status:', response.status);
+                    
+                    // Show specific error information
+                    if (response.status === 404) {
+                        showToast('❌ Item not found - it may have been deleted', 'error');
+                    } else if (response.status === 400) {
+                        showToast(`❌ ${errorData.error || 'Invalid data provided'}`, 'error');
+                    } else if (response.status === 403) {
+                        showToast('❌ Access denied - please log in again', 'error');
+                    } else {
+                        showToast(`❌ ${errorData.error || 'Failed to save changes'}`, 'error');
+                    }
+                    
+                    // Log debug information
+                    if (debugMode || process.env.NODE_ENV === 'development') {
+                        console.log('🐛 Debug information:');
+                        console.log('  - Item ID:', currentEditItem?.id);
+                        console.log('  - Formatted data:', formattedData);
+                        console.log('  - Response:', errorData);
+                    }
                 }
+                
             } catch (error) {
-                console.error('❌ Network error during save:', error);
-                showToast('Network error - please try again', 'error');
+                console.error('❌ Network/JS error during save:', error);
+                showToast('❌ Network error - please check your connection and try again', 'error');
+                
+                // Additional debugging for network errors
+                console.error('🐛 Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    currentEditItem: currentEditItem?.id,
+                    isAddMode: isAddMode
+                });
             } finally {
+                // Restore button state
                 const saveBtn = document.getElementById('saveEditBtn');
                 if (saveBtn) {
-                    saveBtn.textContent = saveBtn.textContent.replace('Saving...', isAddMode ? 'Create Item' : 'Save Changes');
+                    saveBtn.textContent = originalText;
                     saveBtn.disabled = false;
+                    saveBtn.classList.remove('loading');
                 }
             }
         }
@@ -2617,6 +2645,26 @@
                 toast.remove();
             }, 3000);
         }
+
+        // Global debug functions for testing
+        window.debugEditMode = function() {
+            debugMode = !debugMode;
+            console.log('🐛 Debug mode:', debugMode ? 'ENABLED' : 'DISABLED');
+            if (debugMode) {
+                console.log('Use: debugEditItem(itemId) to debug a specific item');
+            }
+        };
+
+        window.testEdit = async function(itemId) {
+            console.log('🧪 Testing edit for item:', itemId);
+            const item = feedItems.find(i => i.id == itemId);
+            if (item) {
+                console.log('Found item:', item);
+                editItem(itemId);
+            } else {
+                console.log('Item not found. Available items:', feedItems.map(i => i.id));
+            }
+        };
 
         // Keyboard Shortcuts
         document.addEventListener('keydown', (e) => {
