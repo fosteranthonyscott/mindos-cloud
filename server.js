@@ -1,4 +1,4 @@
-// ENHANCED MINDOS SERVER.JS - Smart Memory Operations & Advanced Context Management
+// ENHANCED MINDOS SERVER.JS - Smart Memory Operations & Advanced Context Management with Recurring Task Manager
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -6,6 +6,10 @@ const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
+
+// NEW: Import the recurring task management modules
+const { SmartTextParsingAlgorithm, SmartTextFeedManager } = require('./smart-text-algorithm');
+const { RecurringTaskManager } = require('./recurring-task-manager');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,6 +42,14 @@ const db = new Pool({
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
 });
+
+// NEW: Initialize the smart managers
+const feedManager = new SmartTextFeedManager();
+const textParser = new SmartTextParsingAlgorithm();
+const recurringManager = new RecurringTaskManager(db, textParser);
+
+// Make feedManager available globally for cache clearing
+global.feedManager = feedManager;
 
 // Test database connection and get schema info
 let memoriesTableColumns = [];
@@ -200,16 +212,78 @@ async function initializeDatabase() {
     }
 }
 
-// Initialize database connection
-initializeDatabase();
+// NEW: Update database schema for recurring tasks
+async function updateDatabaseSchema() {
+    try {
+        console.log('🔧 Checking database schema...');
+        
+        const schemaUpdates = [
+            // Add columns for recurring task management
+            `ALTER TABLE memories ADD COLUMN IF NOT EXISTS completed_date DATE;`,
+            `ALTER TABLE memories ADD COLUMN IF NOT EXISTS last_recurring_update TIMESTAMP;`,
+            `ALTER TABLE memories ADD COLUMN IF NOT EXISTS performance_streak INTEGER DEFAULT 0;`,
+            
+            // Add indexes for better performance
+            `CREATE INDEX IF NOT EXISTS idx_memories_due_status ON memories(due, status);`,
+            `CREATE INDEX IF NOT EXISTS idx_memories_frequency ON memories(frequency) WHERE frequency IS NOT NULL;`,
+            `CREATE INDEX IF NOT EXISTS idx_memories_completed_date ON memories(completed_date);`,
+            `CREATE INDEX IF NOT EXISTS idx_memories_user_status ON memories(user_id, status);`
+        ];
+        
+        for (const update of schemaUpdates) {
+            try {
+                await db.query(update);
+            } catch (error) {
+                // Ignore "already exists" errors
+                if (!error.message.includes('already exists')) {
+                    console.warn('Schema update warning:', error.message);
+                }
+            }
+        }
+        
+        console.log('✅ Database schema updated');
+        
+    } catch (error) {
+        console.error('❌ Error updating database schema:', error);
+    }
+}
 
-// Health check endpoint - ADDED FIRST
+// NEW: Initialize background processes
+async function initializeBackgroundProcesses() {
+    try {
+        console.log('🚀 Starting background processes...');
+        
+        // Start the recurring task manager
+        recurringManager.start();
+        
+        console.log('✅ Background processes started successfully');
+        
+    } catch (error) {
+        console.error('❌ Error starting background processes:', error);
+    }
+}
+
+// Initialize database connection and background processes
+initializeDatabase().then(() => {
+    updateDatabaseSchema().then(() => {
+        initializeBackgroundProcesses();
+    });
+});
+
+// Health check endpoint - ENHANCED with recurring task status
 app.get('/health', (req, res) => {
+    const recurringStatus = recurringManager.getStatus();
+    
     res.json({ 
         status: 'ok', 
         timestamp: new Date().toISOString(),
         database: isDbConnected ? 'connected' : 'disconnected',
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
+        backgroundProcesses: {
+            recurringTasks: recurringStatus.isRunning ? 'running' : 'stopped',
+            processes: recurringStatus.processes,
+            uptime: recurringStatus.uptime
+        }
     });
 });
 
@@ -232,6 +306,7 @@ Your capabilities:
 - Store important information as memories for future reference
 - Be proactive in suggesting improvements and optimizations
 - Respect user constraints and do accurate time calculations
+- Handle recurring tasks and routines automatically
 
 Your personality:
 - Helpful and proactive
@@ -303,6 +378,7 @@ async function buildMemoryContext(userId) {
                     if (memory.mood) contextText += ` (mood: ${memory.mood})`;
                     if (memory.location) contextText += ` @${memory.location}`;
                     if (memory.stage) contextText += ` [${memory.stage}]`;
+                    if (memory.frequency) contextText += ` (${memory.frequency})`;
                     
                     contextText += "\n";
                     
@@ -331,7 +407,7 @@ async function buildMemoryContext(userId) {
     }
 }
 
-// NEW: Parse config module input directly
+// NEW: Parse config module input directly with enhanced frequency detection
 function parseConfigInput(userInput) {
     try {
         const isRoutine = userInput.includes('Routine Description:');
@@ -432,7 +508,7 @@ function parseConfigInput(userInput) {
     }
 }
 
-// NEW: Find matching memory for updates
+// NEW: Enhanced find matching memory for updates
 async function findMatchingMemory(userId, type, content, additionalData) {
     try {
         const contentLower = content.toLowerCase();
@@ -495,7 +571,7 @@ async function findMatchingMemory(userId, type, content, additionalData) {
     }
 }
 
-// NEW: Update existing memory
+// NEW: Update existing memory with recurring support
 async function updateExistingMemory(memoryId, type, content, additionalData) {
     try {
         // Determine what to update based on content
@@ -505,6 +581,11 @@ async function updateExistingMemory(memoryId, type, content, additionalData) {
         // For completion/progress updates
         if (['completed', 'finished', 'done', 'did'].some(word => contentLower.includes(word))) {
             updateData.status = 'completed';
+            
+            // Add completion date
+            if (memoriesTableColumns.includes('completed_date')) {
+                updateData.completed_date = new Date().toISOString().split('T')[0];
+            }
             
             // Update performance streak for routines
             if (type === 'routine' && memoriesTableColumns.includes('performance_streak')) {
@@ -553,6 +634,17 @@ async function updateExistingMemory(memoryId, type, content, additionalData) {
         
         const result = await db.query(query, updateValues);
         console.log(`✅ Memory updated: ${result.rows[0].content_short || content.substring(0, 50)}`);
+        
+        // Handle recurring tasks if the item was completed
+        if (updateData.status === 'completed') {
+            const updatedItem = result.rows[0];
+            if (updatedItem.frequency && updatedItem.frequency.trim() !== '') {
+                console.log(`🔄 Triggering recurring update for completed item ${memoryId}`);
+                // This will be handled by the background process, but we can trigger it immediately
+                setTimeout(() => recurringManager.triggerDueCheck(), 1000);
+            }
+        }
+        
         return true;
         
     } catch (error) {
@@ -561,7 +653,7 @@ async function updateExistingMemory(memoryId, type, content, additionalData) {
     }
 }
 
-// NEW: Create new memory (extracted from original storeMemory)
+// NEW: Create new memory with smart text parsing
 async function createNewMemory(userId, type, content, additionalData) {
     try {
         if (memoriesTableColumns.length === 0) {
@@ -569,11 +661,33 @@ async function createNewMemory(userId, type, content, additionalData) {
             return false;
         }
         
+        // Use smart text parsing to enhance the data
+        const parsedData = textParser.parseUserInput(content);
+        console.log('🧠 Smart text parsing results:', parsedData);
+        
         const baseData = { user_id: userId };
         
-        if (memoriesTableColumns.includes('type')) baseData.type = type;
-        if (memoriesTableColumns.includes('content')) baseData.content = content;
+        if (memoriesTableColumns.includes('type')) baseData.type = type || parsedData.type;
+        if (memoriesTableColumns.includes('content')) baseData.content = parsedData.content || content;
         
+        // Apply smart parsing results
+        if (memoriesTableColumns.includes('priority') && !additionalData.priority) {
+            baseData.priority = parsedData.priority || 3;
+        }
+        
+        if (memoriesTableColumns.includes('due') && !additionalData.due && parsedData.dueDate) {
+            baseData.due = parsedData.dueDate;
+        }
+        
+        if (memoriesTableColumns.includes('frequency') && parsedData.frequency) {
+            baseData.frequency = parsedData.frequency.originalText || additionalData.frequency;
+        }
+        
+        if (memoriesTableColumns.includes('location') && parsedData.location) {
+            baseData.location = parsedData.location;
+        }
+        
+        // Merge additional data
         Object.entries(additionalData).forEach(([key, value]) => {
             if (memoriesTableColumns.includes(key) && value !== null && value !== undefined) {
                 baseData[key] = value;
@@ -581,10 +695,10 @@ async function createNewMemory(userId, type, content, additionalData) {
         });
         
         if (memoriesTableColumns.includes('content_short') && !baseData.content_short) {
-            baseData.content_short = content.length > 100 ? content.substring(0, 97) + "..." : content;
+            const cleanContent = parsedData.content || content;
+            baseData.content_short = cleanContent.length > 100 ? cleanContent.substring(0, 97) + "..." : cleanContent;
         }
         
-        if (memoriesTableColumns.includes('priority') && !baseData.priority) baseData.priority = 1;
         if (memoriesTableColumns.includes('status') && !baseData.status) baseData.status = 'active';
         if (memoriesTableColumns.includes('performance_streak') && !baseData.performance_streak) {
             baseData.performance_streak = 0;
@@ -600,10 +714,17 @@ async function createNewMemory(userId, type, content, additionalData) {
             RETURNING *
         `;
         
-        await db.query(query, values);
+        const result = await db.query(query, values);
         
         const summary = baseData.content_short || content.substring(0, 50);
         console.log(`✅ New memory created: [${type}] ${summary}`);
+        
+        // If the new item has a frequency and due date, it's a recurring item
+        const newItem = result.rows[0];
+        if (newItem.frequency && newItem.due) {
+            console.log(`📅 Created recurring item with frequency: ${newItem.frequency}`);
+        }
+        
         return true;
         
     } catch (error) {
@@ -612,7 +733,7 @@ async function createNewMemory(userId, type, content, additionalData) {
     }
 }
 
-// ENHANCED storeMemory function with UPDATE detection
+// ENHANCED storeMemory function with UPDATE detection and smart parsing
 async function storeMemory(userId, type, content, additionalData = {}) {
     if (!isDbConnected) {
         console.log('⚠️ Database not connected, skipping memory storage');
@@ -638,7 +759,7 @@ async function storeMemory(userId, type, content, additionalData = {}) {
     }
 }
 
-// FIXED analyzeUserInput function with adaptive database queries
+// ENHANCED analyzeUserInput function with smart text parsing
 async function analyzeUserInput(userInput, userId) {
     try {
         // FIRST: Check if this is a config module generated input
@@ -656,6 +777,10 @@ async function analyzeUserInput(userInput, userId) {
             }
         }
 
+        // Use smart text parsing to enhance analysis
+        const parsedData = textParser.parseUserInput(userInput);
+        console.log('🧠 Smart parsing results:', parsedData);
+
         // FIXED: Get user's existing memories for context with adaptive query
         let selectColumns = ['id'];
         if (memoriesTableColumns.includes('type')) selectColumns.push('type');
@@ -663,6 +788,7 @@ async function analyzeUserInput(userInput, userId) {
         if (memoriesTableColumns.includes('content_short')) selectColumns.push('content_short');
         if (memoriesTableColumns.includes('routine_type')) selectColumns.push('routine_type');
         if (memoriesTableColumns.includes('status')) selectColumns.push('status');
+        if (memoriesTableColumns.includes('frequency')) selectColumns.push('frequency');
 
         let query = `SELECT ${selectColumns.join(', ')} FROM memories WHERE user_id = $1`;
         let params = [userId];
@@ -679,9 +805,18 @@ async function analyzeUserInput(userInput, userId) {
 
         const existingMemories = await db.query(query, params);
 
-        const analysisPrompt = `Analyze this user input for memory operations. Focus on MATHEMATICAL ACCURACY and CONSTRAINT REASONING.
+        const analysisPrompt = `Analyze this user input for memory operations. Focus on MATHEMATICAL ACCURACY and CONSTRAINT REASONING. Use the smart parsing results to enhance your analysis.
 
 User Input: "${userInput}"
+
+Smart Parsing Results:
+- Type: ${parsedData.type}
+- Priority: ${parsedData.priority}
+- Frequency: ${parsedData.frequency ? JSON.stringify(parsedData.frequency) : 'none'}
+- Due Date: ${parsedData.dueDate || 'none'}
+- Content: "${parsedData.content}"
+- Location: ${parsedData.location || 'none'}
+- Time Estimate: ${parsedData.timeEstimate || 'none'}
 
 CRITICAL CONSTRAINTS TO RESPECT:
 - Work schedules and time requirements are FIXED - cannot be changed
@@ -689,7 +824,7 @@ CRITICAL CONSTRAINTS TO RESPECT:
 - Math must be accurate (if someone needs to be at work at 7 AM, they cannot leave at 9 AM)
 
 Existing Memories Context:
-${existingMemories.rows.map(m => `ID:${m.id} [${m.type || 'unknown'}] ${m.content_short || m.content?.substring(0, 80) || 'No content'} (${m.status || 'unknown'})`).join('\n')}
+${existingMemories.rows.map(m => `ID:${m.id} [${m.type || 'unknown'}] ${m.content_short || m.content?.substring(0, 80) || 'No content'} (${m.status || 'unknown'}) ${m.frequency ? 'Freq:' + m.frequency : ''}`).join('\n')}
 
 RULES FOR ANALYSIS:
 1. If user provides detailed routine/goal information → CREATE memory operation
@@ -697,6 +832,7 @@ RULES FOR ANALYSIS:
 3. Break compound statements into separate operations
 4. Respect mathematical constraints and work backwards from fixed requirements
 5. For time-based routines, calculate realistic timing
+6. Use smart parsing results to enhance data quality
 
 Return ONLY a JSON array:
 [
@@ -709,9 +845,10 @@ Return ONLY a JSON array:
       "status": "active",
       "priority": "3",
       "routine_type": "morning",
-      "wake_up_time": "5:15 AM",
-      "work_arrival_time": "7:00 AM",
-      "required_time": "1 hour 15 minutes",
+      "frequency": "daily",
+      "due": "2025-05-27",
+      "location": "home",
+      "required_time": "30 minutes",
       "other_fields": "values"
     },
     "confidence": 0.9
@@ -1027,14 +1164,13 @@ IMPORTANT INSTRUCTIONS:
 3. **MAINTAIN CONTEXT** - Reference previous messages and constraints consistently
 4. **AVOID REPETITION** - Don't ask the same questions multiple times
 5. **BE DECISIVE** - Once constraints are clear, provide definitive solutions
+6. **RECURRING TASKS** - Understand that items with frequencies will automatically reschedule when completed
 
 Memory Operations Status:
 ${memoryResults.length > 0 ? `Processed ${memoryResults.length} memory operations - acknowledge briefly but focus on helping the user.` : 'No memory operations this message.'}`;
 
         // STEP 4: Get Claude response with enhanced context
         // Clean messages to remove extra fields that Claude API doesn't accept
-        // Our internal messages have timestamp and id fields for conversation management,
-        // but Claude's API only accepts messages with 'role' and 'content' fields
         const cleanMessages = contextInfo.messages.map(msg => ({
             role: msg.role,
             content: msg.content
@@ -1044,7 +1180,7 @@ ${memoryResults.length > 0 ? `Processed ${memoryResults.length} memory operation
             model: 'claude-3-5-sonnet-20241022',
             max_tokens: 400,
             system: systemPrompt,
-            messages: cleanMessages // Use cleaned messages instead of raw contextInfo.messages
+            messages: cleanMessages
         };
         
         const fetch = await import('node-fetch').then(m => m.default);
@@ -1085,6 +1221,45 @@ ${memoryResults.length > 0 ? `Processed ${memoryResults.length} memory operation
     } catch (error) {
         console.error('❌ Enhanced Claude error:', error);
         res.status(500).json({ error: 'Failed to communicate with Claude' });
+    }
+});
+
+// NEW: Enhanced completion endpoint that handles recurring tasks
+app.post('/api/memories/:id/complete', auth, async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const userId = req.user.userId;
+        const { completion_date } = req.body;
+        
+        console.log(`🎯 Completing item ${itemId} for user ${userId}`);
+        
+        // Verify item belongs to user
+        const checkResult = await db.query(
+            'SELECT * FROM memories WHERE id = $1 AND user_id = $2',
+            [itemId, userId]
+        );
+        
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Item not found or access denied' });
+        }
+        
+        // Handle completion with recurring logic
+        const completedItem = await recurringManager.handleItemCompletion(
+            itemId, 
+            userId, 
+            completion_date ? new Date(completion_date) : new Date()
+        );
+        
+        res.json({
+            message: 'Item completed successfully',
+            item: completedItem,
+            isRecurring: !!(completedItem.frequency && completedItem.frequency.trim()),
+            nextDue: completedItem.due
+        });
+        
+    } catch (error) {
+        console.error('❌ Completion error:', error);
+        res.status(500).json({ error: 'Failed to complete item' });
     }
 });
 
@@ -1290,7 +1465,7 @@ app.get('/api/memories/:id', auth, async (req, res) => {
     }
 });
 
-// UPDATE memory endpoint
+// UPDATE memory endpoint with recurring support
 app.put('/api/memories/:id', auth, async (req, res) => {
     try {
         if (!isDbConnected) {
@@ -1303,13 +1478,15 @@ app.put('/api/memories/:id', auth, async (req, res) => {
         
         // Verify memory belongs to user
         const checkResult = await db.query(
-            'SELECT id FROM memories WHERE id = $1 AND user_id = $2',
+            'SELECT * FROM memories WHERE id = $1 AND user_id = $2',
             [memoryId, userId]
         );
         
         if (checkResult.rows.length === 0) {
             return res.status(404).json({ error: 'Memory not found or access denied' });
         }
+        
+        const currentItem = checkResult.rows[0];
         
         // Build update query dynamically based on provided fields and existing columns
         const updateFields = [];
@@ -1346,7 +1523,17 @@ app.put('/api/memories/:id', auth, async (req, res) => {
         
         if (result.rowCount > 0) {
             console.log(`✏️ Memory updated: ID ${memoryId} for user ${userId}`);
-            res.json(result.rows[0]);
+            
+            const updatedItem = result.rows[0];
+            
+            // Handle recurring tasks if the item was completed
+            if (updateData.status === 'completed' && updatedItem.frequency && updatedItem.frequency.trim() !== '') {
+                console.log(`🔄 Triggering recurring update for completed item ${memoryId}`);
+                // Trigger immediate recurring processing
+                setTimeout(() => recurringManager.triggerDueCheck(), 1000);
+            }
+            
+            res.json(updatedItem);
         } else {
             res.status(500).json({ error: 'Failed to update memory' });
         }
@@ -1354,6 +1541,135 @@ app.put('/api/memories/:id', auth, async (req, res) => {
     } catch (error) {
         console.error('❌ Update memory error:', error);
         res.status(500).json({ error: 'Failed to update memory' });
+    }
+});
+
+// NEW: Recurring task management endpoints
+
+// Get recurring task manager status
+app.get('/api/system/recurring-status', auth, async (req, res) => {
+    try {
+        const status = recurringManager.getStatus();
+        const statistics = await recurringManager.getStatistics();
+        
+        res.json({
+            system: status,
+            statistics: statistics,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Error getting recurring status:', error);
+        res.status(500).json({ error: 'Failed to get status' });
+    }
+});
+
+// Manual trigger endpoints (for testing/debugging)
+app.post('/api/system/trigger-due-check', auth, async (req, res) => {
+    try {
+        await recurringManager.triggerDueCheck();
+        res.json({ message: 'Due date check triggered successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to trigger due check' });
+    }
+});
+
+app.post('/api/system/trigger-maintenance', auth, async (req, res) => {
+    try {
+        await recurringManager.triggerMaintenance();
+        res.json({ message: 'Maintenance triggered successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to trigger maintenance' });
+    }
+});
+
+app.post('/api/system/trigger-cleanup', auth, async (req, res) => {
+    try {
+        await recurringManager.triggerCleanup();
+        res.json({ message: 'Cleanup triggered successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to trigger cleanup' });
+    }
+});
+
+// NEW: Recurring items dashboard endpoint
+app.get('/api/memories/recurring-dashboard', auth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        
+        // Get all recurring items with their status
+        const recurringQuery = `
+            SELECT 
+                id,
+                content_short,
+                content,
+                type,
+                frequency,
+                due,
+                status,
+                performance_streak,
+                completed_date,
+                last_recurring_update,
+                priority
+            FROM memories 
+            WHERE user_id = $1 
+            AND frequency IS NOT NULL 
+            AND frequency != ''
+            AND status != 'archived'
+            ORDER BY 
+                CASE WHEN due < CURRENT_DATE THEN 0 ELSE 1 END,
+                due ASC,
+                priority DESC
+        `;
+        
+        const result = await db.query(recurringQuery, [userId]);
+        
+        // Parse and categorize the items
+        const categorized = {
+            overdue: [],
+            dueToday: [],
+            dueThisWeek: [],
+            upcoming: [],
+            completed: []
+        };
+        
+        const today = new Date();
+        const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        
+        result.rows.forEach(item => {
+            const dueDate = item.due ? new Date(item.due) : null;
+            
+            if (item.status === 'completed') {
+                categorized.completed.push(item);
+            } else if (dueDate) {
+                if (dueDate < today) {
+                    categorized.overdue.push(item);
+                } else if (dueDate.toDateString() === today.toDateString()) {
+                    categorized.dueToday.push(item);
+                } else if (dueDate <= weekFromNow) {
+                    categorized.dueThisWeek.push(item);
+                } else {
+                    categorized.upcoming.push(item);
+                }
+            } else {
+                categorized.upcoming.push(item);
+            }
+        });
+        
+        res.json({
+            categories: categorized,
+            summary: {
+                total: result.rows.length,
+                overdue: categorized.overdue.length,
+                dueToday: categorized.dueToday.length,
+                dueThisWeek: categorized.dueThisWeek.length,
+                avgStreak: result.rows.reduce((sum, item) => sum + (item.performance_streak || 0), 0) / result.rows.length
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Recurring dashboard error:', error);
+        res.status(500).json({ error: 'Failed to get recurring dashboard' });
     }
 });
 
@@ -1406,7 +1722,11 @@ app.get('/api/debug/schema', (req, res) => {
         hasTypeColumn: memoriesTableColumns.includes('type'),
         hasContentColumn: memoriesTableColumns.includes('content'),
         hasPriorityColumn: memoriesTableColumns.includes('priority'),
-        databaseConnected: isDbConnected
+        hasFrequencyColumn: memoriesTableColumns.includes('frequency'),
+        hasCompletedDateColumn: memoriesTableColumns.includes('completed_date'),
+        hasPerformanceStreakColumn: memoriesTableColumns.includes('performance_streak'),
+        databaseConnected: isDbConnected,
+        recurringManagerStatus: recurringManager.getStatus()
     });
 });
 
@@ -1586,7 +1906,7 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ REPLACE WITH THIS NEW SMART CATCH-ALL ROUTE:
+// ✅ SMART CATCH-ALL ROUTE:
 app.get('*', (req, res, next) => {
     // Don't intercept requests for static assets (files with extensions)
     if (req.path.includes('.')) {
@@ -1619,7 +1939,23 @@ setInterval(() => {
             conversationChunks.delete(userId);
         }
     }
+    
+    // Clean up expired feed caches
+    feedManager.clearExpiredCaches();
 }, 60000); // Clean up every minute
+
+// NEW: Graceful shutdown handling
+process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received, stopping background processes...');
+    recurringManager.stop();
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received, stopping background processes...');
+    recurringManager.stop();
+    process.exit(0);
+});
 
 // Start server
 app.listen(PORT, () => {
@@ -1638,33 +1974,14 @@ app.listen(PORT, () => {
     console.log('🔍 Enhanced conversation context with constraint extraction');
     console.log('🔧 FIXED: Message cleaning for Claude API compatibility');
     console.log('📱 Card interface endpoint: /api/memories/today active');
-});
-// Add this temporary debug endpoint to your server.js (after the health check endpoint)
-app.get('/api/debug/files', (req, res) => {
-    const fs = require('fs');
-    const path = require('path');
+    console.log('🔄 NEW: Recurring Task Manager with Smart Text Parsing');
+    console.log('📅 NEW: Automatic due date management and routine scheduling');
+    console.log('🧹 NEW: Automated database maintenance and cleanup');
+    console.log('📊 NEW: Enhanced analytics and recurring task dashboard');
+    console.log('⚙️ NEW: Background processes running for recurring task management');
     
-    try {
-        const rootFiles = fs.readdirSync(__dirname);
-        const publicExists = fs.existsSync(path.join(__dirname, 'public'));
-        let publicFiles = [];
-        
-        if (publicExists) {
-            publicFiles = fs.readdirSync(path.join(__dirname, 'public'));
-        }
-        
-        res.json({
-            serverPath: __dirname,
-            rootFiles: rootFiles,
-            publicDirectoryExists: publicExists,
-            publicFiles: publicFiles,
-            nodeEnv: process.env.NODE_ENV,
-            port: process.env.PORT
-        });
-    } catch (error) {
-        res.json({
-            error: error.message,
-            serverPath: __dirname
-        });
-    }
+    // Log recurring manager status
+    const recurringStatus = recurringManager.getStatus();
+    console.log(`🔄 Recurring Manager: ${recurringStatus.isRunning ? 'RUNNING' : 'STOPPED'}`);
+    console.log(`📝 Active Processes: ${recurringStatus.processes.join(', ')}`);
 });
