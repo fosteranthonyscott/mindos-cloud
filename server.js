@@ -8,8 +8,8 @@ const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 
 // NEW: Import the recurring task management modules
-const { SmartTextParsingAlgorithm, SmartTextFeedManager } = require('./smart_text_algorithm');
-const { RecurringTaskManager } = require('./recurring_task_manager');
+const { SmartTextParsingAlgorithm, SmartTextFeedManager } = require('./smart-text-algorithm');
+const { RecurringTaskManager } = require('./recurring-task-manager');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
