@@ -3043,6 +3043,12 @@ Please be helpful, contextual, and focused on this specific item.`;
             try {
                 const itemContext = buildItemContext(item);
                 
+                // Prepare messages array with system message first
+                const messagesForAPI = [
+                    { role: 'system', content: itemContext },
+                    ...aiChatHistory
+                ];
+                
                 const response = await fetch('/api/claude/chat', {
                     method: 'POST',
                     headers: {
@@ -3052,7 +3058,7 @@ Please be helpful, contextual, and focused on this specific item.`;
                     body: JSON.stringify({
                         itemId: item.id,
                         itemContext: itemContext,
-                        messages: aiChatHistory
+                        messages: messagesForAPI
                     })
                 });
                 
