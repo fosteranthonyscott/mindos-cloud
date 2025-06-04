@@ -2195,6 +2195,7 @@
         let hasMoreItems = true;
         let currentPage = 0;
         const ITEMS_PER_PAGE = 10;
+        let scrollDebounceTimer = null;
         
         // Feed ordering state - already declared at the beginning
         let notesVisibility = JSON.parse(localStorage.getItem('fullbrain_notes_visibility') || '{}');
@@ -3388,14 +3389,20 @@
                 // Save scroll position
                 saveScrollPosition();
                 
-                // Load more items when near bottom
-                const scrollHeight = feedScroll.scrollHeight;
-                const scrollTop = feedScroll.scrollTop;
-                const clientHeight = feedScroll.clientHeight;
-                
-                if (scrollHeight - scrollTop - clientHeight < 1000) {
-                    loadMoreItems();
-                }
+                // Debounce the load more check
+                clearTimeout(scrollDebounceTimer);
+                scrollDebounceTimer = setTimeout(() => {
+                    // Load more items when near bottom
+                    const scrollHeight = feedScroll.scrollHeight;
+                    const scrollTop = feedScroll.scrollTop;
+                    const clientHeight = feedScroll.clientHeight;
+                    
+                    // Reduced trigger distance from 1000 to 200 pixels
+                    // Also check if we're not already loading and have more items
+                    if (scrollHeight - scrollTop - clientHeight < 200 && !isLoadingMore && hasMoreItems) {
+                        loadMoreItems();
+                    }
+                }, 150); // 150ms debounce delay
             });
             
             // Setup scroll position tracking
