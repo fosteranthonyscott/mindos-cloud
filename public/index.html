@@ -2619,6 +2619,9 @@
         let draggedElement = null;
         let touchItem = null;
         let touchOffset = { x: 0, y: 0 };
+        let longPressTimer = null;
+        let isDragging = false;
+        let touchStartPos = { x: 0, y: 0 };
         
         function handleDragStart(e) {
             draggedElement = this;
@@ -2676,71 +2679,129 @@
         function handleTouchStart(e) {
             const touch = e.touches[0];
             touchItem = this;
+            isDragging = false;
+            
+            // Store initial touch position
+            touchStartPos.x = touch.clientX;
+            touchStartPos.y = touch.clientY;
             
             const rect = this.getBoundingClientRect();
             touchOffset.x = touch.clientX - rect.left;
             touchOffset.y = touch.clientY - rect.top;
             
-            // Clone the element for dragging
-            const clone = this.cloneNode(true);
-            clone.style.position = 'fixed';
-            clone.style.opacity = '0.8';
-            clone.style.pointerEvents = 'none';
-            clone.style.zIndex = '9999';
-            clone.style.width = rect.width + 'px';
-            clone.id = 'touch-drag-clone';
+            // Start long press timer
+            longPressTimer = setTimeout(() => {
+                // Long press detected, start dragging
+                isDragging = true;
+                
+                // Add haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+                
+                // Clone the element for dragging
+                const clone = this.cloneNode(true);
+                clone.style.position = 'fixed';
+                clone.style.opacity = '0.8';
+                clone.style.pointerEvents = 'none';
+                clone.style.zIndex = '9999';
+                clone.style.width = rect.width + 'px';
+                clone.style.left = (touch.clientX - touchOffset.x) + 'px';
+                clone.style.top = (touch.clientY - touchOffset.y) + 'px';
+                clone.id = 'touch-drag-clone';
+                
+                document.body.appendChild(clone);
+                
+                // Make the original element semi-transparent
+                this.style.opacity = '0.4';
+                
+                showToast('Drag to reorder', 'info');
+            }, 500); // 500ms for long press
             
-            document.body.appendChild(clone);
-            
-            // Add touch move and end handlers
+            // Add touch event handlers
             document.addEventListener('touchmove', handleTouchMove, { passive: false });
             document.addEventListener('touchend', handleTouchEnd);
-            
-            this.style.opacity = '0.4';
+            document.addEventListener('touchcancel', handleTouchCancel);
         }
         
         function handleTouchMove(e) {
-            e.preventDefault();
-            
             const touch = e.touches[0];
-            const clone = document.getElementById('touch-drag-clone');
             
-            if (clone) {
-                clone.style.left = (touch.clientX - touchOffset.x) + 'px';
-                clone.style.top = (touch.clientY - touchOffset.y) + 'px';
+            // Check if finger moved too much (cancel long press if not dragging yet)
+            if (!isDragging && longPressTimer) {
+                const moveThreshold = 10; // pixels
+                const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+                const deltaY = Math.abs(touch.clientY - touchStartPos.y);
                 
-                // Find element under touch point
-                clone.style.display = 'none';
-                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-                clone.style.display = '';
+                if (deltaX > moveThreshold || deltaY > moveThreshold) {
+                    // Movement detected, cancel long press
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            }
+            
+            // Only prevent default and handle dragging if we're actually dragging
+            if (isDragging) {
+                e.preventDefault();
                 
-                if (elementBelow && elementBelow.classList.contains('feed-card')) {
-                    const afterElement = getDragAfterElement(document.getElementById('feedScroll'), touch.clientY);
+                const clone = document.getElementById('touch-drag-clone');
+                
+                if (clone) {
+                    clone.style.left = (touch.clientX - touchOffset.x) + 'px';
+                    clone.style.top = (touch.clientY - touchOffset.y) + 'px';
                     
-                    if (afterElement == null) {
-                        document.getElementById('feedScroll').appendChild(touchItem);
-                    } else {
-                        document.getElementById('feedScroll').insertBefore(touchItem, afterElement);
+                    // Find element under touch point
+                    clone.style.display = 'none';
+                    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                    clone.style.display = '';
+                    
+                    if (elementBelow && elementBelow.classList.contains('feed-card')) {
+                        const afterElement = getDragAfterElement(document.getElementById('feedScroll'), touch.clientY);
+                        
+                        if (afterElement == null) {
+                            document.getElementById('feedScroll').appendChild(touchItem);
+                        } else {
+                            document.getElementById('feedScroll').insertBefore(touchItem, afterElement);
+                        }
                     }
                 }
             }
         }
         
         function handleTouchEnd(e) {
+            // Clear the long press timer
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            
+            // Clean up clone
             const clone = document.getElementById('touch-drag-clone');
             if (clone) {
                 clone.remove();
             }
             
+            // Restore opacity and update order if we were dragging
             if (touchItem) {
                 touchItem.style.opacity = '';
-                updateFeedOrder();
+                if (isDragging) {
+                    updateFeedOrder();
+                }
             }
             
+            // Reset state
             touchItem = null;
+            isDragging = false;
             
+            // Remove event listeners
             document.removeEventListener('touchmove', handleTouchMove);
             document.removeEventListener('touchend', handleTouchEnd);
+            document.removeEventListener('touchcancel', handleTouchCancel);
+        }
+        
+        function handleTouchCancel(e) {
+            // Handle touch cancel same as touch end
+            handleTouchEnd(e);
         }
         
         function getDragAfterElement(container, y) {
