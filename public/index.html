@@ -3220,7 +3220,7 @@
                 }
 
                 console.log('🔄 Loading all items including completed...');
-                const response = await fetch('/api/memories', {
+                const response = await fetch('/api/memories?include_completed=true&limit=500', {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
