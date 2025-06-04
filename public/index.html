@@ -3043,6 +3043,13 @@ Please be helpful, contextual, and focused on this specific item.`;
             try {
                 const itemContext = buildItemContext(item);
                 
+                // Debug logging
+                console.log('🔍 Sending bubble message:', {
+                    itemId: item.id,
+                    message: message,
+                    historyLength: aiChatHistory.length
+                });
+                
                 // Prepare messages array with system message first
                 const messagesForAPI = [
                     { role: 'system', content: itemContext },
@@ -3078,7 +3085,9 @@ Please be helpful, contextual, and focused on this specific item.`;
                     
                 } else {
                     const errorData = await response.json();
-                    addBubbleMessage(itemId, 'assistant', 'Sorry, I encountered an error. Please try again.');
+                    console.error('Bubble API error:', errorData);
+                    const errorMessage = errorData.details || errorData.error || 'Unknown error';
+                    addBubbleMessage(itemId, 'assistant', `Sorry, I encountered an error: ${errorMessage}. Please try again.`);
                 }
                 
             } catch (error) {
