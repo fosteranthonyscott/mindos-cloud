@@ -2085,6 +2085,11 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve test files in development
+if (process.env.NODE_ENV !== 'production') {
+    app.use('/test', express.static(__dirname));
+}
+
 // ✅ SMART CATCH-ALL ROUTE:
 app.get('*', (req, res, next) => {
     // Don't intercept requests for static assets (files with extensions)

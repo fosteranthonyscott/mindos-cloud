@@ -2654,6 +2654,53 @@
                 console.log('Use: debugEditItem(itemId) to debug a specific item');
             }
         };
+        
+        // Debug completion function
+        window.debugCompletion = async function(itemId) {
+            console.log('🔍 Testing completion for item:', itemId);
+            
+            if (!authToken) {
+                console.error('❌ Not logged in!');
+                return;
+            }
+            
+            try {
+                console.log('📤 Sending completion request...');
+                const response = await fetch(`/api/memories/${itemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ status: 'completed' })
+                });
+                
+                console.log('📥 Response status:', response.status);
+                const responseText = await response.text();
+                console.log('📥 Response:', responseText);
+                
+                if (response.ok) {
+                    console.log('✅ Success! Item marked as completed');
+                    const data = JSON.parse(responseText);
+                    console.log('Updated item:', data);
+                } else {
+                    console.error('❌ Failed:', responseText);
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+            }
+        };
+        
+        // List all items with IDs
+        window.listItems = function() {
+            console.log('📋 Your items:');
+            feedItems.forEach((item, index) => {
+                console.log(`${index + 1}. ID: ${item.id} - "${item.content_short || item.content}" (Status: ${item.status})`);
+            });
+            if (feedItems.length === 0) {
+                console.log('No items found. Try refreshing the feed.');
+            }
+        };
 
         window.testEdit = async function(itemId) {
             console.log('🧪 Testing edit for item:', itemId);
