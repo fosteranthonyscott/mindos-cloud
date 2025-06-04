@@ -2517,9 +2517,7 @@
                     if (databaseSchema.memoriesTableColumns.includes('completed')) {
                         updateData.completed = today;
                     }
-                    if (databaseSchema.memoriesTableColumns.includes('modified')) {
-                        updateData.modified = today;
-                    }
+                    // Don't send modified - server handles this automatically
                 }
                 
                 const response = await fetch(`/api/memories/${itemId}`, {

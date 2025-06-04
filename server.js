@@ -1626,12 +1626,16 @@ app.put('/api/memories/:id', auth, async (req, res) => {
         let paramIndex = 1;
         
         Object.entries(processedData).forEach(([key, value]) => {
+            // Skip modified field here if it exists - we'll handle it separately
+            if (key === 'modified' && memoriesTableColumns.includes('modified')) {
+                return; // Skip this iteration
+            }
             updateFields.push(`${key} = $${paramIndex}`);
             updateValues.push(value);
             paramIndex++;
         });
         
-        // Add modified timestamp if column exists
+        // Add modified timestamp if column exists (always use CURRENT_DATE)
         if (memoriesTableColumns.includes('modified')) {
             updateFields.push(`modified = CURRENT_DATE`);
         }
