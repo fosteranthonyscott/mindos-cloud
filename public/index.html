@@ -2499,25 +2499,74 @@
                 // Try enhanced endpoint first, fallback to basic
                 // IMPORTANT: Exclude completed items from the feed
                 const offset = currentPage * ITEMS_PER_PAGE;
-                let response = await fetch(`/api/memories/enhanced?limit=${ITEMS_PER_PAGE}&offset=${offset}&sort_by=priority&sort_order=desc&exclude_completed=true`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
+                let response;
+                let data = null;
+                let errorDetails = [];
                 
-                let data;
-                if (response.ok) {
-                    data = await response.json();
-                } else {
-                    // Fallback to basic endpoint
-                    response = await fetch(`/api/memories?limit=${ITEMS_PER_PAGE}`, {
+                // Try enhanced endpoint first
+                console.log(`🔄 Attempting to load items from enhanced endpoint...`);
+                try {
+                    response = await fetch(`/api/memories/enhanced?limit=${ITEMS_PER_PAGE}&offset=${offset}&sort_by=priority&sort_order=desc&exclude_completed=true`, {
                         headers: { 'Authorization': `Bearer ${authToken}` }
                     });
+                    
+                    console.log(`📡 Enhanced endpoint response: ${response.status}`);
+                    
                     if (response.ok) {
-                        const memories = await response.json();
-                        data = { memories: memories.slice(offset, offset + ITEMS_PER_PAGE) };
+                        // Check if response is JSON
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            data = await response.json();
+                            console.log('✅ Successfully loaded from enhanced endpoint');
+                        } else {
+                            const text = await response.text();
+                            console.error('❌ Enhanced endpoint returned non-JSON response:', text.substring(0, 200));
+                            errorDetails.push(`Enhanced endpoint returned ${contentType || 'unknown'} instead of JSON`);
+                        }
+                    } else {
+                        const errorText = await response.text();
+                        console.error(`❌ Enhanced endpoint failed with ${response.status}:`, errorText.substring(0, 200));
+                        errorDetails.push(`Enhanced endpoint: ${response.status} ${response.statusText}`);
+                    }
+                } catch (enhancedError) {
+                    console.error('❌ Enhanced endpoint network error:', enhancedError);
+                    errorDetails.push(`Enhanced endpoint network error: ${enhancedError.message}`);
+                }
+                
+                // Fallback to basic endpoint if enhanced failed
+                if (!data) {
+                    console.log('🔄 Falling back to basic endpoint...');
+                    try {
+                        response = await fetch(`/api/memories?limit=${ITEMS_PER_PAGE}`, {
+                            headers: { 'Authorization': `Bearer ${authToken}` }
+                        });
+                        
+                        console.log(`📡 Basic endpoint response: ${response.status}`);
+                        
+                        if (response.ok) {
+                            // Check if response is JSON
+                            const contentType = response.headers.get('content-type');
+                            if (contentType && contentType.includes('application/json')) {
+                                const memories = await response.json();
+                                data = { memories: memories.slice(offset, offset + ITEMS_PER_PAGE) };
+                                console.log('✅ Successfully loaded from basic endpoint');
+                            } else {
+                                const text = await response.text();
+                                console.error('❌ Basic endpoint returned non-JSON response:', text.substring(0, 200));
+                                errorDetails.push(`Basic endpoint returned ${contentType || 'unknown'} instead of JSON`);
+                            }
+                        } else {
+                            const errorText = await response.text();
+                            console.error(`❌ Basic endpoint failed with ${response.status}:`, errorText.substring(0, 200));
+                            errorDetails.push(`Basic endpoint: ${response.status} ${response.statusText}`);
+                        }
+                    } catch (basicError) {
+                        console.error('❌ Basic endpoint network error:', basicError);
+                        errorDetails.push(`Basic endpoint network error: ${basicError.message}`);
                     }
                 }
                 
-                if (response.ok && data) {
+                if (data && data.memories) {
                     const newItems = data.memories || [];
                     
                     if (newItems.length === 0) {
@@ -2562,11 +2611,33 @@
                         }
                     }
                 } else {
-                    showToast('Error loading items', 'error');
+                    console.error('❌ Both endpoints failed. Error details:', errorDetails);
+                    showToast('Unable to load items. Please check your connection and try again.', 'error');
+                    
+                    // Show a retry button in the feed
+                    const feedScroll = document.getElementById('feedScroll');
+                    if (feedItems.length === 0) {
+                        feedScroll.innerHTML = `
+                            <div class="error-container" style="text-align: center; padding: 2rem;">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 1rem; display: block;"></i>
+                                <h3 style="color: #f44336; margin-bottom: 1rem;">Failed to Load Items</h3>
+                                <p style="margin-bottom: 1rem;">Both API endpoints are unavailable.</p>
+                                <details style="margin-bottom: 1rem; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
+                                    <summary style="cursor: pointer; color: #666;">Error Details</summary>
+                                    <ul style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
+                                        ${errorDetails.map(err => `<li>${err}</li>`).join('')}
+                                    </ul>
+                                </details>
+                                <button onclick="loadInitialFeed()" class="retry-btn" style="padding: 0.5rem 1rem; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    <i class="fas fa-redo"></i> Retry
+                                </button>
+                            </div>
+                        `;
+                    }
                 }
             } catch (error) {
-                console.error('Error loading more items:', error);
-                showToast('Network error loading items', 'error');
+                console.error('❌ Unexpected error loading items:', error);
+                showToast('Unexpected error loading items', 'error');
             } finally {
                 isLoadingMore = false;
                 hideLoadingIndicator();
@@ -3148,11 +3219,36 @@
                     loadAllBtn.style.display = 'none';
                 }
 
+                console.log('🔄 Loading all items including completed...');
                 const response = await fetch('/api/memories', {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
+                console.log(`📡 Load all response: ${response.status}`);
+                
                 if (response.ok) {
+                    // Check if response is JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        const text = await response.text();
+                        console.error('❌ API returned non-JSON response:', text.substring(0, 200));
+                        showToast(`API returned ${contentType || 'unknown'} instead of JSON`, 'error');
+                        
+                        // Show error in UI
+                        const feedScroll = document.getElementById('feedScroll');
+                        feedScroll.innerHTML = `
+                            <div class="error-container" style="text-align: center; padding: 2rem;">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 1rem; display: block;"></i>
+                                <h3 style="color: #f44336; margin-bottom: 1rem;">Invalid Response Format</h3>
+                                <p style="margin-bottom: 1rem;">The API returned ${contentType || 'unknown'} instead of JSON data.</p>
+                                <button onclick="loadInitialFeed()" class="retry-btn" style="padding: 0.5rem 1rem; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    <i class="fas fa-redo"></i> Back to Feed
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
                     const allItems = await response.json();
                     
                     // Clear existing feed
@@ -3210,11 +3306,56 @@
                     
                     showToast('All items loaded, including completed ones', 'success');
                 } else {
-                    showToast('Error loading all items', 'error');
+                    // Handle non-ok response
+                    const errorText = await response.text();
+                    console.error(`❌ Failed to load all items. Status: ${response.status}`, errorText.substring(0, 200));
+                    showToast(`Failed to load items: ${response.status} ${response.statusText}`, 'error');
+                    
+                    // Show error in UI
+                    const feedScroll = document.getElementById('feedScroll');
+                    if (feedItems.length === 0) {
+                        feedScroll.innerHTML = `
+                            <div class="error-container" style="text-align: center; padding: 2rem;">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 1rem; display: block;"></i>
+                                <h3 style="color: #f44336; margin-bottom: 1rem;">Failed to Load Items</h3>
+                                <p style="margin-bottom: 1rem;">Server returned error: ${response.status} ${response.statusText}</p>
+                                <button onclick="loadInitialFeed()" class="retry-btn" style="padding: 0.5rem 1rem; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    <i class="fas fa-redo"></i> Retry
+                                </button>
+                            </div>
+                        `;
+                    }
+                    
+                    // Show the load all button again
+                    const loadAllBtn = document.getElementById('loadAllButton');
+                    if (loadAllBtn) {
+                        loadAllBtn.style.display = 'block';
+                    }
                 }
             } catch (error) {
-                console.error('Error loading all items:', error);
-                showToast('Network error loading items', 'error');
+                console.error('❌ Unexpected error loading all items:', error);
+                showToast('Unexpected error loading items', 'error');
+                
+                // Show error in UI if feed is empty
+                const feedScroll = document.getElementById('feedScroll');
+                if (feedItems.length === 0) {
+                    feedScroll.innerHTML = `
+                        <div class="error-container" style="text-align: center; padding: 2rem;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 1rem; display: block;"></i>
+                            <h3 style="color: #f44336; margin-bottom: 1rem;">Connection Error</h3>
+                            <p style="margin-bottom: 1rem;">Unable to connect to the server.</p>
+                            <button onclick="loadInitialFeed()" class="retry-btn" style="padding: 0.5rem 1rem; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                <i class="fas fa-redo"></i> Retry
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                // Show the load all button again
+                const loadAllBtn = document.getElementById('loadAllButton');
+                if (loadAllBtn) {
+                    loadAllBtn.style.display = 'block';
+                }
             } finally {
                 hideLoadingIndicator();
                 updateScrollIndicator();
