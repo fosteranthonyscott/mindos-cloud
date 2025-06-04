@@ -275,6 +275,94 @@
             position: relative;
         }
 
+        /* Card reordering arrows */
+        .card-reorder-controls {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+        }
+
+        .feed-card:hover .card-reorder-controls {
+            opacity: 1;
+        }
+
+        .reorder-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .reorder-btn:hover {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+            transform: scale(1.1);
+        }
+
+        .reorder-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Notes visibility toggle */
+        .notes-visibility-toggle {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: #667eea;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            opacity: 0.6;
+        }
+
+        .card-notes-container:hover .notes-visibility-toggle {
+            opacity: 1;
+        }
+
+        .notes-visibility-toggle:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .card-notes-container.collapsed .notes-content {
+            display: none;
+        }
+
+        .card-notes-container.collapsed {
+            padding: 1rem 2.5rem;
+            min-height: auto;
+        }
+
+        .card-notes-container.collapsed::after {
+            content: "Notes hidden - click eye to expand";
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+        }
+
         .card-type-badge {
             position: absolute;
             top: 2rem;
@@ -295,6 +383,45 @@
             right: 2rem;
             font-size: 1.5rem;
             color: #ffd700;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        /* Mobile layout fixes for overlapping elements */
+        @media (max-width: 768px) {
+            .card-content-area {
+                padding: 2rem 1rem;
+            }
+            
+            .card-type-badge {
+                position: static;
+                display: inline-block;
+                margin-bottom: 0.5rem;
+                margin-right: 0.5rem;
+            }
+            
+            .card-priority {
+                position: static;
+                display: inline-block;
+                float: right;
+                margin-bottom: 0.5rem;
+            }
+            
+            .card-main-content {
+                clear: both;
+                padding-top: 0.5rem;
+            }
+            
+            .card-reorder-controls {
+                left: 0.5rem;
+                gap: 0.25rem;
+            }
+            
+            .reorder-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+            }
         }
 
         .card-brain-logo {
@@ -1813,6 +1940,10 @@
         let hasMoreItems = true;
         let currentPage = 0;
         const ITEMS_PER_PAGE = 10;
+        
+        // Feed ordering state
+        let customFeedOrder = JSON.parse(localStorage.getItem('mindos_feed_order') || '[]');
+        let notesVisibility = JSON.parse(localStorage.getItem('mindos_notes_visibility') || '{}');
 
         // UPDATED: Unified field configuration
         const CORE_FIELDS = ['content', 'type', 'status', 'priority'];
@@ -2140,7 +2271,21 @@
                         showEndOfFeed();
                     } else {
                         feedItems = [...feedItems, ...newItems];
-                        appendFeedCards(newItems);
+                        
+                        // Apply custom order if this is the first page
+                        if (currentPage === 0) {
+                            applyCustomOrder();
+                            appendFeedCards(feedItems);
+                            
+                            // Restore scroll position and visibility states
+                            setTimeout(() => {
+                                restoreScrollPosition();
+                                applyNotesVisibility();
+                            }, 100);
+                        } else {
+                            appendFeedCards(newItems);
+                        }
+                        
                         currentPage++;
                         
                         // Check if we have more items
@@ -2267,6 +2412,15 @@
             };
             
             card.innerHTML = `
+                <div class="card-reorder-controls">
+                    <button class="reorder-btn" onclick="moveCard(${item.id}, -1)" title="Move up" ${index === 0 ? 'disabled' : ''}>
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button class="reorder-btn" onclick="moveCard(${item.id}, 1)" title="Move down" ${index === feedItems.length - 1 ? 'disabled' : ''}>
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                </div>
+                
                 <div class="card-content-area">
                     <div class="card-type-badge" style="background: ${typeColors[item.type] || '#667eea'};">
                         ${item.type || 'item'}
@@ -2276,7 +2430,10 @@
                     <div class="card-main-content">
                         <h2 class="card-title">${item.content_short || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
                         ${item.notes ? `
-                            <div class="card-notes-container" data-item-id="${item.id}">
+                            <div class="card-notes-container" data-item-id="${item.id}" id="notes-container-${item.id}">
+                                <button class="notes-visibility-toggle" onclick="toggleNotesVisibility(${item.id})" title="Toggle notes visibility">
+                                    <i class="fas fa-eye" id="notes-eye-${item.id}"></i>
+                                </button>
                                 <button class="notes-edit-btn" onclick="enableNotesEdit(${item.id})" title="Edit notes">
                                     <i class="fas fa-pencil-alt"></i>
                                 </button>
@@ -2379,12 +2536,32 @@
             }
         }
 
+        // Apply saved notes visibility states
+        function applyNotesVisibility() {
+            Object.entries(notesVisibility).forEach(([itemId, isCollapsed]) => {
+                if (isCollapsed) {
+                    const container = document.getElementById(`notes-container-${itemId}`);
+                    const eyeIcon = document.getElementById(`notes-eye-${itemId}`);
+                    
+                    if (container) {
+                        container.classList.add('collapsed');
+                        if (eyeIcon) {
+                            eyeIcon.className = 'fas fa-eye-slash';
+                        }
+                    }
+                }
+            });
+        }
+
         // NEW: Continuous Scroll Management
         function setupContinuousScrollListener() {
             const feedScroll = document.getElementById('feedScroll');
             
             feedScroll.addEventListener('scroll', () => {
                 updateScrollIndicator();
+                
+                // Save scroll position
+                saveScrollPosition();
                 
                 // Load more items when near bottom
                 const scrollHeight = feedScroll.scrollHeight;
@@ -2395,6 +2572,9 @@
                     loadMoreItems();
                 }
             });
+            
+            // Setup scroll position tracking
+            setupScrollPositionTracking();
         }
 
         function updateScrollIndicator() {
@@ -3874,6 +4054,124 @@ Please be helpful, contextual, and focused on this specific item.`;
             const item = feedItems.find(i => i.id == itemId);
             if (item) {
                 textarea.value = item.notes || '';
+            }
+        }
+
+        // Toggle notes visibility
+        function toggleNotesVisibility(itemId) {
+            const container = document.getElementById(`notes-container-${itemId}`);
+            const eyeIcon = document.getElementById(`notes-eye-${itemId}`);
+            
+            if (container) {
+                container.classList.toggle('collapsed');
+                const isCollapsed = container.classList.contains('collapsed');
+                
+                // Update icon
+                if (eyeIcon) {
+                    eyeIcon.className = isCollapsed ? 'fas fa-eye-slash' : 'fas fa-eye';
+                }
+                
+                // Save state
+                notesVisibility[itemId] = isCollapsed;
+                localStorage.setItem('mindos_notes_visibility', JSON.stringify(notesVisibility));
+                
+                showToast(isCollapsed ? 'Notes hidden' : 'Notes shown', 'info');
+            }
+        }
+        
+        // Move card up or down in feed
+        function moveCard(itemId, direction) {
+            const currentIndex = feedItems.findIndex(item => item.id == itemId);
+            if (currentIndex === -1) return;
+            
+            const newIndex = currentIndex + direction;
+            if (newIndex < 0 || newIndex >= feedItems.length) return;
+            
+            // Swap items
+            [feedItems[currentIndex], feedItems[newIndex]] = [feedItems[newIndex], feedItems[currentIndex]];
+            
+            // Update custom order
+            customFeedOrder = feedItems.map(item => item.id);
+            localStorage.setItem('mindos_feed_order', JSON.stringify(customFeedOrder));
+            
+            // Rebuild feed display
+            const feedScroll = document.getElementById('feedScroll');
+            const scrollTop = feedScroll.scrollTop;
+            
+            // Clear and rebuild
+            feedScroll.innerHTML = '';
+            appendFeedCards(feedItems);
+            
+            // Restore scroll position
+            feedScroll.scrollTop = scrollTop;
+            
+            // Smooth scroll to moved card
+            setTimeout(() => {
+                const movedCard = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (movedCard) {
+                    movedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Flash animation
+                    movedCard.style.transition = 'all 0.3s ease';
+                    movedCard.style.boxShadow = '0 0 30px rgba(102, 126, 234, 0.8)';
+                    setTimeout(() => {
+                        movedCard.style.boxShadow = '';
+                    }, 600);
+                }
+            }, 100);
+        }
+        
+        // Apply custom feed order
+        function applyCustomOrder() {
+            if (customFeedOrder.length === 0) return;
+            
+            const orderedItems = [];
+            const remainingItems = [...feedItems];
+            
+            // First add items in custom order
+            customFeedOrder.forEach(id => {
+                const index = remainingItems.findIndex(item => item.id == id);
+                if (index !== -1) {
+                    orderedItems.push(remainingItems[index]);
+                    remainingItems.splice(index, 1);
+                }
+            });
+            
+            // Add any remaining items
+            orderedItems.push(...remainingItems);
+            
+            feedItems = orderedItems;
+        }
+        
+        // Save and restore scroll position
+        function saveScrollPosition() {
+            const feedScroll = document.getElementById('feedScroll');
+            if (feedScroll) {
+                localStorage.setItem('mindos_scroll_position', feedScroll.scrollTop);
+            }
+        }
+        
+        function restoreScrollPosition() {
+            const savedPosition = localStorage.getItem('mindos_scroll_position');
+            if (savedPosition) {
+                const feedScroll = document.getElementById('feedScroll');
+                if (feedScroll) {
+                    feedScroll.scrollTop = parseInt(savedPosition);
+                }
+            }
+        }
+        
+        // Add scroll position saving
+        function setupScrollPositionTracking() {
+            const feedScroll = document.getElementById('feedScroll');
+            if (feedScroll) {
+                let scrollTimeout;
+                feedScroll.addEventListener('scroll', () => {
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(() => {
+                        saveScrollPosition();
+                    }, 300);
+                });
             }
         }
 
