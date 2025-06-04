@@ -2275,7 +2275,19 @@
                         // Apply custom order if this is the first page
                         if (currentPage === 0) {
                             applyCustomOrder();
-                            appendFeedCards(feedItems);
+                            
+                            // Clear feed and rebuild with correct order
+                            const feedScroll = document.getElementById('feedScroll');
+                            feedScroll.innerHTML = '';
+                            
+                            feedItems.forEach((item, index) => {
+                                const card = createFeedCard(item, index);
+                                feedScroll.appendChild(card);
+                            });
+                            
+                            // Update counters
+                            document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
+                            document.getElementById('totalItemsCount').textContent = feedItems.length;
                             
                             // Restore scroll position and visibility states
                             setTimeout(() => {
@@ -4081,11 +4093,21 @@ Please be helpful, contextual, and focused on this specific item.`;
         
         // Move card up or down in feed
         function moveCard(itemId, direction) {
+            console.log('moveCard called:', itemId, direction);
+            
             const currentIndex = feedItems.findIndex(item => item.id == itemId);
-            if (currentIndex === -1) return;
+            if (currentIndex === -1) {
+                console.log('Item not found in feedItems');
+                return;
+            }
             
             const newIndex = currentIndex + direction;
-            if (newIndex < 0 || newIndex >= feedItems.length) return;
+            if (newIndex < 0 || newIndex >= feedItems.length) {
+                console.log('New index out of bounds:', newIndex);
+                return;
+            }
+            
+            console.log(`Moving item from index ${currentIndex} to ${newIndex}`);
             
             // Swap items
             [feedItems[currentIndex], feedItems[newIndex]] = [feedItems[newIndex], feedItems[currentIndex]];
@@ -4098,9 +4120,16 @@ Please be helpful, contextual, and focused on this specific item.`;
             const feedScroll = document.getElementById('feedScroll');
             const scrollTop = feedScroll.scrollTop;
             
-            // Clear and rebuild
+            // Clear and rebuild with correct indices
             feedScroll.innerHTML = '';
-            appendFeedCards(feedItems);
+            feedItems.forEach((item, index) => {
+                const card = createFeedCard(item, index);
+                feedScroll.appendChild(card);
+            });
+            
+            // Update counters
+            document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
+            document.getElementById('totalItemsCount').textContent = feedItems.length;
             
             // Restore scroll position
             feedScroll.scrollTop = scrollTop;
