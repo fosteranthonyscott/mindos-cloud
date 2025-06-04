@@ -3148,7 +3148,9 @@
                     loadAllBtn.style.display = 'none';
                 }
 
-                const response = await fetch('/api/items');
+                const response = await fetch('/api/memories', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
                 
                 if (response.ok) {
                     const allItems = await response.json();
