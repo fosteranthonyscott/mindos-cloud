@@ -1349,6 +1349,132 @@
                 padding: 0.75rem 0.5rem;
             }
         }
+        /* Enhanced Notes Display Formatting */
+        .card-notes-container {
+            text-align: left;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 400px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+        }
+
+        .card-notes-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .card-notes-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .card-notes-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .notes-paragraph {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 1rem;
+        }
+
+        .notes-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 1.5rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .notes-header {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #764ba2;
+            margin: 1.2rem 0 0.8rem 0;
+        }
+
+        .notes-subheader {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #f093fb;
+            margin: 1rem 0 0.6rem 0;
+        }
+
+        .notes-ordered-list,
+        .notes-unordered-list {
+            margin: 1rem 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .notes-numbered-item,
+        .notes-bullet-item {
+            position: relative;
+            margin-bottom: 0.8rem;
+            padding-left: 2rem;
+            line-height: 1.6;
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .notes-numbered-item .notes-number {
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .notes-bullet-item::before {
+            content: "•";
+            position: absolute;
+            left: 0.5rem;
+            top: 0;
+            color: #764ba2;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .card-notes-container strong {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .card-notes-container em {
+            color: #f093fb;
+            font-style: italic;
+        }
+
+        .card-notes-container br {
+            display: block;
+            margin: 0.3rem 0;
+        }
+
+        /* Responsive adjustments for notes */
+        @media (max-width: 768px) {
+            .card-notes-container {
+                padding: 1rem;
+                margin: 1rem 0;
+            }
+
+            .notes-paragraph {
+                font-size: 1rem;
+                line-height: 1.6;
+            }
+
+            .notes-numbered-item,
+            .notes-bullet-item {
+                font-size: 0.95rem;
+                padding-left: 1.5rem;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -1907,6 +2033,51 @@
             document.getElementById('totalItemsCount').textContent = feedItems.length;
         }
 
+        // Format notes for better display with proper spacing and structure
+        function formatNotesForDisplay(notes) {
+            if (!notes) return '';
+            
+            // Convert markdown-style formatting to HTML
+            let formatted = notes
+                // Headers
+                .replace(/^### (.+)$/gm, '<h4 class="notes-subheader">$1</h4>')
+                .replace(/^## (.+)$/gm, '<h3 class="notes-header">$1</h3>')
+                .replace(/^# (.+)$/gm, '<h2 class="notes-title">$1</h2>')
+                
+                // Lists
+                .replace(/^\d+\.\s+(.+)$/gm, '<li class="notes-numbered-item"><span class="notes-number">$&</span></li>')
+                .replace(/^[-•*]\s+(.+)$/gm, '<li class="notes-bullet-item">$1</li>')
+                
+                // Bold and italic
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                
+                // Line breaks
+                .replace(/\n\n/g, '</p><p class="notes-paragraph">')
+                .replace(/\n/g, '<br>');
+            
+            // Wrap lists
+            formatted = formatted.replace(/(<li class="notes-numbered-item">[\s\S]+?<\/li>)/g, function(match) {
+                return '<ol class="notes-ordered-list">' + match + '</ol>';
+            });
+            
+            formatted = formatted.replace(/(<li class="notes-bullet-item">[\s\S]+?<\/li>)/g, function(match) {
+                return '<ul class="notes-unordered-list">' + match + '</ul>';
+            });
+            
+            // Clean up consecutive list tags
+            formatted = formatted
+                .replace(/<\/ol>\s*<ol class="notes-ordered-list">/g, '')
+                .replace(/<\/ul>\s*<ul class="notes-unordered-list">/g, '');
+            
+            // Wrap in paragraph if not already structured
+            if (!formatted.includes('<h') && !formatted.includes('<ul') && !formatted.includes('<ol')) {
+                formatted = '<p class="notes-paragraph">' + formatted + '</p>';
+            }
+            
+            return formatted;
+        }
+
         function createFeedCard(item, index) {
             const card = document.createElement('div');
             card.className = 'feed-card';
@@ -1941,7 +2112,13 @@
                     
                     <div class="card-main-content">
                         <h2 class="card-title">${item.content_short || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
-                        <p class="card-description">${item.notes || (item.content ? item.content.substring(100, 300) : 'No additional details')}</p>
+                        ${item.notes ? `
+                            <div class="card-notes-container">
+                                ${formatNotesForDisplay(item.notes)}
+                            </div>
+                        ` : `
+                            <p class="card-description">${item.content ? item.content.substring(100, 300) : 'No additional details'}</p>
+                        `}
                         
                         <div class="card-meta">
                             <span>Status: ${item.status || 'active'}</span>
