@@ -1102,6 +1102,9 @@ Only suggest updates for fields that are explicitly mentioned or clearly implied
         const claudeMessages = [enhancedSystemMessage, ...messages.slice(1)];
         
         // Call Claude API
+        console.log('🔑 API Key exists:', !!process.env.CLAUDE_API_KEY);
+        console.log('📨 Sending request to Claude with', claudeMessages.length, 'messages');
+        
         const fetch = await import('node-fetch').then(m => m.default);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -1120,8 +1123,17 @@ Only suggest updates for fields that are explicitly mentioned or clearly implied
         const data = await response.json();
         
         if (!response.ok) {
-            console.error('❌ Claude API error:', data);
-            return res.status(500).json({ error: 'Claude API failed' });
+            console.error('❌ Claude API error in chat endpoint:', {
+                status: response.status,
+                statusText: response.statusText,
+                data: data,
+                hasApiKey: !!process.env.CLAUDE_API_KEY
+            });
+            return res.status(500).json({ 
+                error: 'Claude API failed',
+                details: data.error || data.message || 'Unknown error',
+                status: response.status
+            });
         }
         
         const aiResponse = data.content[0].text;

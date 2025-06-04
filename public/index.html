@@ -2596,7 +2596,9 @@ Please be helpful, contextual, and focused on this specific item.`;
                     await saveChatHistory();
                     
                 } else {
-                    addAIMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+                    const errorData = await response.json();
+                    console.error('AI Chat API error:', errorData);
+                    addAIMessage('assistant', `Sorry, I encountered an error: ${errorData.details || errorData.error || 'Unknown error'}. Please try again.`);
                 }
                 
             } catch (error) {
