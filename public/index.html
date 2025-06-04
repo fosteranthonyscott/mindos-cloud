@@ -3033,14 +3033,17 @@ Please be helpful, contextual, and focused on this specific item.`;
             // Format content with line breaks
             const formattedContent = content.replace(/\n/g, '<br>');
             
+            // Create a unique ID for this message
+            const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
             messageDiv.innerHTML = `
                 <div class="bubble-message-avatar">
                     <i class="fas ${avatarIcon}"></i>
                 </div>
-                <div class="bubble-message-content">
+                <div class="bubble-message-content" id="${messageId}">
                     ${formattedContent}
                     ${role === 'assistant' ? `
-                        <button class="pin-insight-btn" onclick="pinInsight('${content.replace(/'/g, "\\'").replace(/\n/g, ' ').substring(0, 200)}')"
+                        <button class="pin-insight-btn" data-message-id="${messageId}"
                             style="margin-left: 8px; background: none; border: none; color: #667eea; cursor: pointer; font-size: 0.8rem; opacity: 0.7; transition: opacity 0.2s;"
                             onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                             <i class="fas fa-thumbtack"></i>
@@ -3048,7 +3051,30 @@ Please be helpful, contextual, and focused on this specific item.`;
                 </div>
             `;
             
+            // Add to DOM first
             container.appendChild(messageDiv);
+            
+            // Then add event listener for pin button if it's an assistant message
+            if (role === 'assistant') {
+                const pinBtn = messageDiv.querySelector('.pin-insight-btn');
+                if (pinBtn) {
+                    pinBtn.addEventListener('click', function() {
+                        // Get the actual content from the message element, not from the inline parameter
+                        const messageContent = document.getElementById(messageId);
+                        if (messageContent) {
+                            // Get text content without HTML tags and without the pin button
+                            const textContent = messageContent.cloneNode(true);
+                            // Remove the pin button from the cloned content
+                            const pinBtnInClone = textContent.querySelector('.pin-insight-btn');
+                            if (pinBtnInClone) pinBtnInClone.remove();
+                            // Get the clean text without HTML tags
+                            const cleanText = textContent.innerText || textContent.textContent;
+                            pinInsight(cleanText.trim());
+                        }
+                    });
+                }
+            }
+            
             container.scrollTop = container.scrollHeight;
             
             // Update history if needed
