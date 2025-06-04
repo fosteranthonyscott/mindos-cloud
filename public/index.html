@@ -2710,8 +2710,14 @@
                 successCriteria: item.success_criteria || ''
             };
             
-            // Build contextual prompt
+            // Build contextual prompt with today's date
+            const today = new Date();
+            const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
             let contextPrompt = `You are MindOS AI assistant, helping with a specific ${context.type} item.
+
+TODAY'S DATE: ${todayStr}
+CURRENT TIME: ${today.toLocaleTimeString()}
 
 ITEM CONTEXT:
 - ID: ${context.itemId}
@@ -2747,11 +2753,13 @@ You can help the user by:
 1. Updating any field of this item (content, status, priority, due date, etc.)
 2. Marking as complete or changing status
 3. Adding or modifying notes
-4. Setting or changing due dates
-5. Adjusting priority
-6. Providing advice specific to this ${context.type}
-7. Breaking down complex items into subtasks
-8. Suggesting improvements based on the item's context
+4. Setting or changing due dates (you know today is ${todayStr})
+5. Rescheduling items - calculate new dates based on today's date
+6. Adjusting priority
+7. Providing advice specific to this ${context.type}
+8. Breaking down complex items into subtasks
+9. For recurring items (frequency: ${context.frequency || 'none'}), helping set next occurrence
+10. Suggesting improvements based on the item's context
 
 IMPORTANT CONSTRAINTS:
 - You can ONLY discuss and modify THIS specific item (ID: ${context.itemId})
@@ -2871,9 +2879,36 @@ Please be helpful, contextual, and focused on this specific item.`;
                     }
                 });
             } else {
-                // Add welcome message
-                const welcomeMessage = `I'm here to help you with this ${item.type || 'item'}. What would you like to know or do?`;
-                addBubbleMessage(itemId, 'assistant', welcomeMessage, false);
+                // Add welcome message with context
+                const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+                let welcomeMessage = `Hi! I'm here to help you with this ${item.type || 'item'}.\n\n`;
+                
+                // Add status-specific suggestions
+                if (item.status === 'active') {
+                    welcomeMessage += `I can help you:\n`;
+                    welcomeMessage += `• Mark it as complete\n`;
+                    welcomeMessage += `• Reschedule it (today is ${today})\n`;
+                    if (item.frequency) {
+                        welcomeMessage += `• Adjust the frequency (currently: ${item.frequency})\n`;
+                    }
+                    welcomeMessage += `• Break it into smaller tasks\n`;
+                    welcomeMessage += `• Add notes or update details\n`;
+                }
+                
+                if (item.due) {
+                    const dueDate = new Date(item.due);
+                    const daysUntilDue = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
+                    if (daysUntilDue < 0) {
+                        welcomeMessage += `\n⚠️ This item is ${Math.abs(daysUntilDue)} days overdue!`;
+                    } else if (daysUntilDue === 0) {
+                        welcomeMessage += `\n⏰ This item is due today!`;
+                    } else if (daysUntilDue <= 3) {
+                        welcomeMessage += `\n⏰ This item is due in ${daysUntilDue} days.`;
+                    }
+                }
+                
+                welcomeMessage += `\n\nWhat would you like to do?`;
+                addBubbleMessage(itemId, 'assistant', welcomeMessage, true);
             }
             
             // Show bubble with animation
@@ -2914,7 +2949,7 @@ Please be helpful, contextual, and focused on this specific item.`;
             const container = document.getElementById(`quickActions-${itemId}`);
             if (!container) return;
             
-            const quickActions = getQuickActionsForType(item.type, item.status);
+            const quickActions = getQuickActionsForType(item.type, item.status, item);
             
             container.innerHTML = quickActions.map(action => 
                 `<button class="quick-action-chip ${action.suggested ? 'suggested' : ''}" 
@@ -2926,11 +2961,27 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Get appropriate quick actions based on item type
-        function getQuickActionsForType(type, status) {
+        function getQuickActionsForType(type, status, item) {
             const baseActions = [
                 { label: 'Help me start', text: 'How should I begin working on this?', icon: 'play' },
                 { label: 'Break it down', text: 'Can you break this down into smaller steps?', icon: 'list' }
             ];
+            
+            // Add rescheduling options if item has a due date or is overdue
+            if (item && item.due) {
+                const dueDate = new Date(item.due);
+                const today = new Date();
+                const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+                
+                if (daysUntilDue < 0) {
+                    baseActions.unshift({ 
+                        label: 'Reschedule', 
+                        text: 'This is overdue. Please reschedule it to a new date.', 
+                        icon: 'calendar-alt',
+                        suggested: true 
+                    });
+                }
+            }
             
             const typeSpecificActions = {
                 routine: [
@@ -2949,6 +3000,12 @@ Please be helpful, contextual, and focused on this specific item.`;
             
             if (status === 'active') {
                 baseActions.push({ label: 'Mark complete', text: 'I\'ve completed this item', icon: 'check', suggested: true });
+                
+                // Add common rescheduling options
+                baseActions.push(
+                    { label: 'Do tomorrow', text: 'Reschedule this to tomorrow', icon: 'calendar-day' },
+                    { label: 'Next week', text: 'Reschedule this to next week', icon: 'calendar-week' }
+                );
             }
             
             return [...baseActions, ...(typeSpecificActions[type] || [])];
