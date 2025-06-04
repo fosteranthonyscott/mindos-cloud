@@ -1365,6 +1365,101 @@
             border-radius: 16px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+            /* Force no scrolling */
+            overflow: visible !important;
+            max-height: none !important;
+            height: auto !important;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .card-notes-container:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Edit button for notes */
+        .notes-edit-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: #667eea;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            opacity: 0.6;
+        }
+
+        .card-notes-container:hover .notes-edit-btn {
+            opacity: 1;
+        }
+
+        .notes-edit-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            transform: scale(1.1);
+        }
+
+        /* Add notes button */
+        .add-notes-btn {
+            margin-top: 1rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .add-notes-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        /* Edit textarea */
+        .notes-edit-textarea {
+            width: 100%;
+            min-height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 1.5rem;
+            color: white;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+
+        .notes-edit-textarea:focus {
+            outline: none;
+            border-color: #764ba2;
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Editing state */
+        .card-notes-container.editing {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .card-notes-container.editing .notes-edit-btn {
+            display: none;
         }
 
         .notes-paragraph {
@@ -2181,11 +2276,20 @@
                     <div class="card-main-content">
                         <h2 class="card-title">${item.content_short || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
                         ${item.notes ? `
-                            <div class="card-notes-container">
-                                ${formatNotesForDisplay(item.notes)}
+                            <div class="card-notes-container" data-item-id="${item.id}">
+                                <button class="notes-edit-btn" onclick="enableNotesEdit(${item.id})" title="Edit notes">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <div class="notes-content" id="notes-content-${item.id}">
+                                    ${formatNotesForDisplay(item.notes)}
+                                </div>
+                                <textarea class="notes-edit-textarea" id="notes-textarea-${item.id}" style="display: none;">${item.notes}</textarea>
                             </div>
                         ` : `
                             <p class="card-description">${item.content ? item.content.substring(100, 300) : 'No additional details'}</p>
+                            <button class="add-notes-btn" onclick="enableNotesEdit(${item.id})" title="Add notes">
+                                <i class="fas fa-plus-circle"></i> Add notes
+                            </button>
                         `}
                         
                         <div class="card-meta">
@@ -3647,6 +3751,155 @@ Please be helpful, contextual, and focused on this specific item.`;
             updatePinnedPanel();
         }
         
+        // Enable inline notes editing
+        function enableNotesEdit(itemId) {
+            const container = document.querySelector(`.card-notes-container[data-item-id="${itemId}"]`);
+            const contentDiv = document.getElementById(`notes-content-${itemId}`);
+            const textarea = document.getElementById(`notes-textarea-${itemId}`);
+            
+            // If no container exists, we're adding notes to an item without them
+            if (!container) {
+                // Find the card and create a notes container
+                const card = document.querySelector(`[data-item-id="${itemId}"]`);
+                const mainContent = card.querySelector('.card-main-content');
+                const description = mainContent.querySelector('.card-description');
+                const addBtn = mainContent.querySelector('.add-notes-btn');
+                
+                // Create new notes container
+                const newContainer = document.createElement('div');
+                newContainer.className = 'card-notes-container editing';
+                newContainer.dataset.itemId = itemId;
+                newContainer.innerHTML = `
+                    <textarea class="notes-edit-textarea" id="notes-textarea-${itemId}" 
+                             placeholder="Add your notes here..."></textarea>
+                `;
+                
+                // Replace description and button with notes container
+                if (description) description.remove();
+                if (addBtn) addBtn.remove();
+                mainContent.insertBefore(newContainer, mainContent.querySelector('.card-meta'));
+                
+                // Focus and set up save handler
+                const newTextarea = document.getElementById(`notes-textarea-${itemId}`);
+                newTextarea.focus();
+                setupNotesEditHandlers(itemId, newTextarea, true);
+                return;
+            }
+            
+            // Existing notes - switch to edit mode
+            container.classList.add('editing');
+            contentDiv.style.display = 'none';
+            textarea.style.display = 'block';
+            
+            // Auto-resize textarea to fit content
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+            
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            
+            setupNotesEditHandlers(itemId, textarea, false);
+        }
+        
+        function setupNotesEditHandlers(itemId, textarea, isNew) {
+            // Auto-resize as user types
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+            
+            // Save on blur (click outside)
+            textarea.addEventListener('blur', function() {
+                saveNotesEdit(itemId, isNew);
+            });
+            
+            // Save on Ctrl+Enter, cancel on Escape
+            textarea.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    saveNotesEdit(itemId, isNew);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelNotesEdit(itemId, isNew);
+                }
+            });
+        }
+        
+        async function saveNotesEdit(itemId, isNew) {
+            const textarea = document.getElementById(`notes-textarea-${itemId}`);
+            const newNotes = textarea.value.trim();
+            
+            // Don't save if empty and new
+            if (isNew && !newNotes) {
+                location.reload(); // Refresh to restore original state
+                return;
+            }
+            
+            try {
+                // Update via API
+                const response = await fetch(`/api/memories/${itemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ notes: newNotes })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update notes');
+                
+                const updatedItem = await response.json();
+                
+                // Update local data
+                const itemIndex = feedItems.findIndex(item => item.id == itemId);
+                if (itemIndex !== -1) {
+                    feedItems[itemIndex].notes = newNotes;
+                }
+                
+                // Update UI
+                if (isNew || !newNotes) {
+                    // Reload to show proper state
+                    location.reload();
+                } else {
+                    // Update existing notes display
+                    const container = document.querySelector(`.card-notes-container[data-item-id="${itemId}"]`);
+                    const contentDiv = document.getElementById(`notes-content-${itemId}`);
+                    
+                    container.classList.remove('editing');
+                    contentDiv.innerHTML = formatNotesForDisplay(newNotes);
+                    contentDiv.style.display = 'block';
+                    textarea.style.display = 'none';
+                }
+                
+                showToast('Notes updated successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error saving notes:', error);
+                showToast('Failed to save notes', 'error');
+            }
+        }
+        
+        function cancelNotesEdit(itemId, isNew) {
+            if (isNew) {
+                location.reload(); // Refresh to restore original state
+                return;
+            }
+            
+            const container = document.querySelector(`.card-notes-container[data-item-id="${itemId}"]`);
+            const contentDiv = document.getElementById(`notes-content-${itemId}`);
+            const textarea = document.getElementById(`notes-textarea-${itemId}`);
+            
+            container.classList.remove('editing');
+            contentDiv.style.display = 'block';
+            textarea.style.display = 'none';
+            
+            // Restore original value
+            const item = feedItems.find(i => i.id == itemId);
+            if (item) {
+                textarea.value = item.notes || '';
+            }
+        }
+
         // Generate a context-aware welcome message
         function generateWelcomeMessage(item) {
             let message = `Hi! I'm here to help you with this ${item.type || 'item'}: "${item.content_short || item.content}"\n\n`;
