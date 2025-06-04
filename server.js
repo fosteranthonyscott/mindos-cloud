@@ -1104,7 +1104,13 @@ Only suggest updates for fields that are explicitly mentioned or clearly implied
         
         // Extract system message and user messages separately
         const systemContent = enhancedSystemMessage.content;
-        const userMessages = messages.slice(1).filter(msg => msg.role !== 'system');
+        // Clean messages to only include role and content (remove timestamp and other fields)
+        const userMessages = messages.slice(1)
+            .filter(msg => msg.role !== 'system')
+            .map(msg => ({
+                role: msg.role,
+                content: msg.content
+            }));
         
         // Call Claude API
         console.log('🔑 API Key exists:', !!process.env.CLAUDE_API_KEY);
