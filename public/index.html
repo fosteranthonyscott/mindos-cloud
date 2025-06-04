@@ -694,6 +694,46 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Load All Button Container */
+        .load-all-container {
+            padding: 2rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .load-all-btn {
+            padding: 1.2rem 3rem;
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+
+        .load-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.4);
+            background: linear-gradient(135deg, #38a169, #2f855a);
+        }
+
+        .load-all-btn i {
+            margin-right: 0.5rem;
+        }
+
+        /* Completed Items Styling */
+        .feed-card.completed-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(72, 187, 120, 0.3);
+        }
+
+        .completed-badge {
+            z-index: 10;
+        }
+
         /* =========================
            EDIT/QUICK ADD OVERLAY - UNIFIED STYLING
         ========================= */
@@ -3078,6 +3118,104 @@
                     </div>
                 `;
                 feedScroll.appendChild(endCard);
+            }
+        }
+
+        // Show Load All Button for loading completed items
+        function showLoadAllButton() {
+            const feedScroll = document.getElementById('feedScroll');
+            const existingButton = document.getElementById('loadAllButton');
+            
+            if (!existingButton && feedItems.length > 0) {
+                const buttonContainer = document.createElement('div');
+                buttonContainer.id = 'loadAllButton';
+                buttonContainer.className = 'load-all-container';
+                buttonContainer.innerHTML = `
+                    <button class="load-all-btn" onclick="loadAllItems()">
+                        <i class="fas fa-list-check"></i> Load ALL Items (including completed)
+                    </button>
+                `;
+                feedScroll.appendChild(buttonContainer);
+            }
+        }
+
+        // Load all items including completed ones
+        async function loadAllItems() {
+            try {
+                showLoadingIndicator();
+                const loadAllBtn = document.getElementById('loadAllButton');
+                if (loadAllBtn) {
+                    loadAllBtn.style.display = 'none';
+                }
+
+                const response = await fetch('/api/items');
+                
+                if (response.ok) {
+                    const allItems = await response.json();
+                    
+                    // Clear existing feed
+                    const feedScroll = document.getElementById('feedScroll');
+                    feedScroll.innerHTML = '';
+                    
+                    // Reset feed items
+                    feedItems = allItems;
+                    currentPage = Math.ceil(allItems.length / ITEMS_PER_PAGE);
+                    hasMoreItems = false;
+                    
+                    // Create cards for all items
+                    allItems.forEach((item, index) => {
+                        const card = createFeedCard(item, index);
+                        
+                        // Add visual distinction for completed items
+                        if (item.status === 'completed') {
+                            card.style.opacity = '0.7';
+                            card.classList.add('completed-item');
+                            
+                            // Add completed badge
+                            const completedBadge = document.createElement('div');
+                            completedBadge.className = 'completed-badge';
+                            completedBadge.innerHTML = '<i class="fas fa-check-circle"></i> COMPLETED';
+                            completedBadge.style.cssText = `
+                                position: absolute;
+                                top: 10px;
+                                right: 10px;
+                                background: #48bb78;
+                                color: white;
+                                padding: 5px 10px;
+                                border-radius: 20px;
+                                font-size: 12px;
+                                font-weight: bold;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            `;
+                            card.style.position = 'relative';
+                            card.appendChild(completedBadge);
+                        }
+                        
+                        feedScroll.appendChild(card);
+                    });
+                    
+                    // Update counters
+                    document.getElementById('feedItemCount').textContent = `${allItems.length} items in feed (including completed)`;
+                    document.getElementById('totalItemsCount').textContent = allItems.length;
+                    
+                    // Show end of feed message
+                    showEndOfFeed();
+                    
+                    // Apply notes visibility
+                    setTimeout(() => {
+                        applyNotesVisibility();
+                    }, 100);
+                    
+                    showToast('All items loaded, including completed ones', 'success');
+                } else {
+                    showToast('Error loading all items', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading all items:', error);
+                showToast('Network error loading items', 'error');
+            } finally {
+                hideLoadingIndicator();
+                updateScrollIndicator();
             }
         }
 
