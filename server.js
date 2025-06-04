@@ -279,6 +279,10 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         database: isDbConnected ? 'connected' : 'disconnected',
         environment: process.env.NODE_ENV || 'development',
+        claude: {
+            apiKeySet: !!process.env.CLAUDE_API_KEY,
+            apiKeyLength: process.env.CLAUDE_API_KEY ? process.env.CLAUDE_API_KEY.length : 0
+        },
         backgroundProcesses: {
             recurringTasks: recurringStatus.isRunning ? 'running' : 'stopped',
             processes: recurringStatus.processes,
@@ -1098,12 +1102,13 @@ FIELD VALIDATION RULES:
 Only suggest updates for fields that are explicitly mentioned or clearly implied by the user.`
         };
         
-        // Build the message array with the enhanced system message
-        const claudeMessages = [enhancedSystemMessage, ...messages.slice(1)];
+        // Extract system message and user messages separately
+        const systemContent = enhancedSystemMessage.content;
+        const userMessages = messages.slice(1).filter(msg => msg.role !== 'system');
         
         // Call Claude API
         console.log('🔑 API Key exists:', !!process.env.CLAUDE_API_KEY);
-        console.log('📨 Sending request to Claude with', claudeMessages.length, 'messages');
+        console.log('📨 Sending request to Claude with', userMessages.length, 'messages');
         
         const fetch = await import('node-fetch').then(m => m.default);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1116,7 +1121,8 @@ Only suggest updates for fields that are explicitly mentioned or clearly implied
             body: JSON.stringify({
                 model: 'claude-3-5-sonnet-20241022',
                 max_tokens: 800,
-                messages: claudeMessages
+                system: systemContent,
+                messages: userMessages
             })
         });
         
@@ -2311,6 +2317,14 @@ app.listen(PORT, () => {
     console.log(`🚀 MindOS server running on port ${PORT}`);
     console.log(`📊 Database: ${isDbConnected ? 'Connected' : 'Disconnected'}`);
     console.log('🤖 Claude: Ready with Enhanced Multi-Memory Detection');
+    
+    // Check Claude API Key
+    console.log(`🔑 CLAUDE_API_KEY: ${process.env.CLAUDE_API_KEY ? 'SET ✅' : 'NOT SET ❌'}`);
+    if (process.env.CLAUDE_API_KEY) {
+        console.log(`🔑 API Key length: ${process.env.CLAUDE_API_KEY.length} characters`);
+        console.log(`🔑 API Key preview: ${process.env.CLAUDE_API_KEY.substring(0, 20)}...`);
+    }
+    
     console.log('🧠 Session Storage: Enhanced Context Management Active');
     console.log('🔒 Constraint Tracking: User constraints detected and preserved');
     console.log('🗑️ Memory Management: Enhanced UPDATE/CREATE detection');
