@@ -1,4 +1,4 @@
-# MindOS Deployment Guide
+# Full Brain Deployment Guide
 
 ## Recent Changes Deployed
 - **AI Comment Bubble Interface**: Replaced full-screen chat with compact, draggable bubbles
@@ -72,7 +72,7 @@ git pull origin main
 npm install
 
 # Start with PM2 (recommended)
-pm2 start server.js --name mindos
+pm2 start server.js --name fullbrain
 pm2 save
 ```
 
@@ -100,7 +100,7 @@ pm2 save
    heroku logs --tail
    
    # PM2
-   pm2 logs mindos
+   pm2 logs fullbrain
    ```
 
 ### Troubleshooting
@@ -132,7 +132,7 @@ git push origin main
 
 ## Current Deployment Status
 - **GitHub**: ✅ Pushed successfully
-- **Production URL**: https://mindos-cloud-production.up.railway.app/
+- **Production URL**: https://fullbrain-cloud-production.up.railway.app/
 - **Last Deploy**: Just now (bubble interface implementation)
 
 ## Next Steps

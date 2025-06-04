@@ -1,7 +1,7 @@
 {
-  "name": "mindos-cloud",
+  "name": "fullbrain-cloud",
   "version": "1.0.0",
-  "description": "MindOS - Personal AI Assistant with Social Media Interface",
+  "description": "Full Brain - Personal AI Assistant with Social Media Interface",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -16,7 +16,7 @@
     "personal",
     "productivity",
     "social",
-    "mindos",
+    "fullbrain",
     "claude",
     "postgres"
   ],
@@ -40,10 +40,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fosteranthonyscott/mindos-cloud.git"
+    "url": "https://github.com/fosteranthonyscott/fullbrain-cloud.git"
   },
   "bugs": {
-    "url": "https://github.com/fosteranthonyscott/mindos-cloud/issues"
+    "url": "https://github.com/fosteranthonyscott/fullbrain-cloud/issues"
   },
-  "homepage": "https://mindos-cloud-production.up.railway.app/"
+  "homepage": "https://fullbrain-cloud-production.up.railway.app/"
 }

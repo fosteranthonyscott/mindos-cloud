@@ -1,4 +1,4 @@
-// ENHANCED MINDOS SERVER.JS - Smart Memory Operations & Advanced Context Management with Recurring Task Manager
+// ENHANCED FULL BRAIN SERVER.JS - Smart Memory Operations & Advanced Context Management with Recurring Task Manager
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -32,7 +32,7 @@ app.use((req, res, next) => {
     next();
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mindos-jwt-secret-2025';
+const JWT_SECRET = process.env.JWT_SECRET || 'fullbrain-jwt-secret-2025';
 
 // PostgreSQL connection with better error handling
 const db = new Pool({
@@ -55,7 +55,7 @@ global.feedManager = feedManager;
 let memoriesTableColumns = [];
 let isDbConnected = false;
 
-// ENHANCED Context Management for MindOS
+// ENHANCED Context Management for Full Brain
 class ConversationContext {
     constructor(userId) {
         this.userId = userId;
@@ -301,8 +301,8 @@ app.use('/api/*', (req, res, next) => {
     next();
 });
 
-// MindOS System Prompt
-const MINDOS_SYSTEM_PROMPT = `You are MindOS, a personal AI assistant designed to help users manage their lives, routines, and goals. 
+// Full Brain System Prompt
+const FULLBRAIN_SYSTEM_PROMPT = `You are Full Brain, a personal AI assistant designed to help users manage their lives, routines, and goals. 
 
 Your capabilities:
 - Remember important information across conversations within this session
@@ -1392,7 +1392,7 @@ app.post('/api/claude', auth, async (req, res) => {
         const contextInfo = context.getContextForClaude();
         
         // Create memory-aware system prompt with constraints
-        let systemPrompt = `${MINDOS_SYSTEM_PROMPT}
+        let systemPrompt = `${FULLBRAIN_SYSTEM_PROMPT}
 
 User Context:
 ${memoryContext}
@@ -2320,7 +2320,7 @@ process.on('SIGINT', () => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`🚀 MindOS server running on port ${PORT}`);
+    console.log(`🚀 Full Brain server running on port ${PORT}`);
     console.log(`📊 Database: ${isDbConnected ? 'Connected' : 'Disconnected'}`);
     console.log('🤖 Claude: Ready with Enhanced Multi-Memory Detection');
     

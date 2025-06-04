@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MindOS - Your Personal AI Feed</title>
+    <title>Full Brain - Your Personal AI Feed</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -166,7 +166,7 @@
             gap: 1rem;
         }
 
-        .mindos-logo {
+        .fullbrain-logo {
             width: 50px;
             height: 50px;
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -452,7 +452,7 @@
                 flex-shrink: 0;
             }
             
-            .mindos-logo {
+            .fullbrain-logo {
                 width: 40px;
                 height: 40px;
                 font-size: 1.2rem;
@@ -1868,7 +1868,7 @@
             <div class="logo">
                 <i class="fas fa-brain"></i>
             </div>
-            <h1 class="login-title">MindOS</h1>
+            <h1 class="login-title">Full Brain</h1>
             <p class="login-subtitle">Your Personal AI Assistant</p>
             
             <!-- Login Form -->
@@ -1914,7 +1914,7 @@
         <!-- Fixed Header -->
         <div class="feed-header">
             <div class="header-left">
-                <div class="mindos-logo">
+                <div class="fullbrain-logo">
                     <i class="fas fa-brain"></i>
                 </div>
                 <div class="user-info">
@@ -2004,7 +2004,7 @@
                     <i class="fas fa-brain"></i>
                 </div>
                 <div>
-                    <h3 id="aiChatItemTitle">Chat with MindOS AI</h3>
+                    <h3 id="aiChatItemTitle">Chat with Full Brain AI</h3>
                     <p id="aiChatItemType">About this item</p>
                 </div>
             </div>
@@ -2023,7 +2023,7 @@
                     <textarea 
                         id="aiChatInput" 
                         class="ai-chat-input" 
-                        placeholder="Ask MindOS about this item, request changes, or get help..."
+                        placeholder="Ask Full Brain about this item, request changes, or get help..."
                         rows="1"
                     ></textarea>
                     <button id="aiChatSend" class="ai-chat-send" onclick="sendAIMessage()">
@@ -2035,10 +2035,10 @@
     </div>
 
     <script>
-        console.log('=== MindOS Script Loading ===');
+        console.log('=== Full Brain Script Loading ===');
         // Global State
         let currentUser = null;
-        let authToken = localStorage.getItem('mindos_token');
+        let authToken = localStorage.getItem('fullbrain_token');
         let feedItems = [];
         let currentEditItem = null;
         // AI Comment Bubble Interface Variables
@@ -2052,7 +2052,7 @@
         let isAddMode = false; // UNIFIED: Replace isQuickAdd with isAddMode
         
         // Feed ordering state - moved here for early access
-        let customFeedOrder = JSON.parse(localStorage.getItem('mindos_feed_order') || '[]');
+        let customFeedOrder = JSON.parse(localStorage.getItem('fullbrain_feed_order') || '[]');
         
         // EARLY DEFINITION: Move card up or down in feed
         window.moveCard = function(itemId, direction) {
@@ -2083,7 +2083,7 @@
                 
                 // Update custom order
                 customFeedOrder = feedItems.map(item => item.id);
-                localStorage.setItem('mindos_feed_order', JSON.stringify(customFeedOrder));
+                localStorage.setItem('fullbrain_feed_order', JSON.stringify(customFeedOrder));
                 console.log('Custom order saved:', customFeedOrder);
                 
                 // Rebuild feed display
@@ -2157,7 +2157,7 @@
         const ITEMS_PER_PAGE = 10;
         
         // Feed ordering state - already declared at the beginning
-        let notesVisibility = JSON.parse(localStorage.getItem('mindos_notes_visibility') || '{}');
+        let notesVisibility = JSON.parse(localStorage.getItem('fullbrain_notes_visibility') || '{}');
 
         // UPDATED: Unified field configuration
         const CORE_FIELDS = ['content', 'type', 'status', 'priority'];
@@ -2242,7 +2242,7 @@
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 MindOS AI-Powered Never-Ending Feed Starting...');
+            console.log('🚀 Full Brain AI-Powered Never-Ending Feed Starting...');
             
             // Start observing the edit overlay for dropdown fixes
             const editOverlay = document.getElementById('editOverlay');
@@ -2291,7 +2291,7 @@
                 console.error('Token validation failed:', error);
             }
             
-            localStorage.removeItem('mindos_token');
+            localStorage.removeItem('fullbrain_token');
             authToken = null;
             return false;
         }
@@ -2323,7 +2323,7 @@
                 if (response.ok) {
                     authToken = data.token;
                     currentUser = data.user;
-                    localStorage.setItem('mindos_token', authToken);
+                    localStorage.setItem('fullbrain_token', authToken);
                     
                     showToast('Welcome back!', 'success');
                     await loadDatabaseSchema();
@@ -2373,7 +2373,7 @@
                 if (response.ok) {
                     authToken = data.token;
                     currentUser = data.user;
-                    localStorage.setItem('mindos_token', authToken);
+                    localStorage.setItem('fullbrain_token', authToken);
                     
                     showToast('Account created successfully!', 'success');
                     await loadDatabaseSchema();
@@ -2933,7 +2933,7 @@
             
             feedItems = orderedItems;
             customFeedOrder = newOrder;
-            localStorage.setItem('mindos_feed_order', JSON.stringify(customFeedOrder));
+            localStorage.setItem('fullbrain_feed_order', JSON.stringify(customFeedOrder));
             
             showToast('Feed order updated', 'success');
         }
@@ -3063,7 +3063,7 @@
                         <i class="fas fa-brain"></i>
                     </div>
                     <h2>You've reached the end!</h2>
-                    <p>Great job staying on top of your tasks and goals. You've reviewed all ${feedItems.length} items in your MindOS feed.</p>
+                    <p>Great job staying on top of your tasks and goals. You've reviewed all ${feedItems.length} items in your Full Brain feed.</p>
                     
                     <div class="end-actions">
                         <button class="end-btn" onclick="scrollToTop()">
@@ -3784,7 +3784,7 @@
             const today = new Date();
             const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             
-            let contextPrompt = `You are MindOS AI assistant, helping with a specific ${context.type} item.
+            let contextPrompt = `You are Full Brain AI assistant, helping with a specific ${context.type} item.
 
 TODAY'S DATE: ${todayStr}
 CURRENT TIME: ${today.toLocaleTimeString()}
@@ -4621,7 +4621,7 @@ Please be helpful, contextual, and focused on this specific item.`;
                 
                 // Save state
                 notesVisibility[itemId] = isCollapsed;
-                localStorage.setItem('mindos_notes_visibility', JSON.stringify(notesVisibility));
+                localStorage.setItem('fullbrain_notes_visibility', JSON.stringify(notesVisibility));
                 
                 showToast(isCollapsed ? 'Notes collapsed' : 'Notes expanded', 'info');
             }
@@ -4655,12 +4655,12 @@ Please be helpful, contextual, and focused on this specific item.`;
         function saveScrollPosition() {
             const feedScroll = document.getElementById('feedScroll');
             if (feedScroll) {
-                localStorage.setItem('mindos_scroll_position', feedScroll.scrollTop);
+                localStorage.setItem('fullbrain_scroll_position', feedScroll.scrollTop);
             }
         }
         
         function restoreScrollPosition() {
-            const savedPosition = localStorage.getItem('mindos_scroll_position');
+            const savedPosition = localStorage.getItem('fullbrain_scroll_position');
             if (savedPosition) {
                 const feedScroll = document.getElementById('feedScroll');
                 if (feedScroll) {
@@ -5129,7 +5129,7 @@ Please be helpful, contextual, and focused on this specific item.`;
             
             if (navigator.share) {
                 navigator.share({
-                    title: 'MindOS Item',
+                    title: 'Full Brain Item',
                     text: text
                 });
             } else {
@@ -5202,7 +5202,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
 
         window.logout = function() {
-            localStorage.removeItem('mindos_token');
+            localStorage.removeItem('fullbrain_token');
             authToken = null;
             currentUser = null;
             feedItems = [];
@@ -5338,7 +5338,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         });
         
         // Final initialization check
-        console.log('=== MindOS Initialization Complete ===');
+        console.log('=== Full Brain Initialization Complete ===');
         console.log('moveCard available:', typeof window.moveCard === 'function');
         console.log('Ready to handle button clicks');
         

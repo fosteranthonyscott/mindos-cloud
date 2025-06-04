@@ -1,4 +1,4 @@
-// SMART TEXT-PARSING MINDOS ALGORITHM
+// SMART TEXT-PARSING FULL BRAIN ALGORITHM
 // Handles natural language inputs like "daily", "weekly", "2x per week", etc.
 
 class SmartTextParsingAlgorithm {
