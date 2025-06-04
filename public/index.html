@@ -2497,21 +2497,27 @@
         async function toggleComplete(itemId) {
             try {
                 const item = feedItems.find(i => i.id === itemId);
+                if (!item) {
+                    console.error('Item not found:', itemId);
+                    showToast('Item not found', 'error');
+                    return;
+                }
+                
                 const isCompleted = item.status === 'completed';
                 const newStatus = isCompleted ? 'active' : 'completed';
                 
                 const updateData = { status: newStatus };
                 
-                if (newStatus === 'completed') {
+                if (newStatus === 'completed' && databaseSchema?.memoriesTableColumns) {
                     const today = new Date().toISOString().split('T')[0];
                     
-                    if (databaseSchema?.memoriesTableColumns?.includes('completed_date')) {
+                    if (databaseSchema.memoriesTableColumns.includes('completed_date')) {
                         updateData.completed_date = today;
                     }
-                    if (databaseSchema?.memoriesTableColumns?.includes('completed')) {
+                    if (databaseSchema.memoriesTableColumns.includes('completed')) {
                         updateData.completed = today;
                     }
-                    if (databaseSchema?.memoriesTableColumns?.includes('modified')) {
+                    if (databaseSchema.memoriesTableColumns.includes('modified')) {
                         updateData.modified = today;
                     }
                 }
@@ -2526,19 +2532,27 @@
                 });
                 
                 if (response.ok) {
-                    item.status = newStatus;
-                    if (newStatus === 'completed') {
-                        item.completed_date = updateData.completed_date || updateData.completed;
-                    }
+                    const updatedItem = await response.json();
                     
-                    const btn = event.target.closest('.action-btn');
-                    btn.classList.toggle('completed', newStatus === 'completed');
+                    // Update the local item with server response
+                    Object.assign(item, updatedItem);
+                    
+                    // Find and update the button UI
+                    const card = document.querySelector(`[data-item-id="${itemId}"]`);
+                    if (card) {
+                        const btn = card.querySelector('.action-btn .fa-check')?.parentElement;
+                        if (btn) {
+                            btn.classList.toggle('completed', newStatus === 'completed');
+                        }
+                    }
                     
                     const message = newStatus === 'completed' 
                         ? `Completed! ✅ (${new Date().toLocaleDateString()})` 
                         : 'Reactivated';
                     showToast(message, 'success');
                 } else {
+                    const errorText = await response.text();
+                    console.error('Failed to toggle complete:', response.status, errorText);
                     showToast('Failed to update status', 'error');
                 }
             } catch (error) {
