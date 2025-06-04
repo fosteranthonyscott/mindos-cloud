@@ -3218,13 +3218,121 @@ Please be helpful, contextual, and focused on this specific item.`;
             document.removeEventListener('mouseup', stopDragBubble);
         }
         
-        // Pin insight functionality
+        // Pin insight functionality with smart content extraction
         function pinInsight(text) {
-            if (!text || pinnedInsights.some(i => i.text === text)) return;
+            if (!text) return;
+            
+            // Extract valuable content by removing common intro/outro patterns
+            const extractValuableContent = (fullText) => {
+                // Split into lines for processing
+                let lines = fullText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                
+                // Patterns to skip entirely
+                const skipPatterns = [
+                    /^(based on|according to|looking at|regarding|about) (the|your|this) (task|item|context|information)/i,
+                    /^(here's|here are|these are|this is) (what|the|some)/i,
+                    /^would you like (me )?to/i,
+                    /^(also|additionally|furthermore|moreover),? (it might|you might|I can|I could)/i,
+                    /^(I can|I could|I'll|I will) (help|assist|update|add|create)/i,
+                    /^(let me know|please let me know|feel free to)/i,
+                    /^is there anything else/i,
+                    /^(do you|would you) (want|need|like)/i,
+                    /^any (other|additional|further) (questions|information|details)/i,
+                    /^if you (need|want|have|would like)/i,
+                    /^that (should|would|will) (help|be|cover)/i,
+                ];
+                
+                // Outro phrases that indicate the end of valuable content
+                const outroIndicators = [
+                    /would you like me to/i,
+                    /let me know if/i,
+                    /I can (help|update|add|create)/i,
+                    /any (questions|thoughts|concerns)/i,
+                    /is there anything/i,
+                    /feel free to/i,
+                    /if you (need|want|have any)/i
+                ];
+                
+                // Find where the valuable content ends
+                let endIndex = lines.length;
+                for (let i = 0; i < lines.length; i++) {
+                    if (outroIndicators.some(pattern => pattern.test(lines[i]))) {
+                        endIndex = i;
+                        break;
+                    }
+                }
+                
+                // Filter out intro lines and take only content before outro
+                let valuableLines = lines.slice(0, endIndex).filter(line => {
+                    return !skipPatterns.some(pattern => pattern.test(line));
+                });
+                
+                // Additional processing: look for lists or structured content
+                let processedContent = [];
+                let inList = false;
+                let currentList = [];
+                
+                for (let line of valuableLines) {
+                    // Check if this is a list item
+                    const listItemMatch = line.match(/^(\d+\.|[-•*]|\w\))\s+(.+)/);
+                    
+                    if (listItemMatch) {
+                        inList = true;
+                        currentList.push(line);
+                    } else if (inList && line.length > 0 && !line.endsWith(':')) {
+                        // Continuation of list item
+                        currentList[currentList.length - 1] += ' ' + line;
+                    } else {
+                        // Not a list item
+                        if (inList && currentList.length > 0) {
+                            processedContent.push(...currentList);
+                            currentList = [];
+                            inList = false;
+                        }
+                        // Only add non-empty lines that aren't just headers for empty sections
+                        if (line.length > 0 && !line.endsWith(':')) {
+                            processedContent.push(line);
+                        } else if (line.endsWith(':') && valuableLines.indexOf(line) < valuableLines.length - 1) {
+                            // Keep headers only if they have content after them
+                            processedContent.push(line);
+                        }
+                    }
+                }
+                
+                // Add any remaining list items
+                if (currentList.length > 0) {
+                    processedContent.push(...currentList);
+                }
+                
+                // Join and clean up
+                let extracted = processedContent.join('\n').trim();
+                
+                // If we've removed everything, it probably wasn't worth pinning
+                if (extracted.length === 0 || extracted.split('\n').length < 2) {
+                    return null;
+                }
+                
+                return extracted;
+            };
+            
+            // Extract valuable content
+            const valuableContent = extractValuableContent(text);
+            
+            if (!valuableContent) {
+                showToast('No substantial content to pin', 'info');
+                return;
+            }
+            
+            // Check for duplicates
+            if (pinnedInsights.some(i => i.text === valuableContent)) {
+                showToast('This insight is already pinned', 'info');
+                return;
+            }
             
             pinnedInsights.push({
                 id: Date.now(),
-                text: text,
+                text: valuableContent,
+                fullText: text, // Keep original for reference
                 timestamp: new Date().toISOString(),
                 itemId: currentAIItem?.id
             });
