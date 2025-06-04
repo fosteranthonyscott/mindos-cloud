@@ -2335,6 +2335,99 @@
 
         // ===== AI CHAT FUNCTIONS =====
         
+        // Build comprehensive context for AI to understand the item
+        function buildItemContext(item) {
+            const context = {
+                itemId: item.id,
+                type: item.type || 'general',
+                currentStatus: item.status || 'active',
+                priority: item.priority || 3,
+                content: item.content || '',
+                contentShort: item.content_short || '',
+                
+                // Time-related fields
+                created: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Unknown',
+                due: item.due ? new Date(item.due).toLocaleDateString() : 'Not set',
+                completedDate: item.completed_date ? new Date(item.completed_date).toLocaleDateString() : null,
+                modified: item.modified ? new Date(item.modified).toLocaleDateString() : null,
+                
+                // Additional metadata
+                stage: item.stage || null,
+                routineType: item.routine_type || null,
+                goalType: item.goal_type || null,
+                frequency: item.frequency || null,
+                location: item.location || null,
+                mood: item.mood || null,
+                trigger: item.trigger || null,
+                performanceStreak: item.performance_streak || 0,
+                requiredTime: item.required_time_minutes || null,
+                notes: item.notes || '',
+                successCriteria: item.success_criteria || ''
+            };
+            
+            // Build contextual prompt
+            let contextPrompt = `You are MindOS AI assistant, helping with a specific ${context.type} item.
+
+ITEM CONTEXT:
+- ID: ${context.itemId}
+- Type: ${context.type}
+- Status: ${context.currentStatus}
+- Priority: ${context.priority} (1=Low, 5=Critical)
+- Content: "${context.content}"
+- Created: ${context.created}
+`;
+
+            // Add relevant fields based on type
+            if (context.due !== 'Not set') contextPrompt += `- Due: ${context.due}\n`;
+            if (context.completedDate) contextPrompt += `- Completed: ${context.completedDate}\n`;
+            if (context.stage) contextPrompt += `- Stage: ${context.stage}\n`;
+            if (context.frequency) contextPrompt += `- Frequency: ${context.frequency}\n`;
+            if (context.location) contextPrompt += `- Location: ${context.location}\n`;
+            if (context.performanceStreak > 0) contextPrompt += `- Performance Streak: ${context.performanceStreak} days\n`;
+            if (context.requiredTime) contextPrompt += `- Required Time: ${context.requiredTime} minutes\n`;
+            if (context.notes) contextPrompt += `- Notes: ${context.notes}\n`;
+            if (context.successCriteria) contextPrompt += `- Success Criteria: ${context.successCriteria}\n`;
+            
+            // Type-specific context
+            if (context.type === 'routine' && context.routineType) {
+                contextPrompt += `- Routine Type: ${context.routineType}\n`;
+            }
+            if (context.type === 'goal' && context.goalType) {
+                contextPrompt += `- Goal Type: ${context.goalType}\n`;
+            }
+            
+            contextPrompt += `
+CAPABILITIES:
+You can help the user by:
+1. Updating any field of this item (content, status, priority, due date, etc.)
+2. Marking as complete or changing status
+3. Adding or modifying notes
+4. Setting or changing due dates
+5. Adjusting priority
+6. Providing advice specific to this ${context.type}
+7. Breaking down complex items into subtasks
+8. Suggesting improvements based on the item's context
+
+IMPORTANT CONSTRAINTS:
+- You can ONLY discuss and modify THIS specific item (ID: ${context.itemId})
+- You cannot access or modify other items in the user's list
+- All suggestions should be relevant to this specific ${context.type}
+- When the user asks to update something, provide clear confirmation of what will be changed
+- If the user asks about unrelated topics, politely redirect to this specific item
+
+AVAILABLE FIELDS YOU CAN MODIFY:
+- content, type, status (active/completed/paused/archived)
+- priority (1-5), due date, notes, stage
+- location, frequency, required_time_minutes
+- success_criteria, mood, trigger
+${context.type === 'routine' ? '- routine_type (morning/evening/daily/weekly/workout/health)' : ''}
+${context.type === 'goal' ? '- goal_type (personal/professional/health/financial/learning)' : ''}
+
+Please be helpful, contextual, and focused on this specific item.`;
+            
+            return contextPrompt;
+        }
+
         function openAIChat(itemId) {
             const item = feedItems.find(i => i.id === itemId);
             if (!item) {
@@ -2345,9 +2438,10 @@
             currentAIItem = item;
             aiChatHistory = item.ai_chat_history ? JSON.parse(item.ai_chat_history) : [];
             
-            // Update chat header
+            // Update chat header with more context
+            const priorityLabels = {1: 'Low', 2: 'Medium', 3: 'Normal', 4: 'High', 5: 'Critical'};
             document.getElementById('aiChatItemTitle').textContent = item.content_short || (item.content ? item.content.substring(0, 50) : 'Untitled');
-            document.getElementById('aiChatItemType').textContent = `${item.type || 'item'} • Priority ${item.priority || 1}`;
+            document.getElementById('aiChatItemType').textContent = `${item.type || 'item'} • ${priorityLabels[item.priority] || 'Normal'} Priority • ${item.status || 'active'}`;
             
             // Render chat history
             renderAIChatHistory();
@@ -2360,10 +2454,38 @@
                 document.getElementById('aiChatInput').focus();
             }, 300);
             
-            // Add welcome message if no history
+            // Add context-aware welcome message if no history
             if (aiChatHistory.length === 0) {
-                addAIMessage('assistant', `Hi! I'm MindOS AI. I can help you with this ${item.type || 'item'}. You can ask me to:\n\n• Update or modify details\n• Mark as complete or change status\n• Add notes or set reminders\n• Get suggestions for improvement\n• Ask questions about the task\n\nWhat would you like to do?`);
+                const welcomeMessage = generateWelcomeMessage(item);
+                addAIMessage('assistant', welcomeMessage);
             }
+        }
+        
+        // Generate a context-aware welcome message
+        function generateWelcomeMessage(item) {
+            let message = `Hi! I'm here to help you with this ${item.type || 'item'}: "${item.content_short || item.content}"\n\n`;
+            
+            // Add status-specific suggestions
+            if (item.status === 'active') {
+                message += `I can help you:\n• Mark it as complete\n• Set or update the due date\n• Break it into smaller tasks\n• Add notes or details\n`;
+            } else if (item.status === 'completed') {
+                message += `This item is completed! I can help you:\n• Reactivate it\n• Create a similar item\n• Add completion notes\n`;
+            }
+            
+            // Add type-specific suggestions
+            if (item.type === 'routine') {
+                message += `• Adjust the frequency (currently: ${item.frequency || 'not set'})\n• Track your streak (currently: ${item.performance_streak || 0} days)\n`;
+            } else if (item.type === 'goal') {
+                message += `• Update progress towards the goal\n• Set milestones\n• Adjust the target date\n`;
+            }
+            
+            // Add priority-specific note
+            if (item.priority >= 4) {
+                message += `\n⚡ This is a high priority item. Would you like help planning immediate next steps?`;
+            }
+            
+            message += `\nWhat would you like to do?`;
+            return message;
         }
 
         function closeAIChat() {
@@ -2427,6 +2549,9 @@
             sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
             try {
+                // Build comprehensive context for the AI
+                const itemContext = buildItemContext(currentAIItem);
+                
                 // Send to Claude API for processing
                 const response = await fetch('/api/claude', {
                     method: 'POST',
@@ -2436,7 +2561,7 @@
                     },
                     body: JSON.stringify({
                         messages: [
-                            { role: 'system', content: `You are helping with this item: ${JSON.stringify(currentAIItem)}` },
+                            { role: 'system', content: itemContext },
                             ...aiChatHistory,
                             { role: 'user', content: message }
                         ]
