@@ -2156,6 +2156,10 @@
             console.log('📋 Current edit item:', currentEditItem);
             console.log('🔧 Add mode:', isAddMode);
             
+            // Get button reference and original text BEFORE try block
+            const saveBtn = document.getElementById('saveEditBtn');
+            const originalText = saveBtn ? saveBtn.textContent : 'Save Changes';
+            
             try {
                 // Collect form data with better validation
                 const rawData = {};
@@ -2215,11 +2219,11 @@
                 console.log('🎯 Formatted data for submission:', formattedData);
                 
                 // Show loading state
-                const saveBtn = document.getElementById('saveEditBtn');
-                const originalText = saveBtn.textContent;
-                saveBtn.textContent = 'Saving...';
-                saveBtn.disabled = true;
-                saveBtn.classList.add('loading');
+                if (saveBtn) {
+                    saveBtn.textContent = 'Saving...';
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('loading');
+                }
                 
                 let response;
                 let url;
@@ -2320,10 +2324,9 @@
                     isAddMode: isAddMode
                 });
             } finally {
-                // Restore button state
-                const saveBtn = document.getElementById('saveEditBtn');
+                // Always restore button state
                 if (saveBtn) {
-                    saveBtn.textContent = originalText;
+                    saveBtn.textContent = originalText || 'Save Changes';
                     saveBtn.disabled = false;
                     saveBtn.classList.remove('loading');
                 }
