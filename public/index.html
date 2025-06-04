@@ -1788,6 +1788,76 @@
                 padding-left: 1.5rem;
             }
         }
+        
+        /* Drag and Drop Styles */
+        .feed-card {
+            cursor: grab;
+            transition: all 0.3s ease;
+        }
+        
+        .feed-card:active {
+            cursor: grabbing;
+        }
+        
+        .feed-card.dragging {
+            opacity: 0.5;
+            cursor: move;
+            transform: scale(0.95);
+        }
+        
+        .feed-card.drag-over {
+            border: 2px dashed #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        /* Load All Button Styles */
+        .load-all-container {
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            margin-top: 20px;
+        }
+        
+        .load-all-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .load-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .load-all-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .completed-item {
+            position: relative;
+        }
+        
+        .completed-item::after {
+            content: 'COMPLETED';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
 
     </style>
 </head>
@@ -2448,6 +2518,7 @@
                         if (newItems.length < ITEMS_PER_PAGE) {
                             hasMoreItems = false;
                             showEndOfFeed();
+                            showLoadAllButton();
                         }
                     }
                 } else {
@@ -2555,9 +2626,6 @@
                 card.classList.add('has-notes');
             }
             
-            const priority = parseInt(item.priority) || 1;
-            const priorityStars = '★'.repeat(priority);
-            
             const typeColors = {
                 routine: '#667eea',
                 goal: '#764ba2',
@@ -2567,21 +2635,19 @@
                 insight: '#fa709a'
             };
             
+            // Add drag attributes
+            card.draggable = true;
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragover', handleDragOver);
+            card.addEventListener('drop', handleDrop);
+            card.addEventListener('dragend', handleDragEnd);
+            card.addEventListener('touchstart', handleTouchStart, {passive: false});
+            
             card.innerHTML = `
-                <div class="card-reorder-controls">
-                    <button class="reorder-btn" onclick="try { console.log('Button clicked for item', ${item.id}); if (typeof moveCard !== 'function') { console.error('moveCard is not defined'); alert('Error: moveCard function not found'); } else { moveCard(${item.id}, -1); } } catch(e) { console.error('Error calling moveCard:', e); alert('Error: ' + e.message); }" title="Move up" ${index === 0 ? 'disabled' : ''}>
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                    <button class="reorder-btn" onclick="try { console.log('Button clicked for item', ${item.id}); if (typeof moveCard !== 'function') { console.error('moveCard is not defined'); alert('Error: moveCard function not found'); } else { moveCard(${item.id}, 1); } } catch(e) { console.error('Error calling moveCard:', e); alert('Error: ' + e.message); }" title="Move down" ${index === feedItems.length - 1 ? 'disabled' : ''}>
-                        <i class="fas fa-arrow-down"></i>
-                    </button>
-                </div>
-                
                 <div class="card-content-area">
                     <div class="card-type-badge" style="background: ${typeColors[item.type] || '#667eea'};">
                         ${item.type || 'item'}
                     </div>
-                    <div class="card-priority">${priorityStars}</div>
                     
                     <div class="card-main-content">
                         <h2 class="card-title">${item.content_short || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
@@ -4750,7 +4816,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
 
         window.deleteItem = async function(itemId) {
-            if (!confirm('Delete this item?')) return;
+            if (!confirm('Delete this item and its AI chat history?')) return;
             
             try {
                 const response = await fetch(`/api/memories/${itemId}`, {
@@ -4768,10 +4834,20 @@ Please be helpful, contextual, and focused on this specific item.`;
                         card.remove();
                     }
                     
+                    // Delete AI chat history
+                    const chatKey = `ai_chat_${itemId}`;
+                    localStorage.removeItem(chatKey);
+                    
+                    // Close AI bubble if open
+                    const aiBubble = document.getElementById(`ai-bubble-${itemId}`);
+                    if (aiBubble) {
+                        aiBubble.remove();
+                    }
+                    
                     document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
                     document.getElementById('totalItemsCount').textContent = feedItems.length;
                     
-                    showToast('Deleted', 'success');
+                    showToast('Deleted item and chat history', 'success');
                 } else {
                     showToast('Failed to delete', 'error');
                 }
@@ -4784,9 +4860,17 @@ Please be helpful, contextual, and focused on this specific item.`;
         // Header Actions
         window.refreshFeed = async function() {
             const feedScroll = document.getElementById('feedScroll');
+            const currentScrollTop = feedScroll.scrollTop;
+            
             feedScroll.innerHTML = '';
             
             await loadInitialFeed();
+            
+            // Restore scroll position after refresh
+            setTimeout(() => {
+                feedScroll.scrollTop = currentScrollTop;
+            }, 100);
+            
             showToast('Feed refreshed!', 'success');
         }
 
