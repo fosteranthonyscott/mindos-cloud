@@ -1349,66 +1349,84 @@
                 padding: 0.75rem 0.5rem;
             }
         }
-        /* Enhanced Notes Display Formatting */
+        /* Enhanced Notes Display Formatting - IMPROVED SPACING */
         .card-notes-container {
             text-align: left;
-            margin: 1.5rem 0;
-            padding: 1.5rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            max-height: 400px;
+            margin: 2rem 0;
+            padding: 2rem 2.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            max-height: 500px;
             overflow-y: auto;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .card-notes-container::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
 
         .card-notes-container::-webkit-scrollbar-track {
-            background: transparent;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
         }
 
         .card-notes-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .card-notes-container::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
         }
 
         .notes-paragraph {
-            font-size: 1.1rem;
-            line-height: 1.8;
-            color: rgba(255, 255, 255, 0.9);
-            margin-bottom: 1rem;
+            font-size: 1.15rem;
+            line-height: 2;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.02em;
+        }
+
+        .notes-paragraph:last-child {
+            margin-bottom: 0;
         }
 
         .notes-title {
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             font-weight: 700;
             color: #667eea;
-            margin: 1.5rem 0 1rem 0;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+            margin: 2rem 0 1.5rem 0;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+            letter-spacing: 0.03em;
+        }
+
+        .notes-title:first-child {
+            margin-top: 0;
         }
 
         .notes-header {
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             font-weight: 600;
             color: #764ba2;
-            margin: 1.2rem 0 0.8rem 0;
+            margin: 2rem 0 1.2rem 0;
+            letter-spacing: 0.02em;
         }
 
         .notes-subheader {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 600;
             color: #f093fb;
-            margin: 1rem 0 0.6rem 0;
+            margin: 1.8rem 0 1rem 0;
+            letter-spacing: 0.02em;
         }
 
         .notes-ordered-list,
         .notes-unordered-list {
-            margin: 1rem 0;
+            margin: 2rem 0;
             padding-left: 0;
             list-style: none;
         }
@@ -1416,11 +1434,17 @@
         .notes-numbered-item,
         .notes-bullet-item {
             position: relative;
-            margin-bottom: 0.8rem;
-            padding-left: 2rem;
-            line-height: 1.6;
-            font-size: 1.05rem;
-            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 1.2rem;
+            padding-left: 2.5rem;
+            line-height: 1.9;
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 0.01em;
+        }
+
+        .notes-numbered-item:last-child,
+        .notes-bullet-item:last-child {
+            margin-bottom: 0;
         }
 
         .notes-numbered-item .notes-number {
@@ -1428,32 +1452,69 @@
             left: 0;
             top: 0;
             color: #667eea;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 1.1rem;
         }
 
         .notes-bullet-item::before {
             content: "•";
             position: absolute;
-            left: 0.5rem;
-            top: 0;
+            left: 0.75rem;
+            top: -0.1rem;
             color: #764ba2;
-            font-size: 1.2rem;
+            font-size: 1.4rem;
             font-weight: bold;
         }
 
         .card-notes-container strong {
             color: #667eea;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 0.02em;
         }
 
         .card-notes-container em {
             color: #f093fb;
             font-style: italic;
+            letter-spacing: 0.01em;
         }
 
         .card-notes-container br {
             display: block;
-            margin: 0.3rem 0;
+            margin: 0.5rem 0;
+        }
+
+        /* Add visual breathing room between different types of content */
+        .notes-ordered-list + .notes-paragraph,
+        .notes-unordered-list + .notes-paragraph,
+        .notes-paragraph + .notes-ordered-list,
+        .notes-paragraph + .notes-unordered-list,
+        .notes-header + .notes-paragraph,
+        .notes-subheader + .notes-paragraph,
+        .notes-title + .notes-paragraph {
+            margin-top: 2rem;
+        }
+
+        /* Horizontal divider */
+        .notes-divider {
+            border: none;
+            height: 2px;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+            margin: 2.5rem 0;
+        }
+
+        /* Adjust card main content for better notes display */
+        .card-main-content {
+            padding: 0.5rem 0;
+        }
+
+        /* Override default card title margin when notes are present */
+        .card-title {
+            margin-bottom: 0.5rem !important;
+        }
+
+        /* If notes container follows title, reduce top margin */
+        .card-title + .card-notes-container {
+            margin-top: 1rem;
         }
 
         /* Responsive adjustments for notes */
@@ -2037,43 +2098,67 @@
         function formatNotesForDisplay(notes) {
             if (!notes) return '';
             
+            // Pre-process to ensure better spacing
+            let preprocessed = notes
+                // Ensure double line breaks before headers
+                .replace(/([^\n])\n(#{1,3} )/g, '$1\n\n$2')
+                // Ensure double line breaks before lists
+                .replace(/([^\n])\n(\d+\.\s|[-•*]\s)/g, '$1\n\n$2')
+                // Normalize multiple line breaks
+                .replace(/\n{3,}/g, '\n\n');
+            
             // Convert markdown-style formatting to HTML
-            let formatted = notes
+            let formatted = preprocessed
                 // Headers
                 .replace(/^### (.+)$/gm, '<h4 class="notes-subheader">$1</h4>')
                 .replace(/^## (.+)$/gm, '<h3 class="notes-header">$1</h3>')
                 .replace(/^# (.+)$/gm, '<h2 class="notes-title">$1</h2>')
                 
-                // Lists
-                .replace(/^\d+\.\s+(.+)$/gm, '<li class="notes-numbered-item"><span class="notes-number">$&</span></li>')
+                // Lists - improved regex to capture the number/bullet properly
+                .replace(/^(\d+\.)\s+(.+)$/gm, '<li class="notes-numbered-item"><span class="notes-number">$1</span>$2</li>')
                 .replace(/^[-•*]\s+(.+)$/gm, '<li class="notes-bullet-item">$1</li>')
                 
                 // Bold and italic
                 .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.+?)\*/g, '<em>$1</em>')
                 
-                // Line breaks
-                .replace(/\n\n/g, '</p><p class="notes-paragraph">')
+                // Horizontal rules
+                .replace(/^---+$/gm, '<hr class="notes-divider">')
+                
+                // Line breaks - improved handling
+                .replace(/\n\n+/g, '</p><p class="notes-paragraph">')
                 .replace(/\n/g, '<br>');
             
-            // Wrap lists
-            formatted = formatted.replace(/(<li class="notes-numbered-item">[\s\S]+?<\/li>)/g, function(match) {
+            // Wrap consecutive list items
+            formatted = formatted.replace(/(<li class="notes-numbered-item">.*?<\/li>)(\s*<li class="notes-numbered-item">)/g, function(match, p1, p2) {
+                return p1 + p2;
+            });
+            
+            formatted = formatted.replace(/(<li class="notes-bullet-item">.*?<\/li>)(\s*<li class="notes-bullet-item">)/g, function(match, p1, p2) {
+                return p1 + p2;
+            });
+            
+            // Wrap lists properly
+            formatted = formatted.replace(/(<li class="notes-numbered-item">.*?<\/li>(?:\s*<li class="notes-numbered-item">.*?<\/li>)*)/g, function(match) {
                 return '<ol class="notes-ordered-list">' + match + '</ol>';
             });
             
-            formatted = formatted.replace(/(<li class="notes-bullet-item">[\s\S]+?<\/li>)/g, function(match) {
+            formatted = formatted.replace(/(<li class="notes-bullet-item">.*?<\/li>(?:\s*<li class="notes-bullet-item">.*?<\/li>)*)/g, function(match) {
                 return '<ul class="notes-unordered-list">' + match + '</ul>';
             });
             
-            // Clean up consecutive list tags
-            formatted = formatted
-                .replace(/<\/ol>\s*<ol class="notes-ordered-list">/g, '')
-                .replace(/<\/ul>\s*<ul class="notes-unordered-list">/g, '');
-            
-            // Wrap in paragraph if not already structured
-            if (!formatted.includes('<h') && !formatted.includes('<ul') && !formatted.includes('<ol')) {
+            // Wrap content in paragraphs if needed
+            if (!formatted.includes('<p') && !formatted.includes('<h') && !formatted.includes('<ul') && !formatted.includes('<ol')) {
                 formatted = '<p class="notes-paragraph">' + formatted + '</p>';
             }
+            
+            // Clean up empty paragraphs
+            formatted = formatted
+                .replace(/<p class="notes-paragraph">\s*<\/p>/g, '')
+                .replace(/<p class="notes-paragraph">(<h[1-6])/g, '$1')
+                .replace(/(<\/h[1-6]>)<\/p>/g, '$1')
+                .replace(/<p class="notes-paragraph">(<ul|<ol)/g, '$1')
+                .replace(/(<\/ul>|<\/ol>)<\/p>/g, '$1');
             
             return formatted;
         }
