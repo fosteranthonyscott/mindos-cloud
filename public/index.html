@@ -1500,8 +1500,9 @@
             
             try {
                 // Try enhanced endpoint first, fallback to basic
+                // IMPORTANT: Exclude completed items from the feed
                 const offset = currentPage * ITEMS_PER_PAGE;
-                let response = await fetch(`/api/memories/enhanced?limit=${ITEMS_PER_PAGE}&offset=${offset}&sort_by=priority&sort_order=desc`, {
+                let response = await fetch(`/api/memories/enhanced?limit=${ITEMS_PER_PAGE}&offset=${offset}&sort_by=priority&sort_order=desc&exclude_completed=true`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
@@ -2535,19 +2536,37 @@
                     // Update the local item with server response
                     Object.assign(item, updatedItem);
                     
-                    // Find and update the button UI
-                    const card = document.querySelector(`[data-item-id="${itemId}"]`);
-                    if (card) {
-                        const btn = card.querySelector('.action-btn .fa-check')?.parentElement;
-                        if (btn) {
-                            btn.classList.toggle('completed', newStatus === 'completed');
+                    if (newStatus === 'completed') {
+                        // Remove the item from the feed when completed
+                        const card = document.querySelector(`[data-item-id="${itemId}"]`);
+                        if (card) {
+                            // Animate removal
+                            card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                            card.style.opacity = '0';
+                            card.style.transform = 'translateX(100%)';
+                            
+                            setTimeout(() => {
+                                card.remove();
+                                // Remove from feedItems array
+                                feedItems = feedItems.filter(i => i.id !== itemId);
+                                // Update counts
+                                document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
+                                document.getElementById('totalItemsCount').textContent = feedItems.length;
+                            }, 300);
                         }
+                        
+                        showToast(`Completed! ✅ Task removed from active list`, 'success');
+                    } else {
+                        // If reactivating, update the button UI
+                        const card = document.querySelector(`[data-item-id="${itemId}"]`);
+                        if (card) {
+                            const btn = card.querySelector('.action-btn .fa-check')?.parentElement;
+                            if (btn) {
+                                btn.classList.remove('completed');
+                            }
+                        }
+                        showToast('Reactivated', 'success');
                     }
-                    
-                    const message = newStatus === 'completed' 
-                        ? `Completed! ✅ (${new Date().toLocaleDateString()})` 
-                        : 'Reactivated';
-                    showToast(message, 'success');
                 } else {
                     const errorText = await response.text();
                     console.error('Failed to toggle complete:', response.status, errorText);

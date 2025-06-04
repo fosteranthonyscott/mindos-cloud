@@ -1380,7 +1380,7 @@ app.get('/api/memories', auth, async (req, res) => {
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
-        const { type, limit = 50 } = req.query;
+        const { type, limit = 50, include_completed = 'false' } = req.query;
         
         let query = 'SELECT * FROM memories WHERE user_id = $1';
         let params = [req.user.userId];
@@ -1390,6 +1390,11 @@ app.get('/api/memories', auth, async (req, res) => {
             query += ` AND type = $${paramIndex}`;
             params.push(type);
             paramIndex++;
+        }
+        
+        // By default, exclude completed items unless specifically requested
+        if (include_completed !== 'true' && memoriesTableColumns.includes('status')) {
+            query += ` AND (status != 'completed' OR status IS NULL)`;
         }
         
         // Order by available columns
@@ -1993,7 +1998,8 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
             limit = 50,
             offset = 0,
             sort_by = 'priority',
-            sort_order = 'desc'
+            sort_order = 'desc',
+            exclude_completed = 'false'
         } = req.query;
         
         let query = 'SELECT * FROM memories WHERE user_id = $1';
@@ -2012,6 +2018,9 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
             query += ` AND status = $${paramIndex}`;
             params.push(status);
             paramIndex++;
+        } else if (exclude_completed === 'true' && memoriesTableColumns.includes('status')) {
+            // Exclude completed items by default for the main feed
+            query += ` AND (status != 'completed' OR status IS NULL)`;
         }
         
         // Priority filter
