@@ -322,49 +322,55 @@
             cursor: not-allowed;
         }
 
-        /* Notes visibility toggle */
-        .notes-visibility-toggle {
-            position: absolute;
-            top: 0.5rem;
-            left: 0.5rem;
-            width: 32px;
-            height: 32px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            color: #667eea;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            opacity: 0.6;
-        }
-
-        .card-notes-container:hover .notes-visibility-toggle {
-            opacity: 1;
-        }
-
-        .notes-visibility-toggle:hover {
-            background: rgba(102, 126, 234, 0.2);
-            border-color: #667eea;
-        }
 
         .card-notes-container.collapsed .notes-content {
+            display: none;
+        }
+
+        .card-notes-container.collapsed .notes-edit-btn {
+            display: none;
+        }
+
+        .card-notes-container.collapsed .notes-expand-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #667eea;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .card-notes-container:not(.collapsed) .notes-expand-text {
             display: none;
         }
 
         .card-notes-container.collapsed {
             padding: 1rem 2.5rem;
             min-height: auto;
+            cursor: pointer;
         }
 
-        .card-notes-container.collapsed::after {
-            content: "Notes hidden - click eye to expand";
-            font-style: italic;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 0.9rem;
+        .card-notes-container.collapsed:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .card-notes-container.collapsed:hover .notes-expand-text {
+            color: #764ba2;
+            transform: translateX(5px);
+        }
+
+        .notes-expand-text i {
+            transition: transform 0.3s ease;
+        }
+
+        .card-notes-container:not(.collapsed) .notes-edit-btn {
+            opacity: 0.6;
+            transition: opacity 0.3s ease;
+        }
+
+        .card-notes-container:not(.collapsed):hover .notes-edit-btn {
+            opacity: 1;
         }
 
         .card-type-badge {
@@ -1535,6 +1541,8 @@
             height: auto !important;
             position: relative;
             transition: all 0.3s ease;
+            /* Ensure notes don't overlap with action buttons */
+            margin-right: 100px;
         }
 
         .card-notes-container:hover {
@@ -1766,6 +1774,7 @@
             .card-notes-container {
                 padding: 1rem;
                 margin: 1rem 0;
+                margin-right: 20px;
             }
 
             .notes-paragraph {
@@ -2577,15 +2586,15 @@
                     <div class="card-main-content">
                         <h2 class="card-title">${item.content_short || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
                         ${item.notes ? `
-                            <div class="card-notes-container" data-item-id="${item.id}" id="notes-container-${item.id}">
-                                <button class="notes-visibility-toggle" onclick="toggleNotesVisibility(${item.id})" title="Toggle notes visibility">
-                                    <i class="fas fa-eye" id="notes-eye-${item.id}"></i>
-                                </button>
-                                <button class="notes-edit-btn" onclick="enableNotesEdit(${item.id})" title="Edit notes">
+                            <div class="card-notes-container${notesVisibility[item.id] !== false ? ' collapsed' : ''}" data-item-id="${item.id}" id="notes-container-${item.id}" onclick="toggleNotesVisibility(${item.id})">
+                                <button class="notes-edit-btn" onclick="event.stopPropagation(); enableNotesEdit(${item.id})" title="Edit notes">
                                     <i class="fas fa-pencil-alt"></i>
                                 </button>
                                 <div class="notes-content" id="notes-content-${item.id}">
                                     ${formatNotesForDisplay(item.notes)}
+                                </div>
+                                <div class="notes-expand-text" id="notes-expand-${item.id}">
+                                    <i class="fas fa-chevron-down"></i> Expand Notes
                                 </div>
                                 <textarea class="notes-edit-textarea" id="notes-textarea-${item.id}" style="display: none;">${item.notes}</textarea>
                             </div>
@@ -2688,13 +2697,9 @@
             Object.entries(notesVisibility).forEach(([itemId, isCollapsed]) => {
                 if (isCollapsed) {
                     const container = document.getElementById(`notes-container-${itemId}`);
-                    const eyeIcon = document.getElementById(`notes-eye-${itemId}`);
                     
                     if (container) {
                         container.classList.add('collapsed');
-                        if (eyeIcon) {
-                            eyeIcon.className = 'fas fa-eye-slash';
-                        }
                     }
                 }
             });
@@ -4215,22 +4220,21 @@ Please be helpful, contextual, and focused on this specific item.`;
         // Toggle notes visibility
         window.toggleNotesVisibility = function(itemId) {
             const container = document.getElementById(`notes-container-${itemId}`);
-            const eyeIcon = document.getElementById(`notes-eye-${itemId}`);
             
             if (container) {
+                // Don't toggle if we're editing
+                if (container.classList.contains('editing')) {
+                    return;
+                }
+                
                 container.classList.toggle('collapsed');
                 const isCollapsed = container.classList.contains('collapsed');
-                
-                // Update icon
-                if (eyeIcon) {
-                    eyeIcon.className = isCollapsed ? 'fas fa-eye-slash' : 'fas fa-eye';
-                }
                 
                 // Save state
                 notesVisibility[itemId] = isCollapsed;
                 localStorage.setItem('mindos_notes_visibility', JSON.stringify(notesVisibility));
                 
-                showToast(isCollapsed ? 'Notes hidden' : 'Notes shown', 'info');
+                showToast(isCollapsed ? 'Notes collapsed' : 'Notes expanded', 'info');
             }
         }
         
