@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MindOS - Your Personal AI Feed</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -156,6 +156,8 @@
             justify-content: space-between;
             padding: 0 1.5rem;
             z-index: 1000;
+            max-width: 100vw;
+            overflow: hidden;
         }
 
         .header-left {
@@ -189,11 +191,13 @@
         .header-actions {
             display: flex;
             gap: 1rem;
+            overflow: hidden;
+            flex-shrink: 0;
         }
 
         .header-btn {
-            width: 45px;
-            height: 45px;
+            width: 36px;
+            height: 36px;
             background: rgba(255, 255, 255, 0.1);
             border: none;
             border-radius: 50%;
@@ -422,6 +426,39 @@
                 height: 35px;
                 font-size: 1rem;
             }
+            
+            /* Fix header overflow on mobile */
+            .feed-header {
+                padding: 0 0.5rem;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .header-actions {
+                flex-wrap: nowrap;
+                gap: 0.5rem;
+            }
+            
+            .header-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 0.9rem;
+                flex-shrink: 0;
+            }
+            
+            .mindos-logo {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+            
+            .user-info h3 {
+                font-size: 1rem;
+            }
+            
+            .user-info p {
+                font-size: 0.8rem;
+            }
         }
 
         .card-brain-logo {
@@ -489,8 +526,8 @@
         }
 
         .action-btn {
-            width: 60px;
-            height: 60px;
+            width: 45px;
+            height: 45px;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: none;
@@ -500,7 +537,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1rem;
             transition: all 0.3s ease;
             position: relative;
         }
@@ -2052,12 +2089,12 @@
         });
 
         // Authentication Functions
-        function showLogin() {
+        window.showLogin = function() {
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('registerForm').style.display = 'none';
         }
 
-        function showRegister() {
+        window.showRegister = function() {
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('registerForm').style.display = 'block';
         }
@@ -2609,7 +2646,7 @@
             document.getElementById('currentItemNumber').textContent = currentItem;
         }
 
-        function scrollToTop() {
+        window.scrollToTop = function() {
             const feedScroll = document.getElementById('feedScroll');
             feedScroll.scrollTo({
                 top: 0,
@@ -2915,12 +2952,12 @@
             setTimeout(fixDropdownVisibility, 100);
         }
 
-        function toggleOptionalFields() {
+        window.toggleOptionalFields = function() {
             const optionalContainer = document.getElementById('optionalFields');
             optionalContainer.classList.toggle('collapsed');
         }
 
-        function toggleAvailableFields() {
+        window.toggleAvailableFields = function() {
             const availableContainer = document.getElementById('availableFields');
             availableContainer.classList.toggle('show');
         }
@@ -2976,7 +3013,7 @@
         }
 
         // UNIFIED: Show Add Item (replaces showQuickAdd) - WITH DROPDOWN FIX INTEGRATION
-        function showAddItem() {
+        window.showAddItem = function() {
             console.log('➕ Showing add item form');
             
             const emptyItem = {
@@ -2996,7 +3033,7 @@
         }
 
         // ENHANCED: Edit function with better error handling
-        function editItem(itemId) {
+        window.editItem = function(itemId) {
             console.log('📝 Editing item:', itemId);
             
             // ENSURE ID IS PROPERLY CONVERTED
@@ -3023,7 +3060,7 @@
             setTimeout(fixDropdownVisibility, 150);
         }
 
-        function closeEdit() {
+        window.closeEdit = function() {
             document.getElementById('editOverlay').classList.remove('show');
             document.getElementById('availableFields').classList.remove('show');
             currentEditItem = null;
@@ -3032,7 +3069,7 @@
         }
 
         // ENHANCED SAVE FUNCTION WITH BETTER ERROR HANDLING AND DEBUGGING
-        async function saveEdit() {
+        window.saveEdit = async function() {
             if (!currentEditItem) {
                 showToast('No item to save', 'error');
                 return;
@@ -3277,7 +3314,15 @@ ITEM CONTEXT:
             if (context.location) contextPrompt += `- Location: ${context.location}\n`;
             if (context.performanceStreak > 0) contextPrompt += `- Performance Streak: ${context.performanceStreak} days\n`;
             if (context.requiredTime) contextPrompt += `- Required Time: ${context.requiredTime} minutes\n`;
-            if (context.notes) contextPrompt += `- Notes: ${context.notes}\n`;
+            if (context.notes) {
+                // Check if notes are currently being edited and get the latest content
+                const textarea = document.getElementById(`notes-textarea-${context.itemId}`);
+                let currentNotes = context.notes;
+                if (textarea && textarea.style.display !== 'none') {
+                    currentNotes = textarea.value.trim();
+                }
+                contextPrompt += `- Notes: ${currentNotes}\n`;
+            }
             if (context.successCriteria) contextPrompt += `- Success Criteria: ${context.successCriteria}\n`;
             
             // Type-specific context
@@ -3325,7 +3370,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         // ===== AI COMMENT BUBBLE INTERFACE =====
         
         // Toggle AI bubble for specific item
-        function toggleAIBubble(itemId) {
+        window.toggleAIBubble = function(itemId) {
             const existingBubble = document.querySelector(`.ai-comment-bubble[data-item-id="${itemId}"]`);
             if (existingBubble) {
                 closeAIBubble(itemId);
@@ -3335,7 +3380,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Open AI bubble for specific item
-        async function openAIBubble(itemId) {
+        window.openAIBubble = async function(itemId) {
             // Ensure proper type comparison (handle both string and number IDs)
             const item = feedItems.find(i => i.id == itemId);
             if (!item) {
@@ -3475,7 +3520,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Close AI bubble
-        function closeAIBubble(itemId) {
+        window.closeAIBubble = function(itemId) {
             const bubble = activeBubbles.get(itemId);
             if (bubble) {
                 bubble.classList.remove('show');
@@ -3490,7 +3535,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Minimize/maximize bubble
-        function minimizeBubble(itemId) {
+        window.minimizeBubble = function(itemId) {
             const bubble = activeBubbles.get(itemId);
             if (bubble) {
                 bubble.classList.toggle('minimized');
@@ -3565,7 +3610,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Send quick action
-        function sendQuickAction(itemId, text) {
+        window.sendQuickAction = function(itemId, text) {
             const input = document.getElementById(`bubbleInput-${itemId}`);
             if (input) {
                 input.value = text;
@@ -3638,7 +3683,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Handle bubble input keydown
-        function handleBubbleKeydown(event, itemId) {
+        window.handleBubbleKeydown = function(event, itemId) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 sendBubbleMessage(itemId);
@@ -3646,13 +3691,13 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Auto-resize bubble input
-        function autoResizeBubbleInput(textarea) {
+        window.autoResizeBubbleInput = function(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
         }
         
         // Send message in bubble
-        async function sendBubbleMessage(itemId) {
+        window.sendBubbleMessage = async function(itemId) {
             const input = document.getElementById(`bubbleInput-${itemId}`);
             const sendBtn = document.getElementById(`bubbleSend-${itemId}`);
             const message = input.value.trim();
@@ -3737,7 +3782,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         
         
         // Pin insight functionality with smart content extraction
-        function pinInsight(text) {
+        window.pinInsight = function(text) {
             if (!text) return;
             
             // Extract valuable content by removing common intro/outro patterns
@@ -3860,7 +3905,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Toggle pinned insights panel
-        function togglePinnedPanel() {
+        window.togglePinnedPanel = function() {
             let panel = document.getElementById('pinnedInsightsPanel');
             
             if (!panel) {
@@ -3915,13 +3960,13 @@ Please be helpful, contextual, and focused on this specific item.`;
             }
         }
         
-        function removePinnedInsight(id) {
+        window.removePinnedInsight = function(id) {
             pinnedInsights = pinnedInsights.filter(i => i.id !== id);
             updatePinnedPanel();
         }
         
         // Enable inline notes editing
-        function enableNotesEdit(itemId) {
+        window.enableNotesEdit = function(itemId) {
             const container = document.querySelector(`.card-notes-container[data-item-id="${itemId}"]`);
             const contentDiv = document.getElementById(`notes-content-${itemId}`);
             const textarea = document.getElementById(`notes-textarea-${itemId}`);
@@ -4070,7 +4115,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
 
         // Toggle notes visibility
-        function toggleNotesVisibility(itemId) {
+        window.toggleNotesVisibility = function(itemId) {
             const container = document.getElementById(`notes-container-${itemId}`);
             const eyeIcon = document.getElementById(`notes-eye-${itemId}`);
             
@@ -4092,7 +4137,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
         
         // Move card up or down in feed
-        function moveCard(itemId, direction) {
+        window.moveCard = function(itemId, direction) {
             console.log('moveCard called:', itemId, direction);
             
             const currentIndex = feedItems.findIndex(item => item.id == itemId);
@@ -4208,7 +4253,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         let draggedBubble = null;
         let dragOffset = { x: 0, y: 0 };
         
-        function startDragBubble(event, itemId) {
+        window.startDragBubble = function(event, itemId) {
             const bubble = document.querySelector(`.ai-comment-bubble[data-item-id="${itemId}"]`);
             if (!bubble) return;
             
@@ -4296,7 +4341,7 @@ Please be helpful, contextual, and focused on this specific item.`;
             openAIBubble(itemId);
         }
         
-        function closeAIChat() {
+        window.closeAIChat = function() {
             // Close all bubbles
             activeBubbles.forEach((bubble, itemId) => {
                 closeAIBubble(itemId);
@@ -4353,7 +4398,7 @@ Please be helpful, contextual, and focused on this specific item.`;
             container.scrollTop = container.scrollHeight;
         }
 
-        async function sendAIMessage() {
+        window.sendAIMessage = async function() {
             const input = document.getElementById('aiChatInput');
             const sendBtn = document.getElementById('aiChatSend');
             const message = input.value.trim();
@@ -4557,7 +4602,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         });
 
         // Social Media Actions
-        async function toggleComplete(itemId) {
+        window.toggleComplete = async function(itemId) {
             try {
                 // Use == for type-flexible comparison
                 const item = feedItems.find(i => i.id == itemId);
@@ -4641,7 +4686,7 @@ Please be helpful, contextual, and focused on this specific item.`;
             }
         }
 
-        function shareItem(itemId) {
+        window.shareItem = function(itemId) {
             // Use == for type-flexible comparison
             const item = feedItems.find(i => i.id == itemId);
             if (!item) return;
@@ -4659,7 +4704,7 @@ Please be helpful, contextual, and focused on this specific item.`;
             }
         }
 
-        async function deleteItem(itemId) {
+        window.deleteItem = async function(itemId) {
             if (!confirm('Delete this item?')) return;
             
             try {
@@ -4692,7 +4737,7 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
 
         // Header Actions
-        async function refreshFeed() {
+        window.refreshFeed = async function() {
             const feedScroll = document.getElementById('feedScroll');
             feedScroll.innerHTML = '';
             
@@ -4700,11 +4745,11 @@ Please be helpful, contextual, and focused on this specific item.`;
             showToast('Feed refreshed!', 'success');
         }
 
-        function showProfile() {
+        window.showProfile = function() {
             showToast('Profile coming soon!', 'info');
         }
 
-        function logout() {
+        window.logout = function() {
             localStorage.removeItem('mindos_token');
             authToken = null;
             currentUser = null;
