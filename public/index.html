@@ -745,8 +745,350 @@
         }
 
         /* =========================
-           AI CHAT INTERFACE
+           AI CHAT INTERFACE - COMMENT BUBBLE STYLE
         ========================= */
+        /* Comment Bubble Container - positioned at bottom of each card */
+        .ai-comment-bubble {
+            position: absolute;
+            bottom: 120px;
+            right: 20px;
+            max-width: 400px;
+            background: rgba(30, 30, 40, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            display: none;
+            flex-direction: column;
+            max-height: 60vh;
+            z-index: 100;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            overflow: hidden;
+            animation: bubbleSlideIn 0.3s ease-out;
+        }
+
+        @keyframes bubbleSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .ai-comment-bubble.show {
+            display: flex;
+        }
+
+        /* Bubble Header - Simplified */
+        .bubble-header {
+            padding: 1rem;
+            background: rgba(102, 126, 234, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: move;
+        }
+
+        .bubble-header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .bubble-header-title .brain-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .bubble-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .bubble-action-btn {
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+
+        .bubble-action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .bubble-action-btn.pin-btn.pinned {
+            background: rgba(255, 193, 7, 0.3);
+            color: #ffc107;
+        }
+
+        /* Quick Actions Bar */
+        .bubble-quick-actions {
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .quick-action-chip {
+            padding: 0.4rem 0.8rem;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            color: white;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .quick-action-chip:hover {
+            background: rgba(102, 126, 234, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .quick-action-chip.suggested {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: rgba(76, 175, 80, 0.3);
+        }
+
+        /* Messages Container - Compact */
+        .bubble-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            min-height: 200px;
+            max-height: 350px;
+        }
+
+        .bubble-message {
+            display: flex;
+            gap: 0.5rem;
+            max-width: 90%;
+            animation: messageSlideIn 0.3s ease-out;
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .bubble-message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .bubble-message.assistant {
+            align-self: flex-start;
+        }
+
+        .bubble-message-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .bubble-message.user .bubble-message-avatar {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+
+        .bubble-message.assistant .bubble-message-avatar {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .bubble-message-content {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 0.6rem 1rem;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .bubble-message.user .bubble-message-content {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+
+        .bubble-message.system .bubble-message-content {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            font-size: 0.8rem;
+        }
+
+        /* Input Area - Compact */
+        .bubble-input-container {
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bubble-input-wrapper {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .bubble-input {
+            flex: 1;
+            padding: 0.6rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: white;
+            font-size: 0.85rem;
+            resize: none;
+            min-height: 36px;
+            max-height: 80px;
+        }
+
+        .bubble-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .bubble-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+        }
+
+        .bubble-send {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .bubble-send:hover {
+            transform: scale(1.1);
+        }
+
+        .bubble-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Minimize/Expand States */
+        .ai-comment-bubble.minimized {
+            height: 50px;
+            overflow: hidden;
+        }
+
+        .ai-comment-bubble.minimized .bubble-messages,
+        .ai-comment-bubble.minimized .bubble-input-container,
+        .ai-comment-bubble.minimized .bubble-quick-actions {
+            display: none;
+        }
+
+        /* Pinned Insights Panel */
+        .pinned-insights-panel {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            width: 300px;
+            max-height: 60vh;
+            background: rgba(30, 30, 40, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            display: none;
+            flex-direction: column;
+            z-index: 900;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .pinned-insights-panel.show {
+            display: flex;
+        }
+
+        .pinned-insights-header {
+            padding: 1rem;
+            background: rgba(255, 193, 7, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .pinned-insights-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .pinned-insight {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            position: relative;
+            border: 1px solid rgba(255, 193, 7, 0.2);
+        }
+
+        .pinned-insight-remove {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 20px;
+            height: 20px;
+            background: rgba(244, 67, 54, 0.3);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* OLD CHAT OVERLAY - TO BE REMOVED */
         .ai-chat-overlay {
             position: fixed;
             top: 0;
@@ -1188,8 +1530,11 @@
         let authToken = localStorage.getItem('mindos_token');
         let feedItems = [];
         let currentEditItem = null;
+        // AI Comment Bubble Interface Variables
         let currentAIItem = null;
         let aiChatHistory = [];
+        let activeBubbles = new Map(); // Track open bubbles per item
+        let pinnedInsights = []; // Store pinned insights
         let databaseSchema = null;
         let activeOptionalFields = new Set();
         let debugMode = false;
@@ -1606,7 +1951,7 @@
                 </div>
                 
                 <div class="card-actions">
-                    <button class="action-btn ai-chat" onclick="openAIChat(${item.id})" title="AI Chat">
+                    <button class="action-btn ai-chat" onclick="toggleAIBubble(${item.id})" title="AI Assistant">
                         <i class="fas fa-brain"></i>
                     </button>
                     
@@ -2428,37 +2773,427 @@ Please be helpful, contextual, and focused on this specific item.`;
             return contextPrompt;
         }
 
-        function openAIChat(itemId) {
-            const item = feedItems.find(i => i.id === itemId);
+        // ===== AI COMMENT BUBBLE INTERFACE =====
+        
+        // Toggle AI bubble for specific item
+        function toggleAIBubble(itemId) {
+            const existingBubble = document.querySelector(`.ai-comment-bubble[data-item-id="${itemId}"]`);
+            if (existingBubble) {
+                closeAIBubble(itemId);
+            } else {
+                openAIBubble(itemId);
+            }
+        }
+        
+        // Open AI bubble for specific item
+        async function openAIBubble(itemId) {
+            // Ensure proper type comparison (handle both string and number IDs)
+            const item = feedItems.find(i => i.id == itemId);
             if (!item) {
                 showToast('Item not found', 'error');
                 return;
             }
             
             currentAIItem = item;
-            aiChatHistory = item.ai_chat_history ? JSON.parse(item.ai_chat_history) : [];
             
-            // Update chat header with more context
-            const priorityLabels = {1: 'Low', 2: 'Medium', 3: 'Normal', 4: 'High', 5: 'Critical'};
-            document.getElementById('aiChatItemTitle').textContent = item.content_short || (item.content ? item.content.substring(0, 50) : 'Untitled');
-            document.getElementById('aiChatItemType').textContent = `${item.type || 'item'} • ${priorityLabels[item.priority] || 'Normal'} Priority • ${item.status || 'active'}`;
+            // Load chat history
+            if (item.ai_chat_history) {
+                try {
+                    aiChatHistory = JSON.parse(item.ai_chat_history);
+                } catch (e) {
+                    aiChatHistory = [];
+                }
+            } else {
+                aiChatHistory = [];
+            }
             
-            // Render chat history
-            renderAIChatHistory();
+            // Create bubble HTML
+            const card = document.querySelector(`[data-item-id="${itemId}"]`);
+            if (!card) return;
             
-            // Show overlay
-            document.getElementById('aiChatOverlay').classList.add('show');
+            const bubble = document.createElement('div');
+            bubble.className = 'ai-comment-bubble';
+            bubble.dataset.itemId = itemId;
+            bubble.innerHTML = `
+                <div class="bubble-header" onmousedown="startDragBubble(event, ${itemId})">
+                    <div class="bubble-header-title">
+                        <div class="brain-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <span>AI Assistant</span>
+                    </div>
+                    <div class="bubble-actions">
+                        <button class="bubble-action-btn pin-btn" onclick="togglePinnedPanel()" title="View Pinned Insights">
+                            <i class="fas fa-thumbtack"></i>
+                        </button>
+                        <button class="bubble-action-btn" onclick="minimizeBubble(${itemId})" title="Minimize">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button class="bubble-action-btn" onclick="closeAIBubble(${itemId})" title="Close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="bubble-quick-actions" id="quickActions-${itemId}">
+                    <!-- Quick actions will be populated based on item type -->
+                </div>
+                <div class="bubble-messages" id="bubbleMessages-${itemId}">
+                    <!-- Messages will appear here -->
+                </div>
+                <div class="bubble-input-container">
+                    <div class="bubble-input-wrapper">
+                        <textarea class="bubble-input" id="bubbleInput-${itemId}" 
+                            placeholder="Ask about this ${item.type || 'item'}..." 
+                            onkeydown="handleBubbleKeydown(event, ${itemId})"
+                            oninput="autoResizeBubbleInput(this)"></textarea>
+                        <button class="bubble-send" id="bubbleSend-${itemId}" 
+                            onclick="sendBubbleMessage(${itemId})">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Position bubble relative to card
+            card.appendChild(bubble);
+            
+            // Store bubble reference
+            activeBubbles.set(itemId, bubble);
+            
+            // Populate quick actions based on item type
+            populateQuickActions(itemId, item);
+            
+            // Load existing chat history
+            if (aiChatHistory.length > 0) {
+                aiChatHistory.forEach(msg => {
+                    if (msg.role !== 'system') {
+                        addBubbleMessage(itemId, msg.role, msg.content, false);
+                    }
+                });
+            } else {
+                // Add welcome message
+                const welcomeMessage = `I'm here to help you with this ${item.type || 'item'}. What would you like to know or do?`;
+                addBubbleMessage(itemId, 'assistant', welcomeMessage, false);
+            }
+            
+            // Show bubble with animation
+            setTimeout(() => bubble.classList.add('show'), 10);
             
             // Focus input
             setTimeout(() => {
-                document.getElementById('aiChatInput').focus();
+                const input = document.getElementById(`bubbleInput-${itemId}`);
+                if (input) input.focus();
             }, 300);
-            
-            // Add context-aware welcome message if no history
-            if (aiChatHistory.length === 0) {
-                const welcomeMessage = generateWelcomeMessage(item);
-                addAIMessage('assistant', welcomeMessage);
+        }
+        
+        // Close AI bubble
+        function closeAIBubble(itemId) {
+            const bubble = activeBubbles.get(itemId);
+            if (bubble) {
+                bubble.classList.remove('show');
+                setTimeout(() => {
+                    bubble.remove();
+                    activeBubbles.delete(itemId);
+                }, 300);
             }
+            if (currentAIItem && currentAIItem.id === itemId) {
+                currentAIItem = null;
+            }
+        }
+        
+        // Minimize/maximize bubble
+        function minimizeBubble(itemId) {
+            const bubble = activeBubbles.get(itemId);
+            if (bubble) {
+                bubble.classList.toggle('minimized');
+            }
+        }
+        
+        // Populate quick actions based on item type
+        function populateQuickActions(itemId, item) {
+            const container = document.getElementById(`quickActions-${itemId}`);
+            if (!container) return;
+            
+            const quickActions = getQuickActionsForType(item.type, item.status);
+            
+            container.innerHTML = quickActions.map(action => 
+                `<button class="quick-action-chip ${action.suggested ? 'suggested' : ''}" 
+                    onclick="sendQuickAction(${itemId}, '${action.text.replace(/'/g, "\\'")}')"
+                    title="${action.text}">
+                    ${action.icon ? `<i class="fas fa-${action.icon}"></i> ` : ''}${action.label}
+                </button>`
+            ).join('');
+        }
+        
+        // Get appropriate quick actions based on item type
+        function getQuickActionsForType(type, status) {
+            const baseActions = [
+                { label: 'Help me start', text: 'How should I begin working on this?', icon: 'play' },
+                { label: 'Break it down', text: 'Can you break this down into smaller steps?', icon: 'list' }
+            ];
+            
+            const typeSpecificActions = {
+                routine: [
+                    { label: 'Optimize timing', text: 'What\'s the best time to do this routine?', icon: 'clock' },
+                    { label: 'Track progress', text: 'Help me track my progress with this routine', icon: 'chart-line', suggested: true }
+                ],
+                goal: [
+                    { label: 'Set milestones', text: 'Help me set milestones for this goal', icon: 'flag' },
+                    { label: 'Success metrics', text: 'What metrics should I track for this goal?', icon: 'chart-bar', suggested: true }
+                ],
+                task: [
+                    { label: 'Time estimate', text: 'How long will this task take?', icon: 'hourglass' },
+                    { label: 'Prerequisites', text: 'What do I need before starting this?', icon: 'tasks' }
+                ]
+            };
+            
+            if (status === 'active') {
+                baseActions.push({ label: 'Mark complete', text: 'I\'ve completed this item', icon: 'check', suggested: true });
+            }
+            
+            return [...baseActions, ...(typeSpecificActions[type] || [])];
+        }
+        
+        // Send quick action
+        function sendQuickAction(itemId, text) {
+            const input = document.getElementById(`bubbleInput-${itemId}`);
+            if (input) {
+                input.value = text;
+                sendBubbleMessage(itemId);
+            }
+        }
+        
+        // Add message to bubble
+        function addBubbleMessage(itemId, role, content, updateHistory = true) {
+            const container = document.getElementById(`bubbleMessages-${itemId}`);
+            if (!container) return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `bubble-message ${role}`;
+            
+            let avatarIcon = role === 'user' ? 'fa-user' : 'fa-brain';
+            
+            // Format content with line breaks
+            const formattedContent = content.replace(/\n/g, '<br>');
+            
+            messageDiv.innerHTML = `
+                <div class="bubble-message-avatar">
+                    <i class="fas ${avatarIcon}"></i>
+                </div>
+                <div class="bubble-message-content">
+                    ${formattedContent}
+                    ${role === 'assistant' ? `
+                        <button class="pin-insight-btn" onclick="pinInsight('${content.replace(/'/g, "\\'").replace(/\n/g, ' ').substring(0, 200)}')"
+                            style="margin-left: 8px; background: none; border: none; color: #667eea; cursor: pointer; font-size: 0.8rem; opacity: 0.7; transition: opacity 0.2s;"
+                            onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                            <i class="fas fa-thumbtack"></i>
+                        </button>` : ''}
+                </div>
+            `;
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            // Update history if needed
+            if (updateHistory && role !== 'system') {
+                const message = { role, content, timestamp: new Date().toISOString() };
+                aiChatHistory.push(message);
+            }
+        }
+        
+        // Handle bubble input keydown
+        function handleBubbleKeydown(event, itemId) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendBubbleMessage(itemId);
+            }
+        }
+        
+        // Auto-resize bubble input
+        function autoResizeBubbleInput(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
+        }
+        
+        // Send message in bubble
+        async function sendBubbleMessage(itemId) {
+            const input = document.getElementById(`bubbleInput-${itemId}`);
+            const sendBtn = document.getElementById(`bubbleSend-${itemId}`);
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Ensure proper type comparison
+            const item = feedItems.find(i => i.id == itemId);
+            if (!item) return;
+            
+            currentAIItem = item;
+            
+            // Add user message
+            addBubbleMessage(itemId, 'user', message);
+            input.value = '';
+            
+            // Reset input height
+            input.style.height = 'auto';
+            
+            // Show loading
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                const itemContext = buildItemContext(item);
+                
+                const response = await fetch('/api/claude/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        itemId: item.id,
+                        itemContext: itemContext,
+                        messages: aiChatHistory
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const aiResponse = data.content[0].text;
+                    
+                    addBubbleMessage(itemId, 'assistant', aiResponse);
+                    
+                    // Handle field updates if suggested
+                    if (data.has_updates && data.field_updates) {
+                        await handleAIFieldUpdates(data.field_updates);
+                    }
+                    
+                    // Save chat history
+                    await saveChatHistory();
+                    
+                } else {
+                    const errorData = await response.json();
+                    addBubbleMessage(itemId, 'assistant', 'Sorry, I encountered an error. Please try again.');
+                }
+                
+            } catch (error) {
+                console.error('Bubble chat error:', error);
+                addBubbleMessage(itemId, 'assistant', 'Sorry, I encountered an error. Please try again.');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            }
+        }
+        
+        // Bubble dragging functionality
+        let draggedBubble = null;
+        let dragOffset = { x: 0, y: 0 };
+        
+        function startDragBubble(event, itemId) {
+            const bubble = activeBubbles.get(itemId);
+            if (!bubble) return;
+            
+            draggedBubble = bubble;
+            const rect = bubble.getBoundingClientRect();
+            dragOffset.x = event.clientX - rect.left;
+            dragOffset.y = event.clientY - rect.top;
+            
+            document.addEventListener('mousemove', dragBubble);
+            document.addEventListener('mouseup', stopDragBubble);
+        }
+        
+        function dragBubble(event) {
+            if (!draggedBubble) return;
+            
+            const x = event.clientX - dragOffset.x;
+            const y = event.clientY - dragOffset.y;
+            
+            draggedBubble.style.left = `${x}px`;
+            draggedBubble.style.top = `${y}px`;
+            draggedBubble.style.right = 'auto';
+            draggedBubble.style.bottom = 'auto';
+            draggedBubble.style.position = 'fixed';
+        }
+        
+        function stopDragBubble() {
+            draggedBubble = null;
+            document.removeEventListener('mousemove', dragBubble);
+            document.removeEventListener('mouseup', stopDragBubble);
+        }
+        
+        // Pin insight functionality
+        function pinInsight(text) {
+            if (!text || pinnedInsights.some(i => i.text === text)) return;
+            
+            pinnedInsights.push({
+                id: Date.now(),
+                text: text,
+                timestamp: new Date().toISOString(),
+                itemId: currentAIItem?.id
+            });
+            
+            showToast('Insight pinned!', 'success');
+            updatePinnedPanel();
+        }
+        
+        // Toggle pinned insights panel
+        function togglePinnedPanel() {
+            let panel = document.getElementById('pinnedInsightsPanel');
+            
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'pinnedInsightsPanel';
+                panel.className = 'pinned-insights-panel';
+                panel.innerHTML = `
+                    <div class="pinned-insights-header">
+                        <h3><i class="fas fa-thumbtack"></i> Pinned Insights</h3>
+                        <button class="bubble-action-btn" onclick="closePinnedPanel()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="pinned-insights-list" id="pinnedInsightsList">
+                        <!-- Pinned insights will appear here -->
+                    </div>
+                `;
+                document.body.appendChild(panel);
+            }
+            
+            panel.classList.toggle('show');
+            if (panel.classList.contains('show')) {
+                updatePinnedPanel();
+            }
+        }
+        
+        function closePinnedPanel() {
+            const panel = document.getElementById('pinnedInsightsPanel');
+            if (panel) {
+                panel.classList.remove('show');
+            }
+        }
+        
+        function updatePinnedPanel() {
+            const list = document.getElementById('pinnedInsightsList');
+            if (!list) return;
+            
+            if (pinnedInsights.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #888; padding: 2rem;">No pinned insights yet</p>';
+            } else {
+                list.innerHTML = pinnedInsights.map(insight => `
+                    <div class="pinned-insight">
+                        <button class="pinned-insight-remove" onclick="removePinnedInsight(${insight.id})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <div style="font-size: 0.75rem; color: #888; margin-bottom: 0.3rem;">
+                            ${new Date(insight.timestamp).toLocaleString()}
+                        </div>
+                        ${insight.text}
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function removePinnedInsight(id) {
+            pinnedInsights = pinnedInsights.filter(i => i.id !== id);
+            updatePinnedPanel();
         }
         
         // Generate a context-aware welcome message
@@ -2488,9 +3223,17 @@ Please be helpful, contextual, and focused on this specific item.`;
             return message;
         }
 
+        // Keep compatibility with old interface
+        function openAIChat(itemId) {
+            console.warn('openAIChat is deprecated, using bubble interface');
+            openAIBubble(itemId);
+        }
+        
         function closeAIChat() {
-            document.getElementById('aiChatOverlay').classList.remove('show');
-            currentAIItem = null;
+            // Close all bubbles
+            activeBubbles.forEach((bubble, itemId) => {
+                closeAIBubble(itemId);
+            });
         }
 
         function renderAIChatHistory() {
@@ -2749,7 +3492,8 @@ Please be helpful, contextual, and focused on this specific item.`;
         // Social Media Actions
         async function toggleComplete(itemId) {
             try {
-                const item = feedItems.find(i => i.id === itemId);
+                // Use == for type-flexible comparison
+                const item = feedItems.find(i => i.id == itemId);
                 if (!item) {
                     console.error('Item not found:', itemId);
                     showToast('Item not found', 'error');
@@ -2831,7 +3575,8 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
 
         function shareItem(itemId) {
-            const item = feedItems.find(i => i.id === itemId);
+            // Use == for type-flexible comparison
+            const item = feedItems.find(i => i.id == itemId);
             if (!item) return;
             
             const text = `Check out my ${item.type}: ${item.content_short || item.content}`;
