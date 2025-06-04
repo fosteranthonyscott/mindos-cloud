@@ -2624,6 +2624,55 @@
         let touchStartPos = { x: 0, y: 0 };
         
         function handleDragStart(e) {
+            // Check if the target is an interactive element or if text is being selected
+            const target = e.target;
+            
+            // List of selectors for elements that should not trigger drag
+            const interactiveSelectors = [
+                'textarea',
+                'input',
+                'button',
+                'select',
+                '[contenteditable="true"]',
+                '.notes-edit-textarea',
+                '.notes-edit-btn',
+                '.add-notes-btn',
+                '.card-notes-container',
+                '.notes-content',
+                '.form-group'
+            ];
+            
+            // Check if target matches any interactive selector
+            const isInteractive = interactiveSelectors.some(selector => 
+                target.matches(selector)
+            );
+            
+            // Check if any parent up to the card element matches interactive selectors
+            let parent = target.parentElement;
+            let isParentInteractive = false;
+            while (parent && parent !== this) {
+                if (interactiveSelectors.some(selector => parent.matches(selector))) {
+                    isParentInteractive = true;
+                    break;
+                }
+                parent = parent.parentElement;
+            }
+            
+            // Check if user is selecting text
+            const selection = window.getSelection();
+            const isSelectingText = selection && selection.toString().length > 0;
+            
+            // Check if target is within notes content area when editing
+            const isInNotesEdit = target.closest('.notes-edit-textarea') || 
+                                 (target.closest('.notes-content') && target.closest('.card-notes-container.editing')) ||
+                                 target.closest('.card-notes-container:not(.collapsed)');
+            
+            // Prevent drag if any of the conditions are met
+            if (isInteractive || isParentInteractive || isSelectingText || isInNotesEdit) {
+                e.preventDefault();
+                return;
+            }
+            
             draggedElement = this;
             this.style.opacity = '0.4';
             
@@ -2677,6 +2726,50 @@
         }
         
         function handleTouchStart(e) {
+            // Check if the target is an interactive element
+            const target = e.target;
+            
+            // List of selectors for elements that should not trigger drag
+            const interactiveSelectors = [
+                'textarea',
+                'input',
+                'button',
+                'select',
+                '[contenteditable="true"]',
+                '.notes-edit-textarea',
+                '.notes-edit-btn',
+                '.add-notes-btn',
+                '.card-notes-container',
+                '.notes-content',
+                '.form-group'
+            ];
+            
+            // Check if target matches any interactive selector
+            const isInteractive = interactiveSelectors.some(selector => 
+                target.matches(selector)
+            );
+            
+            // Check if any parent up to the card element matches interactive selectors
+            let parent = target.parentElement;
+            let isParentInteractive = false;
+            while (parent && parent !== this) {
+                if (interactiveSelectors.some(selector => parent.matches(selector))) {
+                    isParentInteractive = true;
+                    break;
+                }
+                parent = parent.parentElement;
+            }
+            
+            // Check if target is within notes content area when editing
+            const isInNotesEdit = target.closest('.notes-edit-textarea') || 
+                                 (target.closest('.notes-content') && target.closest('.card-notes-container.editing')) ||
+                                 target.closest('.card-notes-container:not(.collapsed)');
+            
+            // Don't start drag process if touching interactive elements
+            if (isInteractive || isParentInteractive || isInNotesEdit) {
+                return;
+            }
+            
             const touch = e.touches[0];
             touchItem = this;
             isDragging = false;
