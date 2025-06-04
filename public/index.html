@@ -1956,6 +1956,7 @@
     </div>
 
     <script>
+        console.log('=== MindOS Script Loading ===');
         // Global State
         let currentUser = null;
         let authToken = localStorage.getItem('mindos_token');
@@ -1971,6 +1972,104 @@
         let debugMode = false;
         let isAddMode = false; // UNIFIED: Replace isQuickAdd with isAddMode
         
+        // Feed ordering state - moved here for early access
+        let customFeedOrder = JSON.parse(localStorage.getItem('mindos_feed_order') || '[]');
+        
+        // EARLY DEFINITION: Move card up or down in feed
+        window.moveCard = function(itemId, direction) {
+            console.log('=== moveCard function called ===');
+            console.log('Item ID:', itemId, 'Direction:', direction);
+            console.log('Feed items count:', feedItems.length);
+            
+            try {
+                const currentIndex = feedItems.findIndex(item => item.id == itemId);
+                if (currentIndex === -1) {
+                    console.error('Item not found in feedItems. Item ID:', itemId);
+                    console.log('Available IDs:', feedItems.map(item => item.id));
+                    showToast('Error: Item not found', 'error');
+                    return;
+                }
+                
+                const newIndex = currentIndex + direction;
+                if (newIndex < 0 || newIndex >= feedItems.length) {
+                    console.log('New index out of bounds:', newIndex, 'Max index:', feedItems.length - 1);
+                    showToast('Cannot move item further', 'info');
+                    return;
+                }
+                
+                console.log(`Moving item from index ${currentIndex} to ${newIndex}`);
+                
+                // Swap items
+                [feedItems[currentIndex], feedItems[newIndex]] = [feedItems[newIndex], feedItems[currentIndex]];
+                
+                // Update custom order
+                customFeedOrder = feedItems.map(item => item.id);
+                localStorage.setItem('mindos_feed_order', JSON.stringify(customFeedOrder));
+                console.log('Custom order saved:', customFeedOrder);
+                
+                // Rebuild feed display
+                const feedScroll = document.getElementById('feedScroll');
+                if (!feedScroll) {
+                    console.error('feedScroll element not found!');
+                    return;
+                }
+                
+                const scrollTop = feedScroll.scrollTop;
+                
+                // Clear and rebuild with correct indices
+                feedScroll.innerHTML = '';
+                feedItems.forEach((item, index) => {
+                    const card = createFeedCard(item, index);
+                    feedScroll.appendChild(card);
+                });
+                
+                // Update counters
+                const feedItemCount = document.getElementById('feedItemCount');
+                const totalItemsCount = document.getElementById('totalItemsCount');
+                if (feedItemCount) feedItemCount.textContent = `${feedItems.length} items in feed`;
+                if (totalItemsCount) totalItemsCount.textContent = feedItems.length;
+                
+                // Restore scroll position
+                feedScroll.scrollTop = scrollTop;
+                
+                // Smooth scroll to moved card
+                setTimeout(() => {
+                    const movedCard = document.querySelector(`[data-item-id="${itemId}"]`);
+                    if (movedCard) {
+                        movedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Flash animation
+                        movedCard.style.transition = 'all 0.3s ease';
+                        movedCard.style.boxShadow = '0 0 30px rgba(102, 126, 234, 0.8)';
+                        setTimeout(() => {
+                            movedCard.style.boxShadow = '';
+                        }, 600);
+                    }
+                }, 100);
+                
+                showToast('Feed order updated', 'success');
+                console.log('Feed refreshed successfully');
+            } catch (error) {
+                console.error('Error in moveCard:', error);
+                showToast('Error updating feed order', 'error');
+            }
+        };
+        
+        // Log that moveCard is defined early
+        console.log('moveCard function defined early:', typeof window.moveCard);
+        
+        // Diagnostic function to test button functionality
+        window.testMoveButtons = function() {
+            console.log('=== Testing Move Buttons ===');
+            console.log('moveCard function exists:', typeof window.moveCard === 'function');
+            console.log('feedItems:', feedItems);
+            const buttons = document.querySelectorAll('.reorder-btn');
+            console.log('Found buttons:', buttons.length);
+            buttons.forEach((btn, idx) => {
+                console.log(`Button ${idx}:`, btn.onclick ? 'Has onclick' : 'No onclick', btn.disabled ? 'Disabled' : 'Enabled');
+            });
+        };
+        
         // NEW: Never-ending feed state
         let currentScrollPosition = 0;
         let isLoadingMore = false;
@@ -1978,8 +2077,7 @@
         let currentPage = 0;
         const ITEMS_PER_PAGE = 10;
         
-        // Feed ordering state
-        let customFeedOrder = JSON.parse(localStorage.getItem('mindos_feed_order') || '[]');
+        // Feed ordering state - already declared at the beginning
         let notesVisibility = JSON.parse(localStorage.getItem('mindos_notes_visibility') || '{}');
 
         // UPDATED: Unified field configuration
@@ -2462,10 +2560,10 @@
             
             card.innerHTML = `
                 <div class="card-reorder-controls">
-                    <button class="reorder-btn" onclick="moveCard(${item.id}, -1)" title="Move up" ${index === 0 ? 'disabled' : ''}>
+                    <button class="reorder-btn" onclick="try { console.log('Button clicked for item', ${item.id}); if (typeof moveCard !== 'function') { console.error('moveCard is not defined'); alert('Error: moveCard function not found'); } else { moveCard(${item.id}, -1); } } catch(e) { console.error('Error calling moveCard:', e); alert('Error: ' + e.message); }" title="Move up" ${index === 0 ? 'disabled' : ''}>
                         <i class="fas fa-arrow-up"></i>
                     </button>
-                    <button class="reorder-btn" onclick="moveCard(${item.id}, 1)" title="Move down" ${index === feedItems.length - 1 ? 'disabled' : ''}>
+                    <button class="reorder-btn" onclick="try { console.log('Button clicked for item', ${item.id}); if (typeof moveCard !== 'function') { console.error('moveCard is not defined'); alert('Error: moveCard function not found'); } else { moveCard(${item.id}, 1); } } catch(e) { console.error('Error calling moveCard:', e); alert('Error: ' + e.message); }" title="Move down" ${index === feedItems.length - 1 ? 'disabled' : ''}>
                         <i class="fas fa-arrow-down"></i>
                     </button>
                 </div>
@@ -4136,64 +4234,7 @@ Please be helpful, contextual, and focused on this specific item.`;
             }
         }
         
-        // Move card up or down in feed
-        window.moveCard = function(itemId, direction) {
-            console.log('moveCard called:', itemId, direction);
-            
-            const currentIndex = feedItems.findIndex(item => item.id == itemId);
-            if (currentIndex === -1) {
-                console.log('Item not found in feedItems');
-                return;
-            }
-            
-            const newIndex = currentIndex + direction;
-            if (newIndex < 0 || newIndex >= feedItems.length) {
-                console.log('New index out of bounds:', newIndex);
-                return;
-            }
-            
-            console.log(`Moving item from index ${currentIndex} to ${newIndex}`);
-            
-            // Swap items
-            [feedItems[currentIndex], feedItems[newIndex]] = [feedItems[newIndex], feedItems[currentIndex]];
-            
-            // Update custom order
-            customFeedOrder = feedItems.map(item => item.id);
-            localStorage.setItem('mindos_feed_order', JSON.stringify(customFeedOrder));
-            
-            // Rebuild feed display
-            const feedScroll = document.getElementById('feedScroll');
-            const scrollTop = feedScroll.scrollTop;
-            
-            // Clear and rebuild with correct indices
-            feedScroll.innerHTML = '';
-            feedItems.forEach((item, index) => {
-                const card = createFeedCard(item, index);
-                feedScroll.appendChild(card);
-            });
-            
-            // Update counters
-            document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
-            document.getElementById('totalItemsCount').textContent = feedItems.length;
-            
-            // Restore scroll position
-            feedScroll.scrollTop = scrollTop;
-            
-            // Smooth scroll to moved card
-            setTimeout(() => {
-                const movedCard = document.querySelector(`[data-item-id="${itemId}"]`);
-                if (movedCard) {
-                    movedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    // Flash animation
-                    movedCard.style.transition = 'all 0.3s ease';
-                    movedCard.style.boxShadow = '0 0 30px rgba(102, 126, 234, 0.8)';
-                    setTimeout(() => {
-                        movedCard.style.boxShadow = '';
-                    }, 600);
-                }
-            }, 100);
-        }
+        // REMOVED: moveCard function has been moved to the beginning of the script for early definition
         
         // Apply custom feed order
         function applyCustomOrder() {
@@ -4884,6 +4925,17 @@ Please be helpful, contextual, and focused on this specific item.`;
                 }
             }
         });
+        
+        // Final initialization check
+        console.log('=== MindOS Initialization Complete ===');
+        console.log('moveCard available:', typeof window.moveCard === 'function');
+        console.log('Ready to handle button clicks');
+        
+        // Set up a test after a short delay to ensure DOM is ready
+        setTimeout(() => {
+            console.log('Testing button setup after delay...');
+            window.testMoveButtons();
+        }, 1000);
     </script>
 </body>
 </html>
