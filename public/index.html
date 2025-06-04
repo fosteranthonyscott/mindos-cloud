@@ -756,7 +756,7 @@
         ========================= */
         /* Comment Bubble Container - positioned at bottom of each card */
         .ai-comment-bubble {
-            position: absolute;
+            position: fixed;
             bottom: 120px;
             right: 20px;
             max-width: 400px;
@@ -767,7 +767,7 @@
             display: none;
             flex-direction: column;
             max-height: 60vh;
-            z-index: 100;
+            z-index: 1100; /* Higher than header (1000) */
             border: 1px solid rgba(102, 126, 234, 0.3);
             overflow: hidden;
             animation: bubbleSlideIn 0.3s ease-out;
@@ -3211,8 +3211,20 @@ Please be helpful, contextual, and focused on this specific item.`;
                 </div>
             `;
             
-            // Position bubble relative to card
-            card.appendChild(bubble);
+            // Add bubble to body instead of card to ensure proper positioning
+            document.body.appendChild(bubble);
+            
+            // Position bubble in viewport center initially
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            bubble.style.position = 'fixed';
+            bubble.style.left = (viewportWidth - 400) / 2 + 'px'; // Center horizontally
+            bubble.style.top = '120px'; // Safe distance from header
+            bubble.style.right = 'auto';
+            bubble.style.bottom = 'auto';
+            
+            // Show bubble
+            setTimeout(() => bubble.classList.add('show'), 10);
             
             // Store bubble reference
             activeBubbles.set(itemId, bubble);
@@ -3531,41 +3543,6 @@ Please be helpful, contextual, and focused on this specific item.`;
             }
         }
         
-        // Bubble dragging functionality
-        let draggedBubble = null;
-        let dragOffset = { x: 0, y: 0 };
-        
-        function startDragBubble(event, itemId) {
-            const bubble = activeBubbles.get(itemId);
-            if (!bubble) return;
-            
-            draggedBubble = bubble;
-            const rect = bubble.getBoundingClientRect();
-            dragOffset.x = event.clientX - rect.left;
-            dragOffset.y = event.clientY - rect.top;
-            
-            document.addEventListener('mousemove', dragBubble);
-            document.addEventListener('mouseup', stopDragBubble);
-        }
-        
-        function dragBubble(event) {
-            if (!draggedBubble) return;
-            
-            const x = event.clientX - dragOffset.x;
-            const y = event.clientY - dragOffset.y;
-            
-            draggedBubble.style.left = `${x}px`;
-            draggedBubble.style.top = `${y}px`;
-            draggedBubble.style.right = 'auto';
-            draggedBubble.style.bottom = 'auto';
-            draggedBubble.style.position = 'fixed';
-        }
-        
-        function stopDragBubble() {
-            draggedBubble = null;
-            document.removeEventListener('mousemove', dragBubble);
-            document.removeEventListener('mouseup', stopDragBubble);
-        }
         
         // Pin insight functionality with smart content extraction
         function pinInsight(text) {
@@ -3898,6 +3875,65 @@ Please be helpful, contextual, and focused on this specific item.`;
             if (item) {
                 textarea.value = item.notes || '';
             }
+        }
+
+        // Drag functionality for AI bubble
+        let draggedBubble = null;
+        let dragOffset = { x: 0, y: 0 };
+        
+        function startDragBubble(event, itemId) {
+            const bubble = document.querySelector(`.ai-comment-bubble[data-item-id="${itemId}"]`);
+            if (!bubble) return;
+            
+            draggedBubble = bubble;
+            
+            // Calculate offset from mouse to bubble position
+            const rect = bubble.getBoundingClientRect();
+            dragOffset.x = event.clientX - rect.left;
+            dragOffset.y = event.clientY - rect.top;
+            
+            // Add event listeners
+            document.addEventListener('mousemove', dragBubble);
+            document.addEventListener('mouseup', stopDragBubble);
+            
+            // Prevent text selection during drag
+            event.preventDefault();
+        }
+        
+        function dragBubble(event) {
+            if (!draggedBubble) return;
+            
+            // Calculate new position
+            let newX = event.clientX - dragOffset.x;
+            let newY = event.clientY - dragOffset.y;
+            
+            // Get viewport dimensions
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const bubbleRect = draggedBubble.getBoundingClientRect();
+            
+            // Constrain to viewport with header clearance
+            const headerHeight = 80; // Height of fixed header
+            const minTop = headerHeight + 10; // 10px padding from header
+            
+            // Constrain X position
+            newX = Math.max(0, Math.min(newX, viewportWidth - bubbleRect.width));
+            
+            // Constrain Y position - prevent going under header
+            newY = Math.max(minTop, Math.min(newY, viewportHeight - bubbleRect.height));
+            
+            // Apply position
+            draggedBubble.style.position = 'fixed';
+            draggedBubble.style.left = newX + 'px';
+            draggedBubble.style.top = newY + 'px';
+            draggedBubble.style.right = 'auto';
+            draggedBubble.style.bottom = 'auto';
+        }
+        
+        function stopDragBubble() {
+            draggedBubble = null;
+            document.removeEventListener('mousemove', dragBubble);
+            document.removeEventListener('mouseup', stopDragBubble);
         }
 
         // Generate a context-aware welcome message
