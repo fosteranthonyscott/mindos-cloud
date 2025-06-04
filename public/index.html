@@ -2516,13 +2516,23 @@ Please be helpful, contextual, and focused on this specific item.`;
             const messageDiv = document.createElement('div');
             messageDiv.className = `ai-message ${role}`;
             
-            const avatarIcon = role === 'user' ? 'fas fa-user' : 'fas fa-brain';
+            let avatarIcon = 'fas fa-brain';
+            if (role === 'user') {
+                avatarIcon = 'fas fa-user';
+            } else if (role === 'system') {
+                avatarIcon = 'fas fa-cog';
+                messageDiv.style.background = 'rgba(255, 193, 7, 0.1)';
+                messageDiv.style.borderLeft = '3px solid #ffc107';
+            }
+            
+            // Handle newlines in content
+            const formattedContent = content.replace(/\n/g, '<br>');
             
             messageDiv.innerHTML = `
                 <div class="ai-message-avatar">
                     <i class="${avatarIcon}"></i>
                 </div>
-                <div class="ai-message-content">${content}</div>
+                <div class="ai-message-content">${formattedContent}</div>
             `;
             
             container.appendChild(messageDiv);
@@ -2552,14 +2562,16 @@ Please be helpful, contextual, and focused on this specific item.`;
                 // Build comprehensive context for the AI
                 const itemContext = buildItemContext(currentAIItem);
                 
-                // Send to Claude API for processing
-                const response = await fetch('/api/claude', {
+                // Send to Claude API for processing with enhanced endpoint
+                const response = await fetch('/api/claude/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
+                        itemId: currentAIItem.id,
+                        itemContext: itemContext,
                         messages: [
                             { role: 'system', content: itemContext },
                             ...aiChatHistory,
@@ -2575,6 +2587,11 @@ Please be helpful, contextual, and focused on this specific item.`;
                     const aiResponse = data.content[0].text;
                     addAIMessage('assistant', aiResponse);
                     
+                    // Check if AI suggested field updates
+                    if (data.has_updates && data.field_updates) {
+                        await handleAIFieldUpdates(data.field_updates);
+                    }
+                    
                     // Save chat history to item
                     await saveChatHistory();
                     
@@ -2588,6 +2605,112 @@ Please be helpful, contextual, and focused on this specific item.`;
             } finally {
                 sendBtn.disabled = false;
                 sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            }
+        }
+
+        // Handle AI-suggested field updates
+        async function handleAIFieldUpdates(fieldUpdates) {
+            console.log('🤖 AI suggested field updates:', fieldUpdates);
+            
+            const { suggested_updates, validated_updates, reasoning } = fieldUpdates;
+            const updates = validated_updates || suggested_updates;
+            
+            if (!updates || Object.keys(updates).length === 0) return;
+            
+            // Show confirmation dialog
+            const updatesList = Object.entries(updates)
+                .map(([field, value]) => `• ${field}: ${value}`)
+                .join('\n');
+            
+            const confirmMessage = `AI suggested these updates:\n\n${updatesList}\n\nReason: ${reasoning}\n\nApply these changes?`;
+            
+            if (confirm(confirmMessage)) {
+                try {
+                    // Apply the updates
+                    const response = await fetch(`/api/memories/${currentAIItem.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify(updates)
+                    });
+                    
+                    if (response.ok) {
+                        const updatedItem = await response.json();
+                        
+                        // Update local item
+                        Object.assign(currentAIItem, updatedItem);
+                        
+                        // Update in feedItems array
+                        const itemIndex = feedItems.findIndex(item => item.id === currentAIItem.id);
+                        if (itemIndex !== -1) {
+                            feedItems[itemIndex] = { ...feedItems[itemIndex], ...updatedItem };
+                        }
+                        
+                        // Update UI if the item is visible
+                        updateItemInUI(currentAIItem.id, updatedItem);
+                        
+                        // Add confirmation message to chat
+                        addAIMessage('system', `✅ Fields updated successfully:\n${updatesList}`);
+                        
+                        // If status changed to completed, handle removal from feed
+                        if (updates.status === 'completed') {
+                            setTimeout(() => {
+                                const card = document.querySelector(`[data-item-id="${currentAIItem.id}"]`);
+                                if (card) {
+                                    card.style.transition = 'opacity 0.3s ease-out';
+                                    card.style.opacity = '0';
+                                    setTimeout(() => card.remove(), 300);
+                                }
+                            }, 1000);
+                        }
+                        
+                    } else {
+                        addAIMessage('system', '❌ Failed to apply updates. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error applying AI updates:', error);
+                    addAIMessage('system', '❌ Error applying updates: ' + error.message);
+                }
+            } else {
+                addAIMessage('system', 'ℹ️ Updates cancelled by user.');
+            }
+        }
+        
+        // Update item in UI after AI changes
+        function updateItemInUI(itemId, updatedData) {
+            const card = document.querySelector(`[data-item-id="${itemId}"]`);
+            if (!card) return;
+            
+            // Update visible content
+            const titleEl = card.querySelector('.card-title');
+            if (titleEl && updatedData.content) {
+                titleEl.textContent = updatedData.content_short || updatedData.content;
+            }
+            
+            // Update type badge
+            const typeEl = card.querySelector('.type-badge');
+            if (typeEl && updatedData.type) {
+                typeEl.textContent = updatedData.type;
+                typeEl.className = `type-badge type-${updatedData.type}`;
+            }
+            
+            // Update priority indicator
+            const cardElement = card.querySelector('.feed-card');
+            if (cardElement && updatedData.priority) {
+                cardElement.setAttribute('data-priority', updatedData.priority);
+            }
+            
+            // Update metadata
+            const metaEl = card.querySelector('.card-meta');
+            if (metaEl) {
+                const priorityLabels = {1: 'Low', 2: 'Medium', 3: 'Normal', 4: 'High', 5: 'Critical'};
+                let metaText = `Priority: ${priorityLabels[updatedData.priority] || 'Normal'}`;
+                if (updatedData.due) {
+                    metaText += ` • Due: ${new Date(updatedData.due).toLocaleDateString()}`;
+                }
+                metaEl.textContent = metaText;
             }
         }
 

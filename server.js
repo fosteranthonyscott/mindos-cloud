@@ -1035,6 +1035,144 @@ const auth = (req, res, next) => {
 
 // ===== API ROUTES =====
 
+// ENHANCED AI CHAT ENDPOINT with field update capabilities
+app.post('/api/claude/chat', auth, async (req, res) => {
+    console.log('🤖 AI Chat request for item-specific assistance');
+    
+    try {
+        const { messages, itemId, itemContext } = req.body;
+        const userId = req.user.userId;
+        
+        if (!messages || !Array.isArray(messages) || !itemId) {
+            return res.status(400).json({ error: 'Messages array and itemId are required' });
+        }
+        
+        // Enhance the system message to include field update instructions
+        const enhancedSystemMessage = {
+            role: 'system',
+            content: itemContext + `
+
+SPECIAL INSTRUCTIONS FOR FIELD UPDATES:
+When the user's message implies that fields should be updated, you should:
+1. Determine which fields need to be updated based on the conversation
+2. Suggest appropriate values for those fields
+3. Include a special JSON block in your response with the suggested updates
+
+FORMAT FOR FIELD UPDATES:
+If you determine that fields should be updated, include this in your response:
+<field_updates>
+{
+  "suggested_updates": {
+    "field_name": "new_value",
+    "another_field": "another_value"
+  },
+  "reasoning": "Brief explanation of why these updates are suggested"
+}
+</field_updates>
+
+EXAMPLE:
+User: "I completed this task and it took me 45 minutes"
+Your response: "Great job completing the task! I'll update the status to completed and record that it took 45 minutes.
+
+<field_updates>
+{
+  "suggested_updates": {
+    "status": "completed",
+    "required_time_minutes": 45,
+    "completed_date": "${new Date().toISOString().split('T')[0]}"
+  },
+  "reasoning": "User indicated task completion and provided time spent"
+}
+</field_updates>
+
+The task has been marked as complete."
+
+FIELD VALIDATION RULES:
+- status: must be one of: active, completed, paused, archived
+- priority: must be 1-5 (integer)
+- type: must be one of: routine, goal, task, note, preference, insight, event
+- dates: must be in YYYY-MM-DD format
+- numbers: must be valid integers
+- All text fields should be trimmed
+
+Only suggest updates for fields that are explicitly mentioned or clearly implied by the user.`
+        };
+        
+        // Build the message array with the enhanced system message
+        const claudeMessages = [enhancedSystemMessage, ...messages.slice(1)];
+        
+        // Call Claude API
+        const fetch = await import('node-fetch').then(m => m.default);
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-3-5-sonnet-20241022',
+                max_tokens: 800,
+                messages: claudeMessages
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            console.error('❌ Claude API error:', data);
+            return res.status(500).json({ error: 'Claude API failed' });
+        }
+        
+        const aiResponse = data.content[0].text;
+        
+        // Parse field updates if present
+        let fieldUpdates = null;
+        const fieldUpdateMatch = aiResponse.match(/<field_updates>([\s\S]*?)<\/field_updates>/);
+        
+        if (fieldUpdateMatch) {
+            try {
+                fieldUpdates = JSON.parse(fieldUpdateMatch[1]);
+                console.log('📝 AI suggested field updates:', fieldUpdates);
+                
+                // Validate the updates
+                if (fieldUpdates.suggested_updates) {
+                    const validatedUpdates = {};
+                    
+                    for (const [field, value] of Object.entries(fieldUpdates.suggested_updates)) {
+                        // Check if field exists in our schema
+                        if (memoriesTableColumns.includes(field)) {
+                            // Apply field-specific validation
+                            const processedValue = processValueByType(field, value);
+                            if (processedValue !== undefined) {
+                                validatedUpdates[field] = processedValue;
+                            }
+                        }
+                    }
+                    
+                    fieldUpdates.validated_updates = validatedUpdates;
+                }
+            } catch (error) {
+                console.error('Error parsing field updates:', error);
+                fieldUpdates = null;
+            }
+        }
+        
+        // Clean the response by removing the field_updates block from display
+        const cleanResponse = aiResponse.replace(/<field_updates>[\s\S]*?<\/field_updates>/g, '').trim();
+        
+        res.json({
+            content: [{ type: 'text', text: cleanResponse }],
+            field_updates: fieldUpdates,
+            has_updates: !!fieldUpdates
+        });
+        
+    } catch (error) {
+        console.error('❌ AI Chat error:', error);
+        res.status(500).json({ error: 'Failed to process AI chat request' });
+    }
+});
+
 // REGISTER endpoint with enhanced error handling
 app.post('/api/register', async (req, res) => {
     console.log('📝 Register attempt:', { body: Object.keys(req.body) });
