@@ -1677,34 +1677,6 @@ app.delete('/api/memories/:id', auth, async (req, res) => {
     }
 });
 
-// GET specific memory details
-app.get('/api/memories/:id', auth, async (req, res) => {
-    try {
-        if (!isDbConnected || !entityAdapter) {
-            return res.status(500).json({ error: 'Database temporarily unavailable' });
-        }
-        
-        const memoryId = req.params.id;
-        const userId = req.user.userId;
-        
-        const memories = await entityAdapter.getMemories(userId, { 
-            limit: 1 
-        });
-        
-        const memory = memories.find(m => m.id === memoryId);
-        
-        if (!memory) {
-            return res.status(404).json({ error: 'Memory not found' });
-        }
-        
-        res.json(memory);
-        
-    } catch (error) {
-        console.error('❌ Get memory error:', error);
-        res.status(500).json({ error: 'Failed to get memory' });
-    }
-});
-
 // ENHANCED UPDATE MEMORY ENDPOINT WITH FIXED ID HANDLING AND DATA TYPE PROCESSING
 app.put('/api/memories/:id', auth, async (req, res) => {
     try {
@@ -2221,6 +2193,34 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
     } catch (error) {
         console.error('Enhanced memories query error:', error);
         res.status(500).json({ error: 'Failed to get enhanced memories' });
+    }
+});
+
+// GET specific memory details - MUST BE AFTER all specific routes like /enhanced
+app.get('/api/memories/:id', auth, async (req, res) => {
+    try {
+        if (!isDbConnected || !entityAdapter) {
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+        
+        const memoryId = req.params.id;
+        const userId = req.user.userId;
+        
+        const memories = await entityAdapter.getMemories(userId, { 
+            limit: 1 
+        });
+        
+        const memory = memories.find(m => m.id === memoryId);
+        
+        if (!memory) {
+            return res.status(404).json({ error: 'Memory not found' });
+        }
+        
+        res.json(memory);
+        
+    } catch (error) {
+        console.error('❌ Get memory error:', error);
+        res.status(500).json({ error: 'Failed to get memory' });
     }
 });
 
