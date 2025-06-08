@@ -166,8 +166,12 @@ class EntityAdapter {
     async getEntities(userId, filters) {
         const entities = [];
         
+        console.log(`🔍 EntityAdapter.getEntities called for user ${userId} with filters:`, filters);
+        
         // Query each entity type
         const entityTypes = filters.type ? [filters.type] : ['goal', 'routine', 'task', 'event', 'note'];
+        
+        console.log(`📊 Querying entity types: ${entityTypes.join(', ')}`);
         
         for (const type of entityTypes) {
             const table = `${type}s`; // pluralize
@@ -202,14 +206,21 @@ class EntityAdapter {
             }
 
             try {
+                console.log(`🔍 Executing query for ${table}:`, query);
+                console.log(`📌 With params:`, params);
+                
                 const result = await this.db.query(query, params);
+                console.log(`✅ Found ${result.rows.length} ${type}(s)`);
+                
                 const typedEntities = result.rows.map(row => ({
                     ...row,
                     type: type
                 }));
                 entities.push(...typedEntities.map(e => this.convertEntityToMemory(e, type)));
             } catch (error) {
-                console.error(`Error querying ${table}:`, error);
+                console.error(`❌ Error querying ${table}:`, error);
+                console.error(`Query was:`, query);
+                console.error(`Params were:`, params);
             }
         }
 

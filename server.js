@@ -2067,6 +2067,72 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
             exclude_completed = 'false'
         } = req.query;
         
+        // Use entity adapter if available (new schema)
+        if (entityAdapter && useNewSchema) {
+            const filters = {
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                type: type,
+                status: exclude_completed === 'true' ? 'active' : status,
+                active: exclude_completed === 'true' ? true : undefined
+            };
+            
+            const memories = await entityAdapter.getMemories(req.user.userId, filters);
+            
+            console.log(`📊 Enhanced endpoint: Entity adapter returned ${memories.length} memories`);
+            
+            // Apply additional filtering that entity adapter doesn't handle
+            let filteredMemories = memories;
+            
+            if (priority_min) {
+                filteredMemories = filteredMemories.filter(m => m.priority >= parseInt(priority_min));
+            }
+            
+            if (has_due_date === 'true') {
+                filteredMemories = filteredMemories.filter(m => m.due);
+            }
+            
+            if (search) {
+                const searchLower = search.toLowerCase();
+                filteredMemories = filteredMemories.filter(m => 
+                    (m.content && m.content.toLowerCase().includes(searchLower)) ||
+                    (m.content_short && m.content_short.toLowerCase().includes(searchLower)) ||
+                    (m.tags && m.tags.toLowerCase().includes(searchLower))
+                );
+            }
+            
+            // Sort memories
+            if (sort_by === 'priority') {
+                filteredMemories.sort((a, b) => {
+                    if (sort_order === 'desc') {
+                        return (b.priority || 0) - (a.priority || 0);
+                    } else {
+                        return (a.priority || 0) - (b.priority || 0);
+                    }
+                });
+            } else if (sort_by === 'created_at') {
+                filteredMemories.sort((a, b) => {
+                    const dateA = new Date(a.created_at);
+                    const dateB = new Date(b.created_at);
+                    return sort_order === 'desc' ? dateB - dateA : dateA - dateB;
+                });
+            }
+            
+            console.log(`📤 Enhanced endpoint: Returning ${filteredMemories.length} memories to client`);
+            
+            res.json({
+                memories: filteredMemories,
+                pagination: {
+                    total: filteredMemories.length,
+                    limit: parseInt(limit),
+                    offset: parseInt(offset),
+                    hasMore: filteredMemories.length > parseInt(limit)
+                }
+            });
+            return;
+        }
+        
+        // Fallback to old schema query
         let query = 'SELECT * FROM memories WHERE user_id = $1';
         let params = [req.user.userId];
         let paramIndex = 2;
