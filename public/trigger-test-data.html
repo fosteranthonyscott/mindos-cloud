@@ -65,25 +65,27 @@
     </div>
 
     <script>
-        const authToken = localStorage.getItem('authToken');
+        const authToken = localStorage.getItem('fullbrain_token');
         
         async function createTestData() {
             const messageDiv = document.getElementById('message');
             
-            if (!authToken) {
-                showMessage('Please login first!', 'error');
-                return;
-            }
-            
             try {
                 showMessage('Creating test data...', 'info');
                 
+                // Try with token if available, otherwise rely on session cookies
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
                 const response = await fetch('/api/create-test-data-temp', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: headers,
+                    credentials: 'same-origin' // Include cookies
                 });
                 
                 const result = await response.json();
@@ -92,10 +94,12 @@
                     showMessage('✅ ' + result.message + ' Refresh the main page to see your data!', 'success');
                 } else {
                     showMessage('Error: ' + (result.error || 'Failed to create test data'), 'error');
+                    console.log('Response:', result);
                 }
                 
             } catch (error) {
                 showMessage('Error: ' + error.message, 'error');
+                console.error('Full error:', error);
             }
         }
         
@@ -108,11 +112,7 @@
         
         // Check auth on load
         window.onload = () => {
-            if (!authToken) {
-                showMessage('No authentication token found. Please login first.', 'error');
-            } else {
-                showMessage('Ready to create test data. Make sure you are logged in as scott.foster@vanderhaags.com', 'info');
-            }
+            showMessage('Click the button to create test data. Make sure you are logged in as scott.foster@vanderhaags.com', 'info');
         };
     </script>
 </body>
