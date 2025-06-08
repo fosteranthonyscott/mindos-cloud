@@ -1,5 +1,5 @@
-// RECURRING TASK MANAGER - Basic Implementation
-// This file was missing and causing import errors
+// RECURRING TASK MANAGER - Uses NEW SCHEMA
+// This file manages recurring tasks using the new entity tables
 
 class RecurringTaskManager {
     constructor(db, textParser) {
@@ -34,19 +34,36 @@ class RecurringTaskManager {
 
     async getStatistics() {
         try {
-            // Basic statistics - can be enhanced later
-            const result = await this.db.query(`
-                SELECT 
-                    COUNT(*) as total_items,
-                    COUNT(CASE WHEN frequency IS NOT NULL AND frequency != '' THEN 1 END) as recurring_items,
-                    COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_items
-                FROM memories
-            `);
+            // Get statistics from new schema tables
+            const queries = [
+                // Total items across all entity tables
+                `SELECT 
+                    (SELECT COUNT(*) FROM goals WHERE deleted_at IS NULL) +
+                    (SELECT COUNT(*) FROM routines WHERE deleted_at IS NULL) +
+                    (SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL) +
+                    (SELECT COUNT(*) FROM events WHERE deleted_at IS NULL) +
+                    (SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL) as total_items`,
+                
+                // Recurring items (only routines have recurrence)
+                `SELECT COUNT(*) as recurring_items 
+                 FROM routines 
+                 WHERE deleted_at IS NULL 
+                 AND recurrence_pattern IS NOT NULL`,
+                
+                // Completed items
+                `SELECT 
+                    (SELECT COUNT(*) FROM goals WHERE status = 'completed' AND deleted_at IS NULL) +
+                    (SELECT COUNT(*) FROM routines WHERE status = 'completed' AND deleted_at IS NULL) +
+                    (SELECT COUNT(*) FROM tasks WHERE status = 'completed' AND deleted_at IS NULL) +
+                    (SELECT COUNT(*) FROM events WHERE status = 'completed' AND deleted_at IS NULL) as completed_items`
+            ];
+            
+            const results = await Promise.all(queries.map(q => this.db.query(q)));
             
             return {
-                totalItems: parseInt(result.rows[0].total_items) || 0,
-                recurringItems: parseInt(result.rows[0].recurring_items) || 0,
-                completedItems: parseInt(result.rows[0].completed_items) || 0,
+                totalItems: parseInt(results[0].rows[0].total_items) || 0,
+                recurringItems: parseInt(results[1].rows[0].recurring_items) || 0,
+                completedItems: parseInt(results[2].rows[0].completed_items) || 0,
                 lastUpdate: new Date().toISOString()
             };
         } catch (error) {
@@ -63,15 +80,29 @@ class RecurringTaskManager {
 
     async triggerDueCheck() {
         console.log('🔍 Triggering due date check...');
-        // Basic implementation - can be enhanced
         try {
-            const result = await this.db.query(`
-                SELECT COUNT(*) as overdue_count
-                FROM memories 
-                WHERE due < CURRENT_DATE 
-                AND status = 'active'
-            `);
-            console.log(`📅 Found ${result.rows[0].overdue_count} overdue items`);
+            // Check overdue items in new schema
+            const queries = [
+                `SELECT COUNT(*) as count FROM goals 
+                 WHERE target_date < CURRENT_DATE 
+                 AND status = 'active' 
+                 AND deleted_at IS NULL`,
+                
+                `SELECT COUNT(*) as count FROM tasks 
+                 WHERE due_date < CURRENT_DATE 
+                 AND status = 'active' 
+                 AND deleted_at IS NULL`,
+                
+                `SELECT COUNT(*) as count FROM events 
+                 WHERE event_date < CURRENT_DATE 
+                 AND status = 'active' 
+                 AND deleted_at IS NULL`
+            ];
+            
+            const results = await Promise.all(queries.map(q => this.db.query(q)));
+            const overdueCount = results.reduce((sum, r) => sum + parseInt(r.rows[0].count), 0);
+            
+            console.log(`📅 Found ${overdueCount} overdue items`);
             return true;
         } catch (error) {
             console.error('Error in due check:', error);
@@ -95,28 +126,47 @@ class RecurringTaskManager {
         try {
             console.log(`✅ Handling completion for item ${itemId}`);
             
-            // Get the item first
-            const itemResult = await this.db.query(
-                'SELECT * FROM memories WHERE id = $1 AND user_id = $2',
-                [itemId, userId]
-            );
+            // Find which table contains this item
+            const tables = [
+                { name: 'goals', type: 'goal' },
+                { name: 'routines', type: 'routine' },
+                { name: 'tasks', type: 'task' },
+                { name: 'events', type: 'event' }
+            ];
             
-            if (itemResult.rows.length === 0) {
-                throw new Error('Item not found or access denied');
+            let item = null;
+            let tableName = null;
+            let itemType = null;
+            
+            for (const table of tables) {
+                const result = await this.db.query(
+                    `SELECT * FROM ${table.name} WHERE id = $1 AND user_id = $2`,
+                    [itemId, userId]
+                );
+                
+                if (result.rows.length > 0) {
+                    item = result.rows[0];
+                    tableName = table.name;
+                    itemType = table.type;
+                    break;
+                }
             }
             
-            const item = itemResult.rows[0];
+            if (!item) {
+                throw new Error('Item not found or access denied');
+            }
             
             // Update the item as completed
             const updateData = {
                 status: 'completed',
-                completed_date: completionDate.toISOString().split('T')[0]
+                completed_date: completionDate
             };
             
             // Update performance streak if it's a routine
-            if (item.type === 'routine') {
+            if (itemType === 'routine') {
                 const currentStreak = parseInt(item.performance_streak) || 0;
                 updateData.performance_streak = currentStreak + 1;
+                updateData.last_completed = completionDate;
             }
             
             // Build update query
@@ -133,8 +183,8 @@ class RecurringTaskManager {
             updateValues.push(itemId, userId);
             
             const updateQuery = `
-                UPDATE memories 
-                SET ${updateFields.join(', ')}, modified = CURRENT_DATE
+                UPDATE ${tableName}
+                SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
                 WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
                 RETURNING *
             `;
@@ -142,10 +192,12 @@ class RecurringTaskManager {
             const result = await this.db.query(updateQuery, updateValues);
             const updatedItem = result.rows[0];
             
-            // Handle recurring logic if the item has a frequency
-            if (item.frequency && item.frequency.trim() !== '') {
-                console.log(`🔄 Item has frequency: ${item.frequency}, would create recurring instance`);
-                // TODO: Implement recurring instance creation
+            // Handle recurring logic if it's a routine with recurrence
+            if (itemType === 'routine' && item.recurrence_pattern) {
+                console.log(`🔄 Routine has recurrence pattern: ${item.recurrence_pattern}, would create next instance`);
+                // TODO: Implement recurring instance creation logic
+                // This would involve calculating the next due date based on recurrence_pattern
+                // and recurrence_interval, then creating a new task for the next occurrence
             }
             
             return updatedItem;

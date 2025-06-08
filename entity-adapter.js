@@ -1,49 +1,12 @@
-// Entity adapter to provide compatibility between old memories table and new schema
+// Entity adapter - Uses ONLY the new schema
 const { v4: uuidv4 } = require('uuid');
 
 class EntityAdapter {
-    constructor(db, useNewSchema) {
+    constructor(db) {
         this.db = db;
-        this.useNewSchema = useNewSchema;
     }
 
-    // Convert memory record to entity format
-    convertMemoryToEntity(memory) {
-        return {
-            id: memory.id,
-            user_id: memory.user_id,
-            type: memory.type,
-            name: memory.content_short || memory.content?.substring(0, 255),
-            content: memory.content,
-            content_short: memory.content_short,
-            priority: memory.priority || 5,
-            status: memory.status || 'active',
-            due: memory.due,
-            due_date: memory.due,
-            completed_date: memory.completed_date,
-            frequency: memory.frequency,
-            recurrence_pattern: this.mapFrequencyToPattern(memory.frequency),
-            performance_streak: memory.performance_streak || 0,
-            last_recurring_update: memory.last_recurring_update,
-            location: memory.location,
-            tags: memory.tags,
-            notes: memory.notes,
-            created_at: memory.created_at,
-            modified: memory.modified,
-            metadata: {
-                active: memory.active,
-                archived: memory.archived,
-                stage: memory.stage,
-                mood: memory.mood,
-                routine_type: memory.routine_type,
-                required_time_minutes: memory.required_time_minutes,
-                trigger: memory.trigger,
-                success_criteria: memory.success_criteria
-            }
-        };
-    }
-
-    // Convert entity to memory format for legacy compatibility
+    // Convert entity to memory format for legacy API compatibility
     convertEntityToMemory(entity, type) {
         const memory = {
             id: entity.id,
@@ -116,57 +79,9 @@ class EntityAdapter {
 
     // Get memories/entities for a user
     async getMemories(userId, filters = {}) {
-        if (this.useNewSchema) {
-            return await this.getEntities(userId, filters);
-        } else {
-            return await this.getLegacyMemories(userId, filters);
-        }
-    }
-
-    async getLegacyMemories(userId, filters) {
-        let query = 'SELECT * FROM memories WHERE user_id = $1';
-        const params = [userId];
-        let paramIndex = 2;
-
-        if (filters.type) {
-            query += ` AND type = $${paramIndex}`;
-            params.push(filters.type);
-            paramIndex++;
-        }
-
-        if (filters.status) {
-            query += ` AND status = $${paramIndex}`;
-            params.push(filters.status);
-            paramIndex++;
-        }
-
-        if (filters.active !== undefined) {
-            query += ` AND (active IS NULL OR active = $${paramIndex})`;
-            params.push(filters.active);
-            paramIndex++;
-        }
-
-        query += ' ORDER BY created_at DESC';
-
-        if (filters.limit) {
-            query += ` LIMIT $${paramIndex}`;
-            params.push(filters.limit);
-            paramIndex++;
-        }
-
-        if (filters.offset) {
-            query += ` OFFSET $${paramIndex}`;
-            params.push(filters.offset);
-        }
-
-        const result = await this.db.query(query, params);
-        return result.rows.map(row => this.convertMemoryToEntity(row));
-    }
-
-    async getEntities(userId, filters) {
         const entities = [];
         
-        console.log(`🔍 EntityAdapter.getEntities called for user ${userId} with filters:`, filters);
+        console.log(`🔍 EntityAdapter.getMemories called for user ${userId} with filters:`, filters);
         
         // Query each entity type
         const entityTypes = filters.type ? [filters.type] : ['goal', 'routine', 'task', 'event', 'note'];
@@ -239,106 +154,33 @@ class EntityAdapter {
     // Create a memory/entity
     async createMemory(userId, memoryData) {
         try {
-            console.log('Creating memory:', { userId, type: memoryData.type, useNewSchema: this.useNewSchema });
+            console.log('Creating memory:', { userId, type: memoryData.type });
             
-            if (this.useNewSchema) {
-                return await this.createEntity(userId, memoryData);
-            } else {
-                return await this.createLegacyMemory(userId, memoryData);
+            const type = memoryData.type;
+            if (!type) throw new Error('Entity type is required');
+
+            const id = memoryData.id || uuidv4();
+
+            switch (type) {
+                case 'project':
+                    return await this.createProject(userId, id, memoryData);
+                case 'goal':
+                    return await this.createGoal(userId, id, memoryData);
+                case 'routine':
+                    return await this.createRoutine(userId, id, memoryData);
+                case 'task':
+                    return await this.createTask(userId, id, memoryData);
+                case 'event':
+                    return await this.createEvent(userId, id, memoryData);
+                case 'note':
+                    return await this.createNote(userId, id, memoryData);
+                default:
+                    throw new Error(`Unknown entity type: ${type}`);
             }
         } catch (error) {
             console.error('Error in createMemory:', error);
             throw error;
         }
-    }
-
-    async createLegacyMemory(userId, data) {
-        try {
-            const id = data.id || uuidv4();
-            const columns = ['id', 'user_id'];
-            const values = [id, userId];
-            const placeholders = ['$1', '$2'];
-            let paramIndex = 3;
-
-            // Map of fields to include
-            const fieldMap = {
-                type: data.type,
-                content: data.content,
-                content_short: data.content_short,
-                priority: parseInt(data.priority) || 3,
-                status: data.status || 'active',
-                due: data.due,
-                frequency: data.frequency,
-                location: data.location,
-                tags: data.tags,
-                notes: data.notes,
-                active: data.active !== false,
-                archived: data.archived || false,
-                created_at: new Date(),
-                modified: new Date()
-            };
-
-            for (const [field, value] of Object.entries(fieldMap)) {
-                if (value !== undefined) {
-                    columns.push(field);
-                    values.push(value);
-                    placeholders.push(`$${paramIndex}`);
-                    paramIndex++;
-                }
-            }
-
-            const query = `INSERT INTO memories (${columns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING *`;
-            console.log('Legacy memory query:', { columns: columns.length, values: values.length });
-            
-            const result = await this.db.query(query, values);
-            return this.convertMemoryToEntity(result.rows[0]);
-        } catch (error) {
-            console.error('Error creating legacy memory:', error);
-            throw new Error(`Failed to create legacy memory: ${error.message}`);
-        }
-    }
-
-    async createEntity(userId, data) {
-        const type = data.type;
-        if (!type) throw new Error('Entity type is required');
-
-        const id = data.id || uuidv4();
-        let tenantId = data.tenantId;
-        
-        try {
-            if (!tenantId) {
-                tenantId = await this.getUserTenantId(userId);
-                if (!tenantId) {
-                    console.warn('No tenant_id found for user, generating new one');
-                    tenantId = uuidv4();
-                }
-            }
-
-            switch (type) {
-                case 'project':
-                    return await this.createProject(userId, id, data);
-                case 'goal':
-                    return await this.createGoal(userId, id, data);
-                case 'routine':
-                    return await this.createRoutine(userId, id, data);
-                case 'task':
-                    return await this.createTask(userId, id, data);
-                case 'event':
-                    return await this.createEvent(userId, id, data);
-                case 'note':
-                    return await this.createNote(userId, id, data);
-                default:
-                    throw new Error(`Unknown entity type: ${type}`);
-            }
-        } catch (error) {
-            console.error(`Error creating ${type} entity:`, error);
-            throw error;
-        }
-    }
-
-    // tenant_id not used in new schema
-    async getUserTenantId(userId) {
-        return null; // No tenant_id in new schema
     }
 
     async createProject(userId, id, data) {
@@ -623,44 +465,6 @@ class EntityAdapter {
 
     // Update a memory/entity
     async updateMemory(id, userId, updates) {
-        if (this.useNewSchema) {
-            return await this.updateEntity(id, userId, updates);
-        } else {
-            return await this.updateLegacyMemory(id, userId, updates);
-        }
-    }
-
-    async updateLegacyMemory(id, userId, updates) {
-        const setClauses = [];
-        const values = [];
-        let paramIndex = 1;
-
-        for (const [field, value] of Object.entries(updates)) {
-            if (field !== 'id' && field !== 'user_id') {
-                setClauses.push(`${field} = $${paramIndex}`);
-                values.push(value);
-                paramIndex++;
-            }
-        }
-
-        setClauses.push(`modified = $${paramIndex}`);
-        values.push(new Date());
-        paramIndex++;
-
-        values.push(id, userId);
-        
-        const query = `
-            UPDATE memories 
-            SET ${setClauses.join(', ')}
-            WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
-            RETURNING *
-        `;
-        
-        const result = await this.db.query(query, values);
-        return result.rows.length > 0 ? this.convertMemoryToEntity(result.rows[0]) : null;
-    }
-
-    async updateEntity(id, userId, updates) {
         // First, find the entity type
         const entityInfo = await this.findEntityType(id, userId);
         if (!entityInfo) return null;
@@ -768,22 +572,6 @@ class EntityAdapter {
 
     // Delete a memory/entity
     async deleteMemory(id, userId) {
-        if (this.useNewSchema) {
-            return await this.deleteEntity(id, userId);
-        } else {
-            return await this.deleteLegacyMemory(id, userId);
-        }
-    }
-
-    async deleteLegacyMemory(id, userId) {
-        const result = await this.db.query(
-            'DELETE FROM memories WHERE id = $1 AND user_id = $2 RETURNING id',
-            [id, userId]
-        );
-        return result.rows.length > 0;
-    }
-
-    async deleteEntity(id, userId) {
         const entityInfo = await this.findEntityType(id, userId);
         if (!entityInfo) return false;
 
@@ -802,34 +590,11 @@ class EntityAdapter {
 
     // Get today's items
     async getTodayItems(userId) {
-        if (this.useNewSchema) {
-            const result = await this.db.query(
-                `SELECT * FROM today_items WHERE user_id = $1 ORDER BY computed_priority DESC, due_date ASC`,
-                [userId]
-            );
-            return result.rows.map(row => this.convertEntityToMemory(row, row.item_type));
-        } else {
-            return await this.getTodayLegacyItems(userId);
-        }
-    }
-
-    async getTodayLegacyItems(userId) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        const result = await this.db.query(`
-            SELECT * FROM memories 
-            WHERE user_id = $1 
-                AND (active IS NULL OR active = true)
-                AND (archived IS NULL OR archived = false)
-                AND (
-                    (due <= $2) OR 
-                    (frequency IS NOT NULL AND status = 'active')
-                )
-            ORDER BY priority DESC, due ASC
-        `, [userId, today]);
-        
-        return result.rows.map(row => this.convertMemoryToEntity(row));
+        const result = await this.db.query(
+            `SELECT * FROM today_items WHERE user_id = $1 ORDER BY computed_priority DESC, due_date ASC`,
+            [userId]
+        );
+        return result.rows.map(row => this.convertEntityToMemory(row, row.item_type));
     }
 }
 

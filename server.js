@@ -47,7 +47,7 @@ if (!CLAUDE_API_KEY) {
 }
 
 // Import database initialization module
-const { pool: db, initializeDatabase, checkNewSchema, checkOldSchema } = require('./database-init');
+const { pool: db, initializeDatabase } = require('./database-init');
 const AuthAdapter = require('./auth-adapter');
 const EntityAdapter = require('./entity-adapter');
 
@@ -59,10 +59,8 @@ const recurringManager = new RecurringTaskManager(db, textParser);
 // Make feedManager available globally for cache clearing
 global.feedManager = feedManager;
 
-// Test database connection and get schema info
-let memoriesTableColumns = [];
+// Test database connection
 let isDbConnected = false;
-let useNewSchema = false; // Flag to determine which schema to use
 let authAdapter = null; // Will be initialized after DB connection
 let entityAdapter = null; // Will be initialized after DB connection
 
@@ -196,45 +194,14 @@ async function initializeDatabaseConnection() {
         client.release();
         isDbConnected = true;
         
-        // Initialize new schema if needed
+        // Initialize database (creates schema if needed)
         await initializeDatabase();
+        console.log('✅ Using new normalized schema');
         
-        // Check which schema to use
-        const hasNewSchema = await checkNewSchema();
-        const hasOldSchema = await checkOldSchema();
-        
-        if (hasNewSchema) {
-            console.log('✅ Using new normalized schema');
-            useNewSchema = true;
-        } else if (hasOldSchema) {
-            console.log('⚠️ Using legacy memories table - migration needed');
-            useNewSchema = false;
-            
-            // Get the actual column structure of memories table for compatibility
-            try {
-                const columnsResult = await db.query(`
-                    SELECT column_name, data_type, column_default, is_nullable
-                    FROM information_schema.columns 
-                    WHERE table_name = 'memories'
-                    ORDER BY ordinal_position;
-                `);
-                
-                memoriesTableColumns = columnsResult.rows.map(row => row.column_name);
-                
-                if (memoriesTableColumns.length > 0) {
-                    console.log('📊 Found memories table with columns:', memoriesTableColumns.length);
-                }
-            } catch (schemaError) {
-                console.log('⚠️ Could not read memories table schema:', schemaError.message);
-            }
-        } else {
-            console.log('❌ No database schema found - initialization may have failed');
-        }
-        
-        // Initialize adapters with correct schema
-        authAdapter = new AuthAdapter(db, useNewSchema);
-        entityAdapter = new EntityAdapter(db, useNewSchema);
-        console.log('🔐 Adapters initialized for', useNewSchema ? 'new schema' : 'legacy schema');
+        // Initialize adapters for new schema
+        authAdapter = new AuthAdapter(db);
+        entityAdapter = new EntityAdapter(db);
+        console.log('🔐 Adapters initialized for new schema');
         
     } catch (err) {
         console.error('❌ Database connection error:', err);
@@ -243,44 +210,7 @@ async function initializeDatabaseConnection() {
     }
 }
 
-// NEW: Update database schema for recurring tasks (legacy support)
-async function updateDatabaseSchema() {
-    // Only update old schema if we're still using it
-    if (!useNewSchema && memoriesTableColumns.length > 0) {
-        try {
-            console.log('🔧 Checking legacy database schema...');
-            
-            const schemaUpdates = [
-                // Add columns for recurring task management
-                `ALTER TABLE memories ADD COLUMN IF NOT EXISTS completed_date DATE;`,
-                `ALTER TABLE memories ADD COLUMN IF NOT EXISTS last_recurring_update TIMESTAMP;`,
-                `ALTER TABLE memories ADD COLUMN IF NOT EXISTS performance_streak INTEGER DEFAULT 0;`,
-                
-                // Add indexes for better performance
-                `CREATE INDEX IF NOT EXISTS idx_memories_due_status ON memories(due, status);`,
-                `CREATE INDEX IF NOT EXISTS idx_memories_frequency ON memories(frequency) WHERE frequency IS NOT NULL;`,
-                `CREATE INDEX IF NOT EXISTS idx_memories_completed_date ON memories(completed_date);`,
-                `CREATE INDEX IF NOT EXISTS idx_memories_user_status ON memories(user_id, status);`
-            ];
-            
-            for (const update of schemaUpdates) {
-                try {
-                    await db.query(update);
-                } catch (error) {
-                    // Ignore "already exists" errors
-                    if (!error.message.includes('already exists')) {
-                        console.warn('Schema update warning:', error.message);
-                    }
-                }
-            }
-            
-            console.log('✅ Legacy database schema updated');
-            
-        } catch (error) {
-            console.error('❌ Error updating legacy database schema:', error);
-        }
-    }
-}
+// Database schema updates are handled by database-init.js for new schema
 
 // NEW: Initialize background processes
 async function initializeBackgroundProcesses() {
@@ -299,9 +229,7 @@ async function initializeBackgroundProcesses() {
 
 // Initialize database connection and background processes
 initializeDatabaseConnection().then(() => {
-    updateDatabaseSchema().then(() => {
-        initializeBackgroundProcesses();
-    });
+    initializeBackgroundProcesses();
 });
 
 // Health check endpoint - ENHANCED with recurring task status
