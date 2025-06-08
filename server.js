@@ -2224,6 +2224,68 @@ app.get('/api/memories/:id', auth, async (req, res) => {
     }
 });
 
+// TEMPORARY: Create test data for specific user - REMOVE AFTER USE
+app.post('/api/create-test-data-temp', auth, async (req, res) => {
+    try {
+        // Only allow for the specific user
+        if (req.user.userId !== '2d1050cc-cb81-42cc-9aea-d3cf1e738ffa') {
+            return res.status(403).json({ error: 'Not authorized' });
+        }
+        
+        const userId = req.user.userId;
+        console.log(`Creating test data for user ${userId}`);
+        
+        // Create projects
+        const projectResult = await db.query(`
+            INSERT INTO projects (user_id, name, description, status, priority)
+            VALUES ($1, 'Full Brain Development', 'Main project for app improvements', 'active', '8')
+            RETURNING id
+        `, [userId]);
+        const projectId = projectResult.rows[0]?.id;
+        
+        // Create goals
+        await db.query(`
+            INSERT INTO goals (user_id, project_id, name, description, priority, status)
+            VALUES 
+            ($1, $2, 'Complete Full Brain Migration', 'Finish the database schema migration', '10', 'active'),
+            ($1, $2, 'Implement Advanced AI Features', 'Add Claude integration features', '8', 'active'),
+            ($1, NULL, 'Personal Fitness Goal', 'Exercise 3 times per week', '7', 'active')
+        `, [userId, projectId]);
+        
+        // Create routines
+        await db.query(`
+            INSERT INTO routines (user_id, name, description, priority, status, recurrence_pattern)
+            VALUES 
+            ($1, 'Morning Planning', 'Review daily priorities', '9', 'active', 'daily'),
+            ($1, 'Weekly Review', 'Assess progress', '8', 'active', 'weekly'),
+            ($1, 'Daily Exercise', '30 minutes activity', '9', 'active', 'daily')
+        `, [userId]);
+        
+        // Create tasks
+        await db.query(`
+            INSERT INTO tasks (user_id, name, description, priority, status, due_date)
+            VALUES 
+            ($1, 'Fix Authentication', 'Resolve login issues', '10', 'active', CURRENT_DATE),
+            ($1, 'Update Documentation', 'Document API endpoints', '7', 'active', CURRENT_DATE + INTERVAL '2 days'),
+            ($1, 'Review Code', 'Check pull requests', '8', 'active', CURRENT_DATE)
+        `, [userId]);
+        
+        // Create notes
+        await db.query(`
+            INSERT INTO notes (user_id, title, content, tags)
+            VALUES 
+            ($1, 'Architecture Decision', 'Using normalized schema', ARRAY['technical']),
+            ($1, 'Feature Ideas', 'Dark mode, export functionality', ARRAY['ideas'])
+        `, [userId]);
+        
+        res.json({ success: true, message: 'Test data created successfully!' });
+        
+    } catch (error) {
+        console.error('Error creating test data:', error);
+        res.status(500).json({ error: 'Failed to create test data' });
+    }
+});
+
 // TEMPORARY: Password reset endpoint - REMOVE AFTER USE
 app.post('/api/reset-password-temp', async (req, res) => {
     try {
@@ -2264,11 +2326,15 @@ app.post('/api/reset-password-temp', async (req, res) => {
         );
         
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({ 
+                error: 'User not found',
+                hint: 'No user exists with that email/username. You may need to register first.',
+                availableUsers: checkUser.rows.length === 0 ? 'Check logs for list of users' : undefined
+            });
         }
         
         console.log('Password reset for user:', result.rows[0].username);
-        res.json({ success: true, message: 'Password reset successful' });
+        res.json({ success: true, message: 'Password reset successful', user: result.rows[0].username });
         
     } catch (error) {
         console.error('Password reset error:', error);
