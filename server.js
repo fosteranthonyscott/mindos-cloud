@@ -2235,54 +2235,162 @@ app.post('/api/create-test-data-temp', auth, async (req, res) => {
         const userId = req.user.userId;
         console.log(`Creating test data for user ${userId}`);
         
-        // Create projects
-        const projectResult = await db.query(`
-            INSERT INTO projects (user_id, name, description, status, priority)
-            VALUES ($1, 'Full Brain Development', 'Main project for app improvements', 'active', '8')
-            RETURNING id
-        `, [userId]);
-        const projectId = projectResult.rows[0]?.id;
+        // Use the entity adapter to create items using the memory format
+        if (!entityAdapter) {
+            return res.status(500).json({ error: 'Entity adapter not initialized' });
+        }
+        
+        const itemsCreated = [];
         
         // Create goals
-        await db.query(`
-            INSERT INTO goals (user_id, project_id, name, description, priority, status)
-            VALUES 
-            ($1, $2, 'Complete Full Brain Migration', 'Finish the database schema migration', '10', 'active'),
-            ($1, $2, 'Implement Advanced AI Features', 'Add Claude integration features', '8', 'active'),
-            ($1, NULL, 'Personal Fitness Goal', 'Exercise 3 times per week', '7', 'active')
-        `, [userId, projectId]);
+        const goals = [
+            {
+                type: 'goal',
+                content_short: 'Complete Full Brain Migration',
+                content: 'Finish the database schema migration and ensure all features work correctly',
+                priority: 10,
+                tags: 'development,important'
+            },
+            {
+                type: 'goal',
+                content_short: 'Implement AI Features',
+                content: 'Add advanced Claude integration with better context awareness',
+                priority: 8,
+                tags: 'ai,features'
+            },
+            {
+                type: 'goal',
+                content_short: 'Personal Fitness',
+                content: 'Exercise 3 times per week for better health',
+                priority: 7,
+                tags: 'personal,health'
+            }
+        ];
+        
+        for (const goal of goals) {
+            try {
+                const created = await entityAdapter.createMemory(userId, goal);
+                itemsCreated.push('Goal: ' + goal.content_short);
+            } catch (err) {
+                console.log('Failed to create goal:', err.message);
+            }
+        }
         
         // Create routines
-        await db.query(`
-            INSERT INTO routines (user_id, name, description, priority, status, recurrence_pattern)
-            VALUES 
-            ($1, 'Morning Planning', 'Review daily priorities', '9', 'active', 'daily'),
-            ($1, 'Weekly Review', 'Assess progress', '8', 'active', 'weekly'),
-            ($1, 'Daily Exercise', '30 minutes activity', '9', 'active', 'daily')
-        `, [userId]);
+        const routines = [
+            {
+                type: 'routine',
+                content_short: 'Morning Planning',
+                content: 'Review daily priorities and plan the day',
+                priority: 9,
+                frequency: 'daily',
+                tags: 'productivity,planning'
+            },
+            {
+                type: 'routine',
+                content_short: 'Weekly Review',
+                content: 'Assess progress and plan for next week',
+                priority: 8,
+                frequency: 'weekly',
+                tags: 'planning,review'
+            },
+            {
+                type: 'routine',
+                content_short: 'Daily Exercise',
+                content: '30 minutes of physical activity',
+                priority: 9,
+                frequency: 'daily',
+                tags: 'health,fitness'
+            }
+        ];
+        
+        for (const routine of routines) {
+            try {
+                const created = await entityAdapter.createMemory(userId, routine);
+                itemsCreated.push('Routine: ' + routine.content_short);
+            } catch (err) {
+                console.log('Failed to create routine:', err.message);
+            }
+        }
         
         // Create tasks
-        await db.query(`
-            INSERT INTO tasks (user_id, name, description, priority, status, due_date)
-            VALUES 
-            ($1, 'Fix Authentication', 'Resolve login issues', '10', 'active', CURRENT_DATE),
-            ($1, 'Update Documentation', 'Document API endpoints', '7', 'active', CURRENT_DATE + INTERVAL '2 days'),
-            ($1, 'Review Code', 'Check pull requests', '8', 'active', CURRENT_DATE)
-        `, [userId]);
+        const tasks = [
+            {
+                type: 'task',
+                content_short: 'Test the app features',
+                content: 'Verify all functionality works correctly after migration',
+                priority: 10,
+                due: new Date().toISOString().split('T')[0],
+                tags: 'testing,urgent'
+            },
+            {
+                type: 'task',
+                content_short: 'Document API changes',
+                content: 'Update documentation for new endpoints',
+                priority: 7,
+                due: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                tags: 'documentation'
+            },
+            {
+                type: 'task',
+                content_short: 'Review code',
+                content: 'Check recent pull requests and provide feedback',
+                priority: 8,
+                due: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                tags: 'development,review'
+            }
+        ];
+        
+        for (const task of tasks) {
+            try {
+                const created = await entityAdapter.createMemory(userId, task);
+                itemsCreated.push('Task: ' + task.content_short);
+            } catch (err) {
+                console.log('Failed to create task:', err.message);
+            }
+        }
         
         // Create notes
-        await db.query(`
-            INSERT INTO notes (user_id, title, content, tags)
-            VALUES 
-            ($1, 'Architecture Decision', 'Using normalized schema', ARRAY['technical']),
-            ($1, 'Feature Ideas', 'Dark mode, export functionality', ARRAY['ideas'])
-        `, [userId]);
+        const notes = [
+            {
+                type: 'insight',
+                content_short: 'Architecture Decision',
+                content: 'Using normalized database schema provides better scalability and data integrity',
+                priority: 6,
+                tags: 'technical,architecture'
+            },
+            {
+                type: 'insight',
+                content_short: 'Feature Ideas',
+                content: 'Consider adding: dark mode, export functionality, collaborative features',
+                priority: 5,
+                tags: 'ideas,features'
+            }
+        ];
         
-        res.json({ success: true, message: 'Test data created successfully!' });
+        for (const note of notes) {
+            try {
+                const created = await entityAdapter.createMemory(userId, note);
+                itemsCreated.push('Note: ' + note.content_short);
+            } catch (err) {
+                console.log('Failed to create note:', err.message);
+            }
+        }
+        
+        console.log('Items created:', itemsCreated);
+        
+        res.json({ 
+            success: true, 
+            message: `Test data created! Added ${itemsCreated.length} items.`,
+            items: itemsCreated
+        });
         
     } catch (error) {
         console.error('Error creating test data:', error);
-        res.status(500).json({ error: 'Failed to create test data' });
+        res.status(500).json({ 
+            error: 'Failed to create test data',
+            details: error.message
+        });
     }
 });
 
