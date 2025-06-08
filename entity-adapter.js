@@ -185,7 +185,7 @@ class EntityAdapter {
                 query += ` AND status ${filters.active ? '!=' : '='} 'archived'`;
             }
 
-            query += ' AND deleted_at IS NULL ORDER BY created_at DESC';
+            query += ' AND (archived_at IS NULL OR archived_at > NOW()) ORDER BY created_at DESC';
 
             if (filters.limit && entityTypes.length === 1) {
                 query += ` LIMIT $${paramIndex}`;
@@ -304,11 +304,11 @@ class EntityAdapter {
                 case 'project':
                     return await this.createProject(userId, id, data);
                 case 'goal':
-                    return await this.createGoal(userId, id, tenantId, data);
+                    return await this.createGoal(userId, id, data);
                 case 'routine':
                     return await this.createRoutine(userId, id, data);
                 case 'task':
-                    return await this.createTask(userId, id, tenantId, data);
+                    return await this.createTask(userId, id, data);
                 case 'event':
                     return await this.createEvent(userId, id, data);
                 case 'note':
@@ -371,7 +371,7 @@ class EntityAdapter {
         }
     }
 
-    async createGoal(userId, id, tenantId, data) {
+    async createGoal(userId, id, data) {
         try {
             const query = `
                 INSERT INTO goals (
@@ -467,7 +467,7 @@ class EntityAdapter {
         }
     }
 
-    async createTask(userId, id, tenantId, data) {
+    async createTask(userId, id, data) {
         try {
             const query = `
                 INSERT INTO tasks (
