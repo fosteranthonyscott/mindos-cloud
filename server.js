@@ -34,7 +34,17 @@ app.use((req, res, next) => {
     next();
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fullbrain-jwt-secret-2025';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is required');
+  process.exit(1);
+}
+
+// Validate Claude API key if AI features are needed
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+if (!CLAUDE_API_KEY) {
+  console.warn('WARNING: CLAUDE_API_KEY not set - AI features will be disabled');
+}
 
 // Import database initialization module
 const { pool: db, initializeDatabase, checkNewSchema, checkOldSchema } = require('./database-init');

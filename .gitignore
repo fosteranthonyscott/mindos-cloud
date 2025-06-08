@@ -8,6 +8,7 @@ npm-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
 
 # IDE
 .vscode/
@@ -37,3 +38,20 @@ debug-*.html
 # Build artifacts (if any)
 dist/
 build/
+
+# Backup and broken files
+*.backup.*
+*.broken
+server.js.backup.*
+server.js.broken
+
+# Test and deployment scripts
+test-*.js
+setup-*.sh
+deploy-*.js
+fix-*.js
+pre-deploy-test.js
+
+# Temporary documentation
+LOCAL-TESTING.md
+NEW-CONTEXT-PROMPT.md

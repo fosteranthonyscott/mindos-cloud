@@ -2,6 +2,12 @@ const { Pool } = require('pg');
 const fs = require('fs').promises;
 const path = require('path');
 
+// Validate required environment variables
+if (!process.env.DATABASE_URL) {
+    console.error('FATAL: DATABASE_URL environment variable is required');
+    process.exit(1);
+}
+
 // Database connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
