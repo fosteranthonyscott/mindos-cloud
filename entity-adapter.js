@@ -53,7 +53,7 @@ class EntityAdapter {
             content_short: entity.name || entity.content_short,
             priority: parseInt(entity.priority) || 5,
             status: entity.status || (type === 'note' ? 'active' : null),
-            due: entity.due_date || entity.event_date || entity.target_date,
+            due: entity.due_date || (entity.event_date ? `${entity.event_date}T${entity.event_time || '00:00:00'}` : null) || entity.target_date,
             completed_date: entity.completed_date,
             frequency: this.mapPatternToFrequency(entity.recurrence_pattern, entity.recurrence_interval),
             performance_streak: entity.performance_streak || 0,
@@ -434,7 +434,7 @@ class EntityAdapter {
             const query = `
                 INSERT INTO routines (
                     id, user_id, name, description, priority,
-                    recurrence, recurrence_interval, tags, metadata
+                    recurrence_pattern, recurrence_interval, tags, metadata
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 RETURNING *
             `;
@@ -460,7 +460,7 @@ class EntityAdapter {
                 data.title || data.content_short || data.content?.substring(0, 255) || 'Untitled Routine',
                 data.content || data.description || '',
                 priority,
-                data.recurrence || this.mapFrequencyToPattern(data.frequency) || 'daily',
+                this.mapFrequencyToPattern(data.frequency) || data.recurrence_pattern || 'daily',
                 data.recurrence_interval || this.extractInterval(data.frequency) || 1,
                 tags,
                 { 
@@ -486,7 +486,7 @@ class EntityAdapter {
             const query = `
                 INSERT INTO tasks (
                     id, user_id, name, description, priority,
-                    due_date, estimated_minutes, tags, metadata
+                    due_date, estimated_duration_minutes, tags, metadata
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 RETURNING *
             `;
@@ -531,8 +531,8 @@ class EntityAdapter {
             const query = `
                 INSERT INTO events (
                     id, user_id, name, description, priority,
-                    start_datetime, location, tags, metadata
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    event_date, event_time, location, tags, metadata
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 RETURNING *
             `;
             
@@ -552,15 +552,25 @@ class EntityAdapter {
                 }
             }
             
+            // Extract date and time from start_datetime if provided
+            let eventDate = null;
+            let eventTime = null;
+            if (data.start_datetime || data.due) {
+                const dateObj = new Date(data.start_datetime || data.due);
+                eventDate = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+                eventTime = dateObj.toTimeString().split(' ')[0]; // HH:MM:SS
+            }
+            
             const params = [
                 id, userId,
                 data.title || data.content_short || data.content?.substring(0, 255) || 'Untitled Event',
                 data.content || data.description || '',
                 priority,
-                data.start_datetime || new Date().toISOString(),
+                eventDate,
+                eventTime,
                 data.location || null,
                 tags,
-                { notes: data.notes || null, end_datetime: data.end_datetime || null }
+                { notes: data.notes || null, end_date: data.end_date || null, end_time: data.end_time || null }
             ];
             
             const result = await this.db.query(query, params);
@@ -664,7 +674,7 @@ class EntityAdapter {
         const fieldMap = {
             content: type === 'note' ? 'content' : 'description',
             content_short: type === 'note' ? 'title' : 'name',
-            due: type === 'event' ? 'start_datetime' : type === 'goal' ? 'target_date' : 'due_date',
+            due: type === 'event' ? 'event_date' : type === 'goal' ? 'target_date' : 'due_date',
             modified: 'updated_at',
             frequency: 'recurrence_pattern',
             notes: 'metadata'
@@ -687,9 +697,9 @@ class EntityAdapter {
         // Define valid fields for each entity type
         const validFields = {
             goal: ['name', 'description', 'priority', 'status', 'target_date', 'tags', 'metadata'],
-            routine: ['name', 'description', 'priority', 'status', 'recurrence_pattern', 'tags', 'metadata'],
-            task: ['name', 'description', 'priority', 'status', 'due_date', 'tags', 'metadata'],
-            event: ['name', 'description', 'priority', 'status', 'start_datetime', 'end_datetime', 'location', 'tags', 'metadata'],
+            routine: ['name', 'description', 'priority', 'status', 'recurrence_pattern', 'recurrence_interval', 'tags', 'metadata'],
+            task: ['name', 'description', 'priority', 'status', 'due_date', 'estimated_duration_minutes', 'tags', 'metadata'],
+            event: ['name', 'description', 'priority', 'status', 'event_date', 'event_time', 'end_date', 'end_time', 'location', 'tags', 'metadata'],
             note: ['title', 'content', 'tags', 'metadata']
         };
         
