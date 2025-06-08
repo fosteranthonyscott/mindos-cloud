@@ -2224,6 +2224,44 @@ app.get('/api/memories/:id', auth, async (req, res) => {
     }
 });
 
+// TEMPORARY: Password reset endpoint - REMOVE AFTER USE
+app.post('/api/reset-password-temp', async (req, res) => {
+    try {
+        const { email, newPassword, resetCode } = req.body;
+        
+        // Simple security check - require a specific code
+        if (resetCode !== 'fullbrain-reset-2025') {
+            return res.status(403).json({ error: 'Invalid reset code' });
+        }
+        
+        if (!email || !newPassword) {
+            return res.status(400).json({ error: 'Email and new password required' });
+        }
+        
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+        
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        const result = await db.query(
+            'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2 RETURNING id, username',
+            [hashedPassword, email]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log('Password reset for user:', result.rows[0].username);
+        res.json({ success: true, message: 'Password reset successful' });
+        
+    } catch (error) {
+        console.error('Password reset error:', error);
+        res.status(500).json({ error: 'Failed to reset password' });
+    }
+});
+
 // ===== STATIC FILES SERVING =====
 
 // Serve static files from public directory
