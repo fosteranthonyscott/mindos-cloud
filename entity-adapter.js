@@ -52,7 +52,7 @@ class EntityAdapter {
             content: entity.description || entity.content || entity.name,
             content_short: entity.name || entity.content_short,
             priority: parseInt(entity.priority) || 5,
-            status: entity.status,
+            status: entity.status || (type === 'note' ? 'active' : null),
             due: entity.due_date || entity.event_date || entity.target_date,
             completed_date: entity.completed_date,
             frequency: this.mapPatternToFrequency(entity.recurrence_pattern, entity.recurrence_interval),
@@ -63,8 +63,8 @@ class EntityAdapter {
             notes: entity.notes || '',
             created_at: entity.created_at,
             modified: entity.updated_at || entity.modified,
-            active: entity.status !== 'archived' && entity.status !== 'deleted',
-            archived: entity.status === 'archived'
+            active: type === 'note' ? !entity.archived_at : (entity.status !== 'archived' && entity.status !== 'deleted'),
+            archived: type === 'note' ? !!entity.archived_at : (entity.status === 'archived')
         };
 
         // Add type-specific fields
@@ -175,14 +175,17 @@ class EntityAdapter {
             const params = [userId];
             let paramIndex = 2;
 
-            if (filters.status) {
-                query += ` AND status = $${paramIndex}`;
-                params.push(filters.status);
-                paramIndex++;
-            }
+            // Only add status filters for tables that have a status column
+            if (type !== 'note') {
+                if (filters.status) {
+                    query += ` AND status = $${paramIndex}`;
+                    params.push(filters.status);
+                    paramIndex++;
+                }
 
-            if (filters.active !== undefined) {
-                query += ` AND status ${filters.active ? '!=' : '='} 'archived'`;
+                if (filters.active !== undefined) {
+                    query += ` AND status ${filters.active ? '!=' : '='} 'archived'`;
+                }
             }
 
             query += ' AND (archived_at IS NULL OR archived_at > NOW()) ORDER BY created_at DESC';
