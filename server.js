@@ -1,4 +1,6 @@
 // ENHANCED FULL BRAIN SERVER.JS - Smart Memory Operations & Advanced Context Management with Recurring Task Manager
+require('dotenv').config();
+
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -34,14 +36,10 @@ app.use((req, res, next) => {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fullbrain-jwt-secret-2025';
 
-// PostgreSQL connection with better error handling
-const db = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-});
+// Import database initialization module
+const { pool: db, initializeDatabase, checkNewSchema, checkOldSchema } = require('./database-init');
+const AuthAdapter = require('./auth-adapter');
+const EntityAdapter = require('./entity-adapter');
 
 // NEW: Initialize the smart managers
 const feedManager = new SmartTextFeedManager();
@@ -54,6 +52,9 @@ global.feedManager = feedManager;
 // Test database connection and get schema info
 let memoriesTableColumns = [];
 let isDbConnected = false;
+let useNewSchema = false; // Flag to determine which schema to use
+let authAdapter = null; // Will be initialized after DB connection
+let entityAdapter = null; // Will be initialized after DB connection
 
 // ENHANCED Context Management for Full Brain
 class ConversationContext {
@@ -177,7 +178,7 @@ function getEnhancedConversationSession(userId) {
     return conversationContexts.get(userId);
 }
 
-async function initializeDatabase() {
+async function initializeDatabaseConnection() {
     try {
         console.log('🔄 Attempting database connection...');
         const client = await db.connect();
@@ -185,25 +186,45 @@ async function initializeDatabase() {
         client.release();
         isDbConnected = true;
         
-        // Get the actual column structure of memories table
-        try {
-            const columnsResult = await db.query(`
-                SELECT column_name, data_type, column_default, is_nullable
-                FROM information_schema.columns 
-                WHERE table_name = 'memories'
-                ORDER BY ordinal_position;
-            `);
+        // Initialize new schema if needed
+        await initializeDatabase();
+        
+        // Check which schema to use
+        const hasNewSchema = await checkNewSchema();
+        const hasOldSchema = await checkOldSchema();
+        
+        if (hasNewSchema) {
+            console.log('✅ Using new normalized schema');
+            useNewSchema = true;
+        } else if (hasOldSchema) {
+            console.log('⚠️ Using legacy memories table - migration needed');
+            useNewSchema = false;
             
-            memoriesTableColumns = columnsResult.rows.map(row => row.column_name);
-            
-            if (memoriesTableColumns.length > 0) {
-                console.log('📊 Found memories table with columns:', memoriesTableColumns.length);
-            } else {
-                console.log('⚠️ Memories table not found or has no columns');
+            // Get the actual column structure of memories table for compatibility
+            try {
+                const columnsResult = await db.query(`
+                    SELECT column_name, data_type, column_default, is_nullable
+                    FROM information_schema.columns 
+                    WHERE table_name = 'memories'
+                    ORDER BY ordinal_position;
+                `);
+                
+                memoriesTableColumns = columnsResult.rows.map(row => row.column_name);
+                
+                if (memoriesTableColumns.length > 0) {
+                    console.log('📊 Found memories table with columns:', memoriesTableColumns.length);
+                }
+            } catch (schemaError) {
+                console.log('⚠️ Could not read memories table schema:', schemaError.message);
             }
-        } catch (schemaError) {
-            console.log('⚠️ Could not read memories table schema:', schemaError.message);
+        } else {
+            console.log('❌ No database schema found - initialization may have failed');
         }
+        
+        // Initialize adapters with correct schema
+        authAdapter = new AuthAdapter(db, useNewSchema);
+        entityAdapter = new EntityAdapter(db, useNewSchema);
+        console.log('🔐 Adapters initialized for', useNewSchema ? 'new schema' : 'legacy schema');
         
     } catch (err) {
         console.error('❌ Database connection error:', err);
@@ -212,39 +233,42 @@ async function initializeDatabase() {
     }
 }
 
-// NEW: Update database schema for recurring tasks
+// NEW: Update database schema for recurring tasks (legacy support)
 async function updateDatabaseSchema() {
-    try {
-        console.log('🔧 Checking database schema...');
-        
-        const schemaUpdates = [
-            // Add columns for recurring task management
-            `ALTER TABLE memories ADD COLUMN IF NOT EXISTS completed_date DATE;`,
-            `ALTER TABLE memories ADD COLUMN IF NOT EXISTS last_recurring_update TIMESTAMP;`,
-            `ALTER TABLE memories ADD COLUMN IF NOT EXISTS performance_streak INTEGER DEFAULT 0;`,
+    // Only update old schema if we're still using it
+    if (!useNewSchema && memoriesTableColumns.length > 0) {
+        try {
+            console.log('🔧 Checking legacy database schema...');
             
-            // Add indexes for better performance
-            `CREATE INDEX IF NOT EXISTS idx_memories_due_status ON memories(due, status);`,
-            `CREATE INDEX IF NOT EXISTS idx_memories_frequency ON memories(frequency) WHERE frequency IS NOT NULL;`,
-            `CREATE INDEX IF NOT EXISTS idx_memories_completed_date ON memories(completed_date);`,
-            `CREATE INDEX IF NOT EXISTS idx_memories_user_status ON memories(user_id, status);`
-        ];
-        
-        for (const update of schemaUpdates) {
-            try {
-                await db.query(update);
-            } catch (error) {
-                // Ignore "already exists" errors
-                if (!error.message.includes('already exists')) {
-                    console.warn('Schema update warning:', error.message);
+            const schemaUpdates = [
+                // Add columns for recurring task management
+                `ALTER TABLE memories ADD COLUMN IF NOT EXISTS completed_date DATE;`,
+                `ALTER TABLE memories ADD COLUMN IF NOT EXISTS last_recurring_update TIMESTAMP;`,
+                `ALTER TABLE memories ADD COLUMN IF NOT EXISTS performance_streak INTEGER DEFAULT 0;`,
+                
+                // Add indexes for better performance
+                `CREATE INDEX IF NOT EXISTS idx_memories_due_status ON memories(due, status);`,
+                `CREATE INDEX IF NOT EXISTS idx_memories_frequency ON memories(frequency) WHERE frequency IS NOT NULL;`,
+                `CREATE INDEX IF NOT EXISTS idx_memories_completed_date ON memories(completed_date);`,
+                `CREATE INDEX IF NOT EXISTS idx_memories_user_status ON memories(user_id, status);`
+            ];
+            
+            for (const update of schemaUpdates) {
+                try {
+                    await db.query(update);
+                } catch (error) {
+                    // Ignore "already exists" errors
+                    if (!error.message.includes('already exists')) {
+                        console.warn('Schema update warning:', error.message);
+                    }
                 }
             }
+            
+            console.log('✅ Legacy database schema updated');
+            
+        } catch (error) {
+            console.error('❌ Error updating legacy database schema:', error);
         }
-        
-        console.log('✅ Database schema updated');
-        
-    } catch (error) {
-        console.error('❌ Error updating database schema:', error);
     }
 }
 
@@ -264,7 +288,7 @@ async function initializeBackgroundProcesses() {
 }
 
 // Initialize database connection and background processes
-initializeDatabase().then(() => {
+initializeDatabaseConnection().then(() => {
     updateDatabaseSchema().then(() => {
         initializeBackgroundProcesses();
     });
@@ -1209,15 +1233,12 @@ app.post('/api/register', async (req, res) => {
             return res.status(400).json({ error: 'All fields are required' });
         }
         
-        if (!isDbConnected) {
-            console.log('❌ Database not connected');
+        if (!isDbConnected || !authAdapter) {
+            console.log('❌ Database not connected or auth not initialized');
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
-        const existingUser = await db.query(
-            'SELECT id FROM "user" WHERE email = $1 OR username = $2',
-            [email, username]
-        );
+        const existingUser = await authAdapter.findUserByEmailOrUsername(email, username);
         
         if (existingUser.rows.length > 0) {
             console.log('❌ User already exists');
@@ -1225,19 +1246,20 @@ app.post('/api/register', async (req, res) => {
         }
         
         const passwordHash = await bcrypt.hash(password, 10);
-        const userId = uuidv4();
+        const result = await authAdapter.createUser(username, email, passwordHash);
+        const user = result.rows[0];
         
-        const result = await db.query(
-            'INSERT INTO "user" (user_id, username, email, password_hash) VALUES ($1, $2, $3, $4) RETURNING *',
-            [userId, username, email, passwordHash]
-        );
-        
-        const token = jwt.sign({ userId, username, email }, JWT_SECRET);
+        const tokenData = authAdapter.transformUserForToken(user);
+        const token = jwt.sign(tokenData, JWT_SECRET);
         
         console.log('✅ Registration successful for:', username);
         res.status(201).json({
             token,
-            user: { userId, username, email }
+            user: {
+                userId: tokenData.userId,
+                username: tokenData.username,
+                email: tokenData.email
+            }
         });
         
     } catch (error) {
@@ -1258,15 +1280,12 @@ app.post('/api/login', async (req, res) => {
             return res.status(400).json({ error: 'Email and password are required' });
         }
         
-        if (!isDbConnected) {
+        if (!isDbConnected || !authAdapter) {
             console.log('❌ Database not connected for login');
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
-        const result = await db.query(
-            'SELECT * FROM "user" WHERE email = $1',
-            [email]
-        );
+        const result = await authAdapter.findUserByEmailOrUsername(email, email);
         
         if (result.rows.length === 0) {
             console.log('❌ User not found:', email);
@@ -1281,17 +1300,17 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
-        const token = jwt.sign({ 
-            userId: user.user_id, 
-            username: user.username, 
-            email: user.email 
-        }, JWT_SECRET);
+        // Update last login if using new schema
+        await authAdapter.updateLastLogin(user.id);
+        
+        const tokenData = authAdapter.transformUserForToken(user);
+        const token = jwt.sign(tokenData, JWT_SECRET);
         
         console.log('✅ Login successful for:', user.username);
         res.json({
             token,
             user: { 
-                userId: user.user_id, 
+                userId: tokenData.userId, 
                 username: user.username, 
                 email: user.email 
             }
@@ -1538,39 +1557,24 @@ app.get('/api/claude/next-chunk', auth, (req, res) => {
 // MEMORY endpoints
 app.get('/api/memories', auth, async (req, res) => {
     try {
-        if (!isDbConnected) {
+        if (!isDbConnected || !entityAdapter) {
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
         const { type, limit = 50, include_completed = 'false' } = req.query;
         
-        let query = 'SELECT * FROM memories WHERE user_id = $1';
-        let params = [req.user.userId];
-        let paramIndex = 2;
+        const filters = {
+            type: type,
+            limit: parseInt(limit),
+            active: include_completed !== 'true'
+        };
         
-        if (type && memoriesTableColumns.includes('type')) {
-            query += ` AND type = $${paramIndex}`;
-            params.push(type);
-            paramIndex++;
+        if (include_completed !== 'true') {
+            filters.status = include_completed === 'true' ? null : 'active';
         }
         
-        // By default, exclude completed items unless specifically requested
-        if (include_completed !== 'true' && memoriesTableColumns.includes('status')) {
-            query += ` AND (status != 'completed' OR status IS NULL)`;
-        }
-        
-        // Order by available columns
-        if (memoriesTableColumns.includes('priority')) {
-            query += ' ORDER BY priority DESC, id DESC';
-        } else {
-            query += ' ORDER BY id DESC';
-        }
-        
-        query += ` LIMIT $${paramIndex}`;
-        params.push(limit);
-        
-        const result = await db.query(query, params);
-        res.json(result.rows);
+        const memories = await entityAdapter.getMemories(req.user.userId, filters);
+        res.json(memories);
         
     } catch (error) {
         console.error('❌ Get memories error:', error);
@@ -1581,45 +1585,14 @@ app.get('/api/memories', auth, async (req, res) => {
 // NEW: Get today's priority cards
 app.get('/api/memories/today', auth, async (req, res) => {
     try {
-        if (!isDbConnected) {
+        if (!isDbConnected || !entityAdapter) {
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
-        const today = new Date().toISOString().split('T')[0];
+        const todayItems = await entityAdapter.getTodayItems(req.user.userId);
         
-        let query = `
-            SELECT * FROM memories 
-            WHERE user_id = $1 
-            AND (
-                due <= $2 
-                OR priority >= 4 
-                OR status = 'active'
-                OR (type = 'routine' AND status != 'completed')
-            )
-            ORDER BY priority DESC, due ASC
-            LIMIT 50
-        `;
-        
-        // Adapt query based on available columns
-        if (!memoriesTableColumns.includes('due')) {
-            query = `
-                SELECT * FROM memories 
-                WHERE user_id = $1 
-                AND (
-                    priority >= 4 
-                    OR status = 'active'
-                    OR (type = 'routine' AND status != 'completed')
-                )
-                ORDER BY priority DESC, id DESC
-                LIMIT 50
-            `;
-        }
-        
-        const params = memoriesTableColumns.includes('due') ? [req.user.userId, today] : [req.user.userId];
-        const result = await db.query(query, params);
-        
-        console.log(`✅ Found ${result.rows.length} items for today`);
-        res.json(result.rows);
+        console.log(`✅ Found ${todayItems.length} items for today`);
+        res.json(todayItems);
         
     } catch (error) {
         console.error('❌ Get today memories error:', error);
@@ -1629,6 +1602,10 @@ app.get('/api/memories/today', auth, async (req, res) => {
 
 app.post('/api/memories', auth, async (req, res) => {
     try {
+        if (!isDbConnected || !entityAdapter) {
+            return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+        
         const { type, content, ...additionalData } = req.body;
         const userId = req.user.userId;
         
@@ -1636,10 +1613,22 @@ app.post('/api/memories', auth, async (req, res) => {
             return res.status(400).json({ error: 'Type and content are required' });
         }
         
-        const success = await storeMemory(userId, type, content, additionalData);
+        // Use entity adapter for new schema compatibility
+        const memoryData = {
+            type,
+            content,
+            ...additionalData,
+            tenantId: req.user.tenantId
+        };
         
-        if (success) {
-            res.status(201).json({ message: 'Memory stored successfully' });
+        const result = await entityAdapter.createMemory(userId, memoryData);
+        
+        if (result) {
+            // Clear cache
+            if (global.feedManager) {
+                global.feedManager.clearUserCache(userId);
+            }
+            res.status(201).json({ message: 'Memory stored successfully', memory: result });
         } else {
             res.status(500).json({ error: 'Failed to store memory' });
         }
@@ -1652,34 +1641,24 @@ app.post('/api/memories', auth, async (req, res) => {
 // DELETE memory endpoint
 app.delete('/api/memories/:id', auth, async (req, res) => {
     try {
-        if (!isDbConnected) {
+        if (!isDbConnected || !entityAdapter) {
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
         const memoryId = req.params.id;
         const userId = req.user.userId;
         
-        // Verify memory belongs to user before deleting
-        const checkResult = await db.query(
-            'SELECT id FROM memories WHERE id = $1 AND user_id = $2',
-            [memoryId, userId]
-        );
+        const deleted = await entityAdapter.deleteMemory(memoryId, userId);
         
-        if (checkResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Memory not found or access denied' });
-        }
-        
-        // Delete the memory
-        const deleteResult = await db.query(
-            'DELETE FROM memories WHERE id = $1 AND user_id = $2',
-            [memoryId, userId]
-        );
-        
-        if (deleteResult.rowCount > 0) {
+        if (deleted) {
             console.log(`🗑️ Memory deleted: ID ${memoryId} for user ${userId}`);
+            // Clear cache
+            if (global.feedManager) {
+                global.feedManager.clearUserCache(userId);
+            }
             res.json({ message: 'Memory deleted successfully' });
         } else {
-            res.status(500).json({ error: 'Failed to delete memory' });
+            res.status(404).json({ error: 'Memory not found or access denied' });
         }
         
     } catch (error) {
@@ -1691,23 +1670,24 @@ app.delete('/api/memories/:id', auth, async (req, res) => {
 // GET specific memory details
 app.get('/api/memories/:id', auth, async (req, res) => {
     try {
-        if (!isDbConnected) {
+        if (!isDbConnected || !entityAdapter) {
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
         const memoryId = req.params.id;
         const userId = req.user.userId;
         
-        const result = await db.query(
-            'SELECT * FROM memories WHERE id = $1 AND user_id = $2',
-            [memoryId, userId]
-        );
+        const memories = await entityAdapter.getMemories(userId, { 
+            limit: 1 
+        });
         
-        if (result.rows.length === 0) {
+        const memory = memories.find(m => m.id === memoryId);
+        
+        if (!memory) {
             return res.status(404).json({ error: 'Memory not found' });
         }
         
-        res.json(result.rows[0]);
+        res.json(memory);
         
     } catch (error) {
         console.error('❌ Get memory error:', error);
@@ -1718,126 +1698,39 @@ app.get('/api/memories/:id', auth, async (req, res) => {
 // ENHANCED UPDATE MEMORY ENDPOINT WITH FIXED ID HANDLING AND DATA TYPE PROCESSING
 app.put('/api/memories/:id', auth, async (req, res) => {
     try {
-        if (!isDbConnected) {
+        if (!isDbConnected || !entityAdapter) {
             return res.status(500).json({ error: 'Database temporarily unavailable' });
         }
         
-        // FIXED: Convert ID to integer to ensure proper type matching
-        const memoryId = parseInt(req.params.id);
-        if (isNaN(memoryId)) {
-            return res.status(400).json({ error: 'Invalid item ID format' });
-        }
-        
+        const memoryId = req.params.id;
         const userId = req.user.userId;
         const updateData = req.body;
         
         console.log(`🔄 UPDATE REQUEST - ID: ${memoryId}, User: ${userId}`);
         console.log('📝 Update data received:', updateData);
-        console.log('📋 Available columns:', memoriesTableColumns);
         
-        // Verify memory belongs to user before updating
-        const checkResult = await db.query(
-            'SELECT * FROM memories WHERE id = $1 AND user_id = $2',
-            [memoryId, userId]
-        );
+        // Use entity adapter for update
+        const result = await entityAdapter.updateMemory(memoryId, userId, updateData);
         
-        if (checkResult.rows.length === 0) {
+        if (!result) {
             console.log('❌ Memory not found or access denied');
             return res.status(404).json({ error: 'Memory not found or access denied' });
         }
         
-        const currentItem = checkResult.rows[0];
-        console.log('✅ Current item found:', currentItem.content_short || 'No title');
+        console.log(`✅ Memory updated successfully: ID ${memoryId}`);
         
-        // ENHANCED: Data type conversion and validation
-        const processedData = {};
-        let validFieldCount = 0;
-        
-        Object.entries(updateData).forEach(([key, value]) => {
-            // Skip system fields
-            if (['id', 'user_id', 'created_at'].includes(key)) {
-                console.log(`⏭️ Skipping system field: ${key}`);
-                return;
-            }
-            
-            // Check if field exists in table
-            if (!memoriesTableColumns.includes(key)) {
-                console.log(`⚠️ Field ${key} not in table columns, skipping`);
-                return;
-            }
-            
-            // Process the value based on field type
-            let processedValue = processValueByType(key, value);
-            
-            if (processedValue !== undefined) {
-                processedData[key] = processedValue;
-                validFieldCount++;
-                console.log(`✅ Processed ${key}: ${processedValue} (type: ${typeof processedValue})`);
-            } else {
-                console.log(`⚠️ Skipped ${key}: invalid value ${value}`);
-            }
-        });
-        
-        console.log(`📊 Processed ${validFieldCount} valid fields out of ${Object.keys(updateData).length} provided`);
-        
-        if (validFieldCount === 0) {
-            return res.status(400).json({ 
-                error: 'No valid fields to update',
-                availableFields: memoriesTableColumns.filter(col => !['id', 'user_id', 'created_at'].includes(col))
-            });
+        // Clear cache
+        if (global.feedManager) {
+            global.feedManager.clearUserCache(userId);
         }
         
-        // Build update query dynamically
-        const updateFields = [];
-        const updateValues = [];
-        let paramIndex = 1;
-        
-        Object.entries(processedData).forEach(([key, value]) => {
-            // Skip modified field here if it exists - we'll handle it separately
-            if (key === 'modified' && memoriesTableColumns.includes('modified')) {
-                return; // Skip this iteration
-            }
-            updateFields.push(`${key} = $${paramIndex}`);
-            updateValues.push(value);
-            paramIndex++;
-        });
-        
-        // Add modified timestamp if column exists (always use CURRENT_DATE)
-        if (memoriesTableColumns.includes('modified')) {
-            updateFields.push(`modified = CURRENT_DATE`);
+        // Handle recurring tasks if the item was completed
+        if (updateData.status === 'completed' && result.frequency && result.frequency.trim() !== '') {
+            console.log(`🔄 Triggering recurring update for completed item ${memoryId}`);
+            setTimeout(() => recurringManager.triggerDueCheck(), 1000);
         }
         
-        // Add WHERE clause parameters
-        updateValues.push(memoryId, userId);
-        
-        const query = `
-            UPDATE memories 
-            SET ${updateFields.join(', ')} 
-            WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
-            RETURNING *
-        `;
-        
-        console.log('🔧 Update query:', query);
-        console.log('📝 Update values:', updateValues);
-        
-        const result = await db.query(query, updateValues);
-        
-        if (result.rowCount > 0) {
-            const updatedItem = result.rows[0];
-            console.log(`✅ Memory updated successfully: ID ${memoryId}`);
-            console.log('📋 Updated item:', updatedItem.content_short || 'No title');
-            
-            // Handle recurring tasks if the item was completed
-            if (processedData.status === 'completed' && updatedItem.frequency && updatedItem.frequency.trim() !== '') {
-                console.log(`🔄 Triggering recurring update for completed item ${memoryId}`);
-                setTimeout(() => recurringManager.triggerDueCheck(), 1000);
-            }
-            
-            res.json(updatedItem);
-        } else {
-            console.log('❌ Update failed - no rows affected');
-            res.status(500).json({ error: 'Failed to update memory - no changes made' });
-        }
+        res.json(result);
         
     } catch (error) {
         console.error('❌ Update memory error:', error);
