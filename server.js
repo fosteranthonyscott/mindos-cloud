@@ -2242,10 +2242,24 @@ app.post('/api/reset-password-temp', async (req, res) => {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
         }
         
+        // First, let's check if the user exists and see what we have
+        const checkUser = await db.query('SELECT id, username, email FROM users WHERE email = $1 OR username = $1', [email]);
+        console.log('User lookup for:', email, 'Found:', checkUser.rows.length, 'users');
+        if (checkUser.rows.length > 0) {
+            console.log('Found user:', checkUser.rows[0]);
+        }
+        
+        // Also check all users if not found
+        if (checkUser.rows.length === 0) {
+            const allUsers = await db.query('SELECT username, email FROM users');
+            console.log('All users in database:', allUsers.rows);
+        }
+        
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         
+        // Try updating by email OR username
         const result = await db.query(
-            'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2 RETURNING id, username',
+            'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2 OR username = $2 RETURNING id, username, email',
             [hashedPassword, email]
         );
         
