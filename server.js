@@ -64,6 +64,15 @@ let isDbConnected = false;
 let authAdapter = null; // Will be initialized after DB connection
 let entityAdapter = null; // Will be initialized after DB connection
 
+// Legacy compatibility - define memoriesTableColumns with all expected columns
+// This prevents errors in legacy code while we migrate to new schema
+const memoriesTableColumns = [
+    'id', 'user_id', 'type', 'content', 'content_short', 'priority', 
+    'status', 'due', 'completed_date', 'frequency', 'performance_streak',
+    'last_recurring_update', 'location', 'tags', 'notes', 'created_at',
+    'modified', 'active', 'archived', 'routine_type'
+];
+
 // ENHANCED Context Management for Full Brain
 class ConversationContext {
     constructor(userId) {
@@ -2486,7 +2495,7 @@ app.listen(PORT, () => {
     console.log('🧠 Session Storage: Enhanced Context Management Active');
     console.log('🔒 Constraint Tracking: User constraints detected and preserved');
     console.log('🗑️ Memory Management: Enhanced UPDATE/CREATE detection');
-    console.log(`📋 Memory table columns: ${memoriesTableColumns.length} found`);
+    console.log('📋 Using new normalized schema with entity tables');
     console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
     console.log('🌐 Health check available at /health');
     console.log('✅ Multi-memory operation parsing enabled');
