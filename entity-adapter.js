@@ -660,22 +660,67 @@ class EntityAdapter {
         const values = [];
         let paramIndex = 1;
 
-        // Map common fields
+        // Map common fields from old schema to new schema
         const fieldMap = {
-            content: 'description',
-            content_short: 'name',
-            due: type === 'event' ? 'event_date' : type === 'goal' ? 'target_date' : 'due_date'
+            content: type === 'note' ? 'content' : 'description',
+            content_short: type === 'note' ? 'title' : 'name',
+            due: type === 'event' ? 'start_datetime' : type === 'goal' ? 'target_date' : 'due_date',
+            modified: 'updated_at',
+            frequency: 'recurrence_pattern',
+            notes: 'metadata'
         };
+        
+        // Handle special fields
+        if (updates.frequency) {
+            // Convert old frequency format to new recurrence pattern
+            const freqMap = {
+                'daily': 'daily',
+                'weekly': 'weekly',
+                'monthly': 'monthly',
+                'every day': 'daily',
+                'every week': 'weekly',
+                'every month': 'monthly'
+            };
+            updates.frequency = freqMap[updates.frequency] || updates.frequency;
+        }
 
+        // Define valid fields for each entity type
+        const validFields = {
+            goal: ['name', 'description', 'priority', 'status', 'target_date', 'tags', 'metadata'],
+            routine: ['name', 'description', 'priority', 'status', 'recurrence_pattern', 'tags', 'metadata'],
+            task: ['name', 'description', 'priority', 'status', 'due_date', 'tags', 'metadata'],
+            event: ['name', 'description', 'priority', 'status', 'start_datetime', 'end_datetime', 'location', 'tags', 'metadata'],
+            note: ['title', 'content', 'tags', 'metadata']
+        };
+        
+        const allowedFields = validFields[type] || [];
+        
         for (const [field, value] of Object.entries(updates)) {
             const mappedField = fieldMap[field] || field;
             if (field !== 'id' && field !== 'user_id' && field !== 'type') {
-                setClauses.push(`${mappedField} = $${paramIndex}`);
-                values.push(value);
-                paramIndex++;
+                // Only update if field is valid for this entity type
+                if (allowedFields.includes(mappedField)) {
+                    setClauses.push(`${mappedField} = $${paramIndex}`);
+                    values.push(value);
+                    paramIndex++;
+                } else {
+                    console.log(`Skipping invalid field '${mappedField}' for ${type}`);
+                }
             }
         }
 
+        // If no valid fields to update, just update timestamp
+        if (setClauses.length === 0) {
+            setClauses.push(`updated_at = $${paramIndex}`);
+            values.push(new Date());
+            paramIndex++;
+        } else {
+            // Always update the updated_at timestamp
+            setClauses.push(`updated_at = $${paramIndex}`);
+            values.push(new Date());
+            paramIndex++;
+        }
+        
         values.push(id, userId);
         
         const query = `

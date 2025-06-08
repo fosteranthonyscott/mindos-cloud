@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Create Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .item { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Force Create Test Data</h1>
+    <p>This page creates test data using the regular API endpoints.</p>
+    
+    <button onclick="findToken()">1. Find My Token</button>
+    <button onclick="createAllData()">2. Create All Test Data</button>
+    
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script>
+        let token = null;
+        
+        function findToken() {
+            // Try all possible token locations
+            const possibleTokens = [
+                localStorage.getItem('fullbrain_token'),
+                localStorage.getItem('authToken'),
+                localStorage.getItem('token'),
+                localStorage.getItem('jwt'),
+                sessionStorage.getItem('fullbrain_token'),
+                sessionStorage.getItem('authToken')
+            ];
+            
+            // Also check for any key containing 'token'
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.toLowerCase().includes('token')) {
+                    possibleTokens.push(localStorage.getItem(key));
+                }
+            }
+            
+            token = possibleTokens.find(t => t && t.length > 20);
+            
+            if (token) {
+                showStatus(`✅ Found token: ${token.substring(0, 20)}...`, 'success');
+            } else {
+                showStatus('❌ No token found. Trying to extract from page...', 'error');
+                // Try to get from current page's fetch calls
+                tryInterceptToken();
+            }
+        }
+        
+        function tryInterceptToken() {
+            showStatus('Open the main app in another tab, then come back and click Create All Test Data', 'info');
+        }
+        
+        async function createAllData() {
+            if (!token) {
+                // Last resort - prompt for manual entry
+                token = prompt('No token found. Please paste your auth token here (check Network tab in DevTools for a request with Authorization header):');
+                if (!token) return;
+            }
+            
+            const items = [
+                // Goals
+                { type: 'goal', content_short: 'Master Full Brain App', content: 'Become proficient with all features', priority: 9, tags: 'learning,important' },
+                { type: 'goal', content_short: 'Fitness Goal', content: 'Exercise 3x per week', priority: 8, tags: 'health,personal' },
+                { type: 'goal', content_short: 'Learn Spanish', content: 'Achieve conversational level', priority: 7, tags: 'learning,languages' },
+                
+                // Routines
+                { type: 'routine', content_short: 'Morning Routine', content: 'Meditation, coffee, plan the day', priority: 9, frequency: 'daily', tags: 'morning,productivity' },
+                { type: 'routine', content_short: 'Weekly Review', content: 'Review goals and progress', priority: 8, frequency: 'weekly', tags: 'planning,review' },
+                { type: 'routine', content_short: 'Exercise', content: '30 min cardio or weights', priority: 9, frequency: 'daily', tags: 'health,fitness' },
+                
+                // Tasks
+                { type: 'task', content_short: 'Test all features', content: 'Go through each feature systematically', priority: 10, due: new Date().toISOString().split('T')[0], tags: 'testing,urgent' },
+                { type: 'task', content_short: 'Buy groceries', content: 'Milk, bread, eggs, vegetables', priority: 6, due: new Date().toISOString().split('T')[0], tags: 'personal,shopping' },
+                { type: 'task', content_short: 'Team meeting prep', content: 'Prepare agenda and materials', priority: 8, due: new Date(Date.now() + 86400000).toISOString().split('T')[0], tags: 'work,meeting' },
+                
+                // Notes/Insights
+                { type: 'insight', content_short: 'App Performance', content: 'The app loads much faster after the optimization', priority: 5, tags: 'observation,tech' },
+                { type: 'preference', content_short: 'Best Work Time', content: 'I focus best between 9-11 AM', priority: 6, tags: 'personal,productivity' }
+            ];
+            
+            showStatus('Creating items...', 'info');
+            const results = [];
+            
+            for (const item of items) {
+                try {
+                    const response = await fetch('/api/memories', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(item)
+                    });
+                    
+                    if (response.ok) {
+                        results.push(`✅ Created: ${item.type} - ${item.content_short}`);
+                    } else {
+                        const error = await response.text();
+                        results.push(`❌ Failed: ${item.type} - ${item.content_short} (${response.status})`);
+                    }
+                } catch (err) {
+                    results.push(`❌ Error: ${item.type} - ${item.content_short} (${err.message})`);
+                }
+            }
+            
+            document.getElementById('results').innerHTML = '<h3>Results:</h3>' + results.map(r => `<div class="item">${r}</div>`).join('');
+            showStatus('Done! Refresh the main app to see your data.', 'success');
+        }
+        
+        function showStatus(message, type) {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        // Auto-find token on load
+        window.onload = () => {
+            findToken();
+        };
+    </script>
+</body>
+</html>

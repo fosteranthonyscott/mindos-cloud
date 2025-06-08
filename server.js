@@ -1901,18 +1901,47 @@ app.get('/api/session-info', auth, (req, res) => {
 
 // Debug endpoint
 app.get('/api/debug/schema', (req, res) => {
-    res.json({
-        memoriesTableColumns,
-        totalColumns: memoriesTableColumns.length,
-        hasTypeColumn: memoriesTableColumns.includes('type'),
-        hasContentColumn: memoriesTableColumns.includes('content'),
-        hasPriorityColumn: memoriesTableColumns.includes('priority'),
-        hasFrequencyColumn: memoriesTableColumns.includes('frequency'),
-        hasCompletedDateColumn: memoriesTableColumns.includes('completed_date'),
-        hasPerformanceStreakColumn: memoriesTableColumns.includes('performance_streak'),
-        databaseConnected: isDbConnected,
-        recurringManagerStatus: recurringManager.getStatus()
-    });
+    // For new schema, provide a unified view of available fields
+    if (useNewSchema) {
+        // Simulate the old memories table columns for compatibility
+        const unifiedColumns = [
+            'id', 'user_id', 'type', 'content', 'content_short', 
+            'priority', 'status', 'due', 'completed_date', 
+            'frequency', 'performance_streak', 'tags', 'notes',
+            'created_at', 'modified', 'active', 'archived',
+            'location', 'stage', 'routine_type', 'goal_type',
+            'required_time_minutes', 'trigger', 'success_criteria',
+            'target_date', 'event_date'
+        ];
+        
+        res.json({
+            memoriesTableColumns: unifiedColumns,
+            totalColumns: unifiedColumns.length,
+            hasTypeColumn: true,
+            hasContentColumn: true,
+            hasPriorityColumn: true,
+            hasFrequencyColumn: true,
+            hasCompletedDateColumn: true,
+            hasPerformanceStreakColumn: true,
+            databaseConnected: isDbConnected,
+            recurringManagerStatus: recurringManager.getStatus(),
+            usingNewSchema: true
+        });
+    } else {
+        res.json({
+            memoriesTableColumns,
+            totalColumns: memoriesTableColumns.length,
+            hasTypeColumn: memoriesTableColumns.includes('type'),
+            hasContentColumn: memoriesTableColumns.includes('content'),
+            hasPriorityColumn: memoriesTableColumns.includes('priority'),
+            hasFrequencyColumn: memoriesTableColumns.includes('frequency'),
+            hasCompletedDateColumn: memoriesTableColumns.includes('completed_date'),
+            hasPerformanceStreakColumn: memoriesTableColumns.includes('performance_streak'),
+            databaseConnected: isDbConnected,
+            recurringManagerStatus: recurringManager.getStatus(),
+            usingNewSchema: false
+        });
+    }
 });
 
 // ENHANCED: Debug endpoint for troubleshooting edits
