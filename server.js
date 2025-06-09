@@ -2049,91 +2049,9 @@ app.get('/api/memories/enhanced', auth, async (req, res) => {
             return;
         }
         
-        // Fallback to old schema query
-        let query = 'SELECT * FROM memories WHERE user_id = $1';
-        let params = [req.user.userId];
-        let paramIndex = 2;
-        
-        // Type filter
-        if (type && memoriesTableColumns.includes('type')) {
-            query += ` AND type = $${paramIndex}`;
-            params.push(type);
-            paramIndex++;
-        }
-        
-        // Status filter
-        if (status && memoriesTableColumns.includes('status')) {
-            query += ` AND status = $${paramIndex}`;
-            params.push(status);
-            paramIndex++;
-        } else if (exclude_completed === 'true' && memoriesTableColumns.includes('status')) {
-            // Exclude completed items by default for the main feed
-            query += ` AND (status != 'completed' OR status IS NULL)`;
-        }
-        
-        // Priority filter
-        if (priority_min && memoriesTableColumns.includes('priority')) {
-            query += ` AND priority >= $${paramIndex}`;
-            params.push(priority_min);
-            paramIndex++;
-        }
-        
-        // Due date filter
-        if (has_due_date === 'true' && memoriesTableColumns.includes('due')) {
-            query += ` AND due IS NOT NULL`;
-        } else if (has_due_date === 'false' && memoriesTableColumns.includes('due')) {
-            query += ` AND due IS NULL`;
-        }
-        
-        // Search filter
-        if (search) {
-            const searchConditions = [];
-            if (memoriesTableColumns.includes('content')) {
-                searchConditions.push(`content ILIKE $${paramIndex}`);
-            }
-            if (memoriesTableColumns.includes('content_short')) {
-                searchConditions.push(`content_short ILIKE $${paramIndex}`);
-            }
-            if (memoriesTableColumns.includes('notes')) {
-                searchConditions.push(`notes ILIKE $${paramIndex}`);
-            }
-            
-            if (searchConditions.length > 0) {
-                query += ` AND (${searchConditions.join(' OR ')})`;
-                params.push(`%${search}%`);
-                paramIndex++;
-            }
-        }
-        
-        // Sorting
-        const validSortColumns = ['priority', 'created_at', 'modified', 'due', 'id'];
-        const sortColumn = validSortColumns.includes(sort_by) && memoriesTableColumns.includes(sort_by) 
-                          ? sort_by : 'id';
-        const sortOrder = sort_order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-        query += ` ORDER BY ${sortColumn} ${sortOrder}`;
-        
-        // Pagination
-        query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-        params.push(limit, offset);
-        
-        const result = await db.query(query, params);
-        
-        // Get total count for pagination
-        let countQuery = 'SELECT COUNT(*) as total FROM memories WHERE user_id = $1';
-        let countParams = [req.user.userId];
-        
-        const countResult = await db.query(countQuery, countParams);
-        const total = parseInt(countResult.rows[0].total);
-        
-        res.json({
-            memories: result.rows,
-            pagination: {
-                total,
-                limit: parseInt(limit),
-                offset: parseInt(offset),
-                hasMore: (parseInt(offset) + parseInt(limit)) < total
-            }
-        });
+        // No fallback - we only use new schema now
+        console.error('Entity adapter should have handled the request');
+        res.status(500).json({ error: 'Failed to get enhanced memories' });
         
     } catch (error) {
         console.error('Enhanced memories query error:', error);
