@@ -3907,16 +3907,10 @@
         window.editItem = function(itemId) {
             console.log('📝 Editing item:', itemId);
             
-            // ENSURE ID IS PROPERLY CONVERTED
-            const numericId = parseInt(itemId);
-            if (isNaN(numericId)) {
-                showToast('Invalid item ID', 'error');
-                return;
-            }
-            
-            const item = feedItems.find(i => i.id == numericId); // Use == for type coercion
+            // IDs can be UUIDs (strings) or numbers, handle both
+            const item = feedItems.find(i => i.id == itemId || i.id === itemId);
             if (!item) {
-                console.error('❌ Item not found in feedItems:', numericId);
+                console.error('❌ Item not found in feedItems:', itemId);
                 console.log('📋 Available items:', feedItems.map(i => ({ id: i.id, type: typeof i.id })));
                 showToast('Item not found', 'error');
                 return;
@@ -5547,7 +5541,7 @@ Please be helpful, contextual, and focused on this specific item.`;
                             setTimeout(() => {
                                 card.remove();
                                 // Remove from feedItems array
-                                feedItems = feedItems.filter(i => i.id !== itemId);
+                                feedItems = feedItems.filter(i => i.id != itemId);
                                 // Update counts
                                 document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
                                 document.getElementById('totalItemsCount').textContent = feedItems.length;
@@ -5637,7 +5631,7 @@ Please be helpful, contextual, and focused on this specific item.`;
                 
                 if (response.ok) {
                     // Remove from feedItems array
-                    feedItems = feedItems.filter(item => item.id !== itemId);
+                    feedItems = feedItems.filter(item => item.id != itemId);
                     
                     // Remove card from DOM
                     const card = document.querySelector(`[data-item-id="${itemId}"]`);
