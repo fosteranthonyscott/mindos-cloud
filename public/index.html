@@ -2200,9 +2200,42 @@
         // Feed ordering state - already declared at the beginning
         let notesVisibility = JSON.parse(localStorage.getItem('fullbrain_notes_visibility') || '{}');
 
+        // Type-specific field configuration
+        const TYPE_FIELD_CONFIG = {
+            'goal': {
+                required: ['name', 'type', 'status', 'priority'],
+                optional: ['description', 'target_date', 'progress_percentage', 'frequency_check_pattern', 'frequency_check_interval', 'tags', 'project_id']
+            },
+            'routine': {
+                required: ['name', 'type', 'status', 'priority', 'recurrence_pattern'],
+                optional: ['description', 'recurrence_interval', 'time_of_day', 'preferred_time', 'duration_minutes', 'tags', 'project_id']
+            },
+            'task': {
+                required: ['name', 'type', 'status', 'priority'],
+                optional: ['description', 'due_date', 'due_time', 'time_of_day', 'estimated_duration_minutes', 'location', 'tags', 'project_id', 'goal_id', 'event_id']
+            },
+            'event': {
+                required: ['name', 'type', 'status', 'priority', 'event_date'],
+                optional: ['description', 'event_time', 'end_date', 'end_time', 'location', 'is_all_day', 'reminder_minutes', 'tags', 'project_id']
+            },
+            'note': {
+                required: ['content', 'type'],
+                optional: ['tags', 'is_pinned']
+            },
+            'project': {
+                required: ['name', 'type', 'status', 'priority'],
+                optional: ['description', 'color', 'icon', 'tags', 'parent_project_id']
+            }
+        };
+
+        // Function to get fields for a specific type
+        function getFieldsForType(type) {
+            return TYPE_FIELD_CONFIG[type] || TYPE_FIELD_CONFIG['task'];
+        }
+
         // UPDATED: Unified field configuration
-        const CORE_FIELDS = ['content', 'type', 'status', 'priority'];
-        const BASIC_ADD_FIELDS = ['type', 'content', 'priority', 'due', 'status'];
+        const CORE_FIELDS = ['content', 'name', 'type', 'status', 'priority'];
+        const BASIC_ADD_FIELDS = ['type', 'name', 'priority', 'status'];
 
         // ===== DROPDOWN VISIBILITY FIX =====
         // Multi-stage fix for dropdown color and visibility issues
@@ -3491,11 +3524,17 @@
         
         function getAvailableFields() {
             if (!databaseSchema || !databaseSchema.memoriesTableColumns) {
-                return ['content', 'notes', 'type', 'status', 'priority', 'due', 'routine_type', 'goal_type'];
+                return ['content', 'name', 'notes', 'type', 'status', 'priority', 'due', 'event_date', 'target_date', 'recurrence_pattern', 'time_of_day'];
             }
             
-            const excludeFields = ['id', 'user_id', 'created_at'];
-            return databaseSchema.memoriesTableColumns.filter(col => !excludeFields.includes(col));
+            const excludeFields = ['id', 'user_id', 'created_at', 'tenant_id'];
+            const fields = databaseSchema.memoriesTableColumns.filter(col => !excludeFields.includes(col));
+            
+            // Always include both name and content for compatibility
+            if (!fields.includes('name')) fields.push('name');
+            if (!fields.includes('content')) fields.push('content');
+            
+            return fields;
         }
 
         function createFieldElement(fieldName, value = '', isCore = false) {
@@ -3503,23 +3542,27 @@
             const label = fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             
             const selectFields = {
-                'type': ['routine', 'goal', 'task', 'note', 'preference', 'insight', 'event'],
+                'type': ['goal', 'routine', 'task', 'event', 'note', 'project'],
                 'status': ['active', 'completed', 'paused', 'archived'],
                 'priority': [
-                    { value: 1, label: 'Low Priority' },
-                    { value: 2, label: 'Medium Priority' },
-                    { value: 3, label: 'Normal Priority' },
-                    { value: 4, label: 'High Priority' },
-                    { value: 5, label: 'Critical Priority' }
+                    { value: 1, label: 'Priority 1 (Lowest)' },
+                    { value: 2, label: 'Priority 2' },
+                    { value: 3, label: 'Priority 3' },
+                    { value: 4, label: 'Priority 4' },
+                    { value: 5, label: 'Priority 5 (Normal)' },
+                    { value: 6, label: 'Priority 6' },
+                    { value: 7, label: 'Priority 7' },
+                    { value: 8, label: 'Priority 8' },
+                    { value: 9, label: 'Priority 9' },
+                    { value: 10, label: 'Priority 10 (Highest)' }
                 ],
-                'stage': ['planning', 'in_progress', 'review', 'completed', 'on_hold'],
-                'routine_type': ['morning', 'evening', 'daily', 'weekly', 'workout', 'health'],
-                'goal_type': ['personal', 'professional', 'health', 'financial', 'learning']
+                'recurrence_pattern': ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'every_n_days', 'every_n_weeks', 'every_n_months'],
+                'time_of_day': ['early_morning', 'mid_morning', 'noon', 'early_afternoon', 'late_afternoon', 'evening', 'late_evening', 'night', 'late_night']
             };
             
             const textAreaFields = ['content', 'notes', 'success_criteria', 'description'];
-            const numberFields = ['performance_streak', 'required_time_minutes', 'priority'];
-            const dateFields = ['due', 'modified', 'completed_date', 'target_date'];
+            const numberFields = ['performance_streak', 'required_time_minutes', 'priority', 'progress_percentage', 'recurrence_interval', 'frequency_check_interval', 'duration_minutes', 'estimated_duration_minutes', 'reminder_minutes', 'ai_context_score'];
+            const dateFields = ['due', 'modified', 'completed_date', 'target_date', 'due_date', 'event_date', 'end_date'];
             
             let inputHTML = '';
             
@@ -3537,14 +3580,20 @@
                     ).join('');
                 }
                 
-                inputHTML = `<select id="${fieldId}" class="edit-input">${optionsHTML}</select>`;
+                inputHTML = `<select id="${fieldId}" class="edit-input" data-field="${fieldName}">${optionsHTML}</select>`;
             } else if (textAreaFields.includes(fieldName)) {
                 inputHTML = `<textarea id="${fieldId}" class="edit-input" rows="4" placeholder="${label}">${value || ''}</textarea>`;
             } else if (numberFields.includes(fieldName)) {
-                inputHTML = `<input type="number" id="${fieldId}" class="edit-input" placeholder="${label}" value="${value || ''}">`;
+                const min = fieldName === 'priority' ? 1 : fieldName === 'progress_percentage' ? 0 : undefined;
+                const max = fieldName === 'priority' ? 10 : fieldName === 'progress_percentage' ? 100 : undefined;
+                inputHTML = `<input type="number" id="${fieldId}" class="edit-input" placeholder="${label}" value="${value || ''}" ${min !== undefined ? `min="${min}"` : ''} ${max !== undefined ? `max="${max}"` : ''}>`;
             } else if (dateFields.includes(fieldName)) {
                 const dateValue = value ? value.split('T')[0] : '';
                 inputHTML = `<input type="date" id="${fieldId}" class="edit-input" value="${dateValue}">`;
+            } else if (fieldName === 'preferred_time' || fieldName.endsWith('_time')) {
+                inputHTML = `<input type="time" id="${fieldId}" class="edit-input" value="${value || ''}">`;
+            } else if (fieldName === 'is_all_day' || fieldName === 'is_pinned') {
+                inputHTML = `<label style="display: flex; align-items: center; gap: 8px;"><input type="checkbox" id="${fieldId}" class="edit-checkbox" ${value ? 'checked' : ''}> ${label}</label>`;                
             } else {
                 inputHTML = `<input type="text" id="${fieldId}" class="edit-input" placeholder="${label}" value="${value || ''}">`;
             }
@@ -3676,26 +3725,65 @@
             const availableFields = getAvailableFields();
             console.log('📋 Available fields from schema:', availableFields);
             
+            // Get type-specific fields
+            const itemType = item.type || 'task';
+            const typeConfig = getFieldsForType(itemType);
+            
             // Build core fields
             let coreHTML = '';
-            const fieldsToShow = isAddMode ? BASIC_ADD_FIELDS : CORE_FIELDS;
+            let fieldsToShow;
+            
+            if (isAddMode) {
+                // In add mode, always show type first
+                fieldsToShow = ['type', ...typeConfig.required.filter(f => f !== 'type')];
+            } else {
+                // In edit mode, show all existing fields that are in the item
+                fieldsToShow = [...new Set([...typeConfig.required, ...Object.keys(item).filter(k => 
+                    availableFields.includes(k) && !['id', 'user_id', 'tenant_id', 'created_at', 'updated_at', 'deleted_at'].includes(k)
+                )])];
+            }
             
             fieldsToShow.forEach(fieldName => {
-                if (availableFields.includes(fieldName)) {
+                if (availableFields.includes(fieldName) || fieldName === 'name' || fieldName === 'content') {
                     const value = item[fieldName] || '';
-                    console.log(`🔧 Building core field ${fieldName} with value:`, value);
+                    console.log(`🔧 Building field ${fieldName} with value:`, value);
                     coreHTML += createFieldElement(fieldName, value, true);
                 }
             });
             coreContainer.innerHTML = coreHTML;
             
+            // Add type change listener for add mode
+            if (isAddMode) {
+                setTimeout(() => {
+                    const typeSelect = document.querySelector('select[data-field="type"]');
+                    if (typeSelect) {
+                        typeSelect.addEventListener('change', (e) => {
+                            const newType = e.target.value;
+                            console.log('Type changed to:', newType);
+                            item.type = newType;
+                            // Map content to name for non-note types
+                            if (newType !== 'note' && item.content && !item.name) {
+                                item.name = item.content;
+                                delete item.content;
+                            } else if (newType === 'note' && item.name && !item.content) {
+                                item.content = item.name;
+                                delete item.name;
+                            }
+                            buildEditForm(item, isAddMode);
+                        });
+                    }
+                }, 0);
+            }
+            
             // Clear optional fields
             optionalContainer.innerHTML = '';
             optionalContainer.classList.add('collapsed');
             
-            // Build available fields tags
+            // Build available fields tags - filter by type
             let tagsHTML = '';
-            availableFields.forEach(fieldName => {
+            const typeAvailableFields = [...typeConfig.required, ...typeConfig.optional].filter(f => availableFields.includes(f) || f === 'name' || f === 'content');
+            
+            typeAvailableFields.forEach(fieldName => {
                 if (!fieldsToShow.includes(fieldName)) {
                     const hasValue = item[fieldName] !== null && item[fieldName] !== undefined && item[fieldName] !== '';
                     const tagClass = hasValue ? 'field-tag added' : 'field-tag';
@@ -3707,7 +3795,8 @@
                     }
                 }
             });
-            availableContainer.innerHTML = tagsHTML;
+            
+            availableContainer.innerHTML = tagsHTML || '<em>All available fields for this type are shown</em>';
             
             // Auto-show optional fields if any have values (for edit mode)
             if (!isAddMode && activeOptionalFields.size > 0) {
@@ -3801,9 +3890,8 @@
             
             const emptyItem = {
                 type: 'task',
-                content: '',
-                priority: 3,
-                due: '',
+                name: '',
+                priority: 5,
                 status: 'active'
             };
             
@@ -3878,9 +3966,11 @@
                     let value = input.value;
                     
                     // Handle different input types
-                    if (input.type === 'number') {
+                    if (input.type === 'checkbox') {
+                        value = input.checked;
+                    } else if (input.type === 'number') {
                         value = value === '' ? null : Number(value);
-                    } else if (input.type === 'date') {
+                    } else if (input.type === 'date' || input.type === 'time') {
                         value = value === '' ? null : value;
                     } else if (input.tagName === 'SELECT') {
                         value = value === '' ? null : value;
@@ -3893,15 +3983,35 @@
                     console.log(`📝 Raw field ${fieldName}:`, value, `(type: ${typeof value})`);
                 });
                 
-                // ENHANCED: Validate essential fields
+                // ENHANCED: Type-specific validation
                 const validationErrors = [];
+                const itemType = rawData.type || currentEditItem.type || 'task';
+                const typeConfig = getFieldsForType(itemType);
                 
-                if (!rawData.content || (typeof rawData.content === 'string' && rawData.content.trim() === '')) {
-                    validationErrors.push('Content is required');
+                // Validate required fields based on type
+                typeConfig.required.forEach(field => {
+                    if (field === 'content' && itemType !== 'note') {
+                        // Skip content validation for non-note types
+                        return;
+                    }
+                    if (field === 'name' && itemType === 'note') {
+                        // Skip name validation for note types
+                        return;
+                    }
+                    
+                    if (!rawData[field] || (typeof rawData[field] === 'string' && rawData[field].trim() === '')) {
+                        const label = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        validationErrors.push(`${label} is required`);
+                    }
+                });
+                
+                // Special validation for specific fields
+                if (rawData.priority && (rawData.priority < 1 || rawData.priority > 10)) {
+                    validationErrors.push('Priority must be between 1 and 10');
                 }
                 
-                if (isAddMode && (!rawData.type || rawData.type.trim() === '')) {
-                    validationErrors.push('Type is required for new items');
+                if (rawData.progress_percentage && (rawData.progress_percentage < 0 || rawData.progress_percentage > 100)) {
+                    validationErrors.push('Progress percentage must be between 0 and 100');
                 }
                 
                 if (validationErrors.length > 0) {
@@ -3912,9 +4022,24 @@
                 // ENHANCED: Data formatting specific to database expectations
                 const formattedData = {};
                 
+                // Handle content/name mapping based on entity type
+                if (itemType === 'note') {
+                    // Notes use 'content' field
+                    if (rawData.name && !rawData.content) {
+                        rawData.content = rawData.name;
+                        delete rawData.name;
+                    }
+                } else {
+                    // All other types use 'name' field
+                    if (rawData.content && !rawData.name) {
+                        rawData.name = rawData.content;
+                        delete rawData.content;
+                    }
+                }
+                
                 Object.entries(rawData).forEach(([key, value]) => {
                     // Skip system fields
-                    if (['id', 'user_id', 'created_at'].includes(key)) {
+                    if (['id', 'user_id', 'created_at', 'tenant_id'].includes(key)) {
                         return;
                     }
                     
