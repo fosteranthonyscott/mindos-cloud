@@ -5469,14 +5469,55 @@ Please be helpful, contextual, and focused on this specific item.`;
                 
                 if (newStatus === 'completed' && databaseSchema?.memoriesTableColumns) {
                     const today = new Date().toISOString().split('T')[0];
+                    const now = new Date().toISOString();
                     
                     if (databaseSchema.memoriesTableColumns.includes('completed_date')) {
-                        updateData.completed_date = today;
+                        updateData.completed_date = now;
                     }
                     if (databaseSchema.memoriesTableColumns.includes('completed')) {
                         updateData.completed = today;
                     }
                     // Don't send modified - server handles this automatically
+                }
+                
+                // Handle type-specific completion logic
+                let completionMessage = 'Completed! ✅';
+                let shouldRemoveFromFeed = true;
+                
+                switch (item.type) {
+                    case 'routine':
+                        // Routines should reschedule, not be removed
+                        shouldRemoveFromFeed = false;
+                        completionMessage = `Routine completed! ✅ Will reschedule for next occurrence`;
+                        // The backend handles rescheduling automatically
+                        break;
+                        
+                    case 'goal':
+                        // Goals might have progress tracking
+                        if (item.progress_percentage !== undefined && item.progress_percentage < 100) {
+                            shouldRemoveFromFeed = false;
+                            completionMessage = `Goal progress updated! Keep going! 💪`;
+                        } else {
+                            completionMessage = `Goal achieved! 🎯 Congratulations!`;
+                        }
+                        break;
+                        
+                    case 'event':
+                        completionMessage = `Event marked as attended! 📅`;
+                        break;
+                        
+                    case 'task':
+                        completionMessage = `Task completed! ✅`;
+                        break;
+                        
+                    case 'note':
+                        // Notes typically don't get "completed"
+                        shouldRemoveFromFeed = false;
+                        completionMessage = `Note archived! 📝`;
+                        break;
+                        
+                    default:
+                        completionMessage = `${item.type || 'Item'} completed! ✅`;
                 }
                 
                 const response = await fetch(`/api/memories/${itemId}`, {
@@ -5495,10 +5536,10 @@ Please be helpful, contextual, and focused on this specific item.`;
                     Object.assign(item, updatedItem);
                     
                     if (newStatus === 'completed') {
-                        // Remove the item from the feed when completed
                         const card = document.querySelector(`[data-item-id="${itemId}"]`);
-                        if (card) {
-                            // Animate removal
+                        
+                        if (shouldRemoveFromFeed && card) {
+                            // Animate removal for tasks and fully completed items
                             card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
                             card.style.opacity = '0';
                             card.style.transform = 'translateX(100%)';
@@ -5511,9 +5552,23 @@ Please be helpful, contextual, and focused on this specific item.`;
                                 document.getElementById('feedItemCount').textContent = `${feedItems.length} items in feed`;
                                 document.getElementById('totalItemsCount').textContent = feedItems.length;
                             }, 300);
+                        } else if (card) {
+                            // Just update the UI for routines and ongoing goals
+                            const btn = card.querySelector('.action-btn .fa-check')?.parentElement;
+                            if (btn) {
+                                btn.classList.add('completed');
+                            }
+                            
+                            // For routines, we might want to refresh the card to show the next due date
+                            if (item.type === 'routine') {
+                                // Reload the feed after a delay to show the rescheduled routine
+                                setTimeout(() => {
+                                    loadFeedItems();
+                                }, 2000);
+                            }
                         }
                         
-                        showToast(`Completed! ✅ Task removed from active list`, 'success');
+                        showToast(completionMessage, 'success');
                     } else {
                         // If reactivating, update the button UI
                         const card = document.querySelector(`[data-item-id="${itemId}"]`);

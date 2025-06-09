@@ -545,6 +545,12 @@ class EntityAdapter {
         `;
         
         const result = await this.db.query(query, values);
+        
+        // Special handling for routine completion
+        if (result.rows.length > 0 && type === 'routine' && updates.status === 'completed') {
+            await this.rescheduleRoutine(result.rows[0]);
+        }
+        
         return result.rows.length > 0 ? this.convertEntityToMemory(result.rows[0], type) : null;
     }
 
@@ -595,6 +601,79 @@ class EntityAdapter {
             [userId]
         );
         return result.rows.map(row => this.convertEntityToMemory(row, row.item_type));
+    }
+
+    // Reschedule a routine after completion
+    async rescheduleRoutine(routine) {
+        try {
+            const { id, user_id, recurrence_pattern, recurrence_interval } = routine;
+            
+            // Calculate next due date based on recurrence pattern
+            const now = new Date();
+            let nextDue = new Date(routine.next_due || now);
+            
+            switch (recurrence_pattern) {
+                case 'daily':
+                    nextDue.setDate(nextDue.getDate() + (recurrence_interval || 1));
+                    break;
+                case 'weekly':
+                    nextDue.setDate(nextDue.getDate() + (recurrence_interval || 1) * 7);
+                    break;
+                case 'monthly':
+                    nextDue.setMonth(nextDue.getMonth() + (recurrence_interval || 1));
+                    break;
+                case 'quarterly':
+                    nextDue.setMonth(nextDue.getMonth() + 3);
+                    break;
+                case 'yearly':
+                    nextDue.setFullYear(nextDue.getFullYear() + 1);
+                    break;
+                case 'every_n_days':
+                    nextDue.setDate(nextDue.getDate() + (recurrence_interval || 1));
+                    break;
+                case 'every_n_weeks':
+                    nextDue.setDate(nextDue.getDate() + (recurrence_interval || 1) * 7);
+                    break;
+                case 'every_n_months':
+                    nextDue.setMonth(nextDue.getMonth() + (recurrence_interval || 1));
+                    break;
+                default:
+                    // Default to daily if pattern not recognized
+                    nextDue.setDate(nextDue.getDate() + 1);
+            }
+            
+            // Update routine with new due date and reset status
+            const updateQuery = `
+                UPDATE routines 
+                SET next_due = $1,
+                    last_completed = CURRENT_TIMESTAMP,
+                    status = 'active',
+                    performance_streak = performance_streak + 1,
+                    total_completions = total_completions + 1,
+                    completed_steps = 0
+                WHERE id = $2 AND user_id = $3
+                RETURNING *
+            `;
+            
+            const result = await this.db.query(updateQuery, [nextDue, id, user_id]);
+            
+            if (result.rows.length > 0) {
+                console.log(`Routine ${id} rescheduled for ${nextDue.toISOString()}`);
+                
+                // Update longest streak if current streak is higher
+                const streakQuery = `
+                    UPDATE routines 
+                    SET longest_streak = performance_streak
+                    WHERE id = $1 AND user_id = $2 AND performance_streak > longest_streak
+                `;
+                await this.db.query(streakQuery, [id, user_id]);
+            }
+            
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error rescheduling routine:', error);
+            throw error;
+        }
     }
 }
 
