@@ -3120,8 +3120,8 @@
                     <div class="card-main-content">
                         <h2 class="card-title">${item.content_short || item.name || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
                         ${item.notes ? `
-                            <div class="card-notes-container${notesVisibility[item.id] !== false ? ' collapsed' : ''}" data-item-id="${item.id}" id="notes-container-${item.id}" onclick="toggleNotesVisibility(${item.id})">
-                                <button class="notes-edit-btn" onclick="event.stopPropagation(); enableNotesEdit(${item.id})" title="Edit notes">
+                            <div class="card-notes-container${notesVisibility[item.id] !== false ? ' collapsed' : ''}" data-item-id="${item.id}" id="notes-container-${item.id}" onclick="toggleNotesVisibility('${item.id}')">
+                                <button class="notes-edit-btn" onclick="event.stopPropagation(); enableNotesEdit('${item.id}')" title="Edit notes">
                                     <i class="fas fa-pencil-alt"></i>
                                 </button>
                                 <div class="notes-content" id="notes-content-${item.id}">
@@ -3134,7 +3134,7 @@
                             </div>
                         ` : `
                             <p class="card-description">${item.content ? item.content.substring(100, 300) : 'No additional details'}</p>
-                            <button class="add-notes-btn" onclick="enableNotesEdit(${item.id})" title="Add notes">
+                            <button class="add-notes-btn" onclick="enableNotesEdit('${item.id}')" title="Add notes">
                                 <i class="fas fa-plus-circle"></i> Add notes
                             </button>
                         `}
@@ -3147,23 +3147,23 @@
                 </div>
                 
                 <div class="card-actions">
-                    <button class="action-btn ai-chat" onclick="toggleAIBubble(${item.id})" title="AI Assistant">
+                    <button class="action-btn ai-chat" onclick="toggleAIBubble('${item.id}')" title="AI Assistant">
                         <i class="fas fa-brain"></i>
                     </button>
                     
-                    <button class="action-btn ${item.status === 'completed' ? 'completed' : ''}" onclick="toggleComplete(${item.id})" title="Mark Complete">
+                    <button class="action-btn ${item.status === 'completed' ? 'completed' : ''}" onclick="toggleComplete('${item.id}')" title="Mark Complete">
                         <i class="fas fa-check"></i>
                     </button>
                     
-                    <button class="action-btn" onclick="editItem(${item.id})" title="Edit Item">
+                    <button class="action-btn" onclick="editItem('${item.id}')" title="Edit Item">
                         <i class="fas fa-edit"></i>
                     </button>
                     
-                    <button class="action-btn" onclick="shareItem(${item.id})" title="Share Item">
+                    <button class="action-btn" onclick="shareItem('${item.id}')" title="Share Item">
                         <i class="fas fa-share"></i>
                     </button>
                     
-                    <button class="action-btn" onclick="deleteItem(${item.id})" title="Delete Item">
+                    <button class="action-btn" onclick="deleteItem('${item.id}')" title="Delete Item">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
