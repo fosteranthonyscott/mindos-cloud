@@ -3716,7 +3716,8 @@
                 saveBtn.textContent = 'Create Item';
                 fieldControls.style.display = 'block';
             } else {
-                editTitle.textContent = `Edit Item #${item.id}`;
+                const itemTitle = item.name || item.content_short || (item.content ? item.content.substring(0, 50) : 'Item');
+                editTitle.textContent = `Edit ${itemTitle}`;
                 saveBtn.textContent = 'Save Changes';
                 fieldControls.style.display = 'block';
             }
