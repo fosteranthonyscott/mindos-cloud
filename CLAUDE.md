@@ -8,32 +8,33 @@ This file helps Claude understand the Full Brain project context across sessions
 
 **Production URL**: https://fullbrain-cloud-production.up.railway.app/
 
-## Current State (Last Updated: June 8, 2025)
+## Current State (Last Updated: January 6, 2025)
 
 ### Repository Status
 - **Branch**: main
-- **Latest Commit**: b28eb47 - Fix aggressive scroll behavior causing jumps near bottom
-- **Working Tree**: Modified (implementing new database schema)
-- **Sync Status**: Local changes not yet committed
+- **Latest Commit**: a396614 - fix: Clean up enhanced memories endpoint
+- **Working Tree**: Modified (CLAUDE.md)
+- **Sync Status**: Up to date with origin/main
 
-### Current Work: Database Schema Migration
-- **Status**: Ready for Testing
+### Current Work: Schema Migration Completed
+- **Status**: CODE MIGRATED TO NEW SCHEMA ONLY ✅
 - **Changes Made**:
-  1. Created new normalized database schema (database-schema.sql)
-  2. Created database initialization module (database-init.js)
-  3. Created authentication adapter for schema compatibility (auth-adapter.js)
-  4. Created entity adapter for memory endpoint compatibility (entity-adapter.js)
-  5. Updated server.js to support both old and new schemas
-  6. All authentication endpoints preserved and working
-  7. Memory API endpoints now use adapters for compatibility
-  8. Fixed syntax errors and tested server startup
+  1. Removed all dual-schema detection logic
+  2. Entity adapter now uses only new schema
+  3. Auth adapter uses only users table (new schema)
+  4. Server.js simplified - no more schema detection
+  5. Recurring task manager updated for new tables
+  6. All adapters require new schema to function
 
-### Migration Notes:
-- Server now supports BOTH old and new schemas simultaneously
-- Authentication is fully preserved and backwards compatible
-- Memory endpoints work with both schemas via adapters
-- No breaking changes to existing API
-- Ready for deployment with proper DATABASE_URL
+### Migration Status:
+- **Production Database**: New schema deployed and WORKING ✅
+- **Server Code**: Uses ONLY new schema (no fallbacks) ✅
+- **Authentication**: Using users table exclusively ✅
+- **Memory Operations**: All through entity adapter with new tables ✅
+- **Data Storage**: Successfully creating/reading from new entity tables ✅
+- **Known Issues**: 
+  - Some debug endpoints still reference old memories table
+  - Frontend uses old field names (adapter handles conversion seamlessly)
 
 ### Recent Changes
 1. Fixed scroll behavior issues
