@@ -3118,7 +3118,7 @@
                     </div>
                     
                     <div class="card-main-content">
-                        <h2 class="card-title">${item.content_short || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
+                        <h2 class="card-title">${item.content_short || item.name || (item.content ? item.content.substring(0, 100) : 'Untitled')}</h2>
                         ${item.notes ? `
                             <div class="card-notes-container${notesVisibility[item.id] !== false ? ' collapsed' : ''}" data-item-id="${item.id}" id="notes-container-${item.id}" onclick="toggleNotesVisibility(${item.id})">
                                 <button class="notes-edit-btn" onclick="event.stopPropagation(); enableNotesEdit(${item.id})" title="Edit notes">
@@ -5592,25 +5592,42 @@ Please be helpful, contextual, and focused on this specific item.`;
         }
 
         window.shareItem = function(itemId) {
+            console.log('Share button clicked for item:', itemId);
             // Use == for type-flexible comparison
             const item = feedItems.find(i => i.id == itemId);
-            if (!item) return;
+            if (!item) {
+                console.error('Item not found for sharing:', itemId);
+                showToast('Item not found', 'error');
+                return;
+            }
             
-            const text = `Check out my ${item.type}: ${item.content_short || item.content}`;
+            const text = `Check out my ${item.type}: ${item.content_short || item.name || item.content || 'Untitled'}`;
             
             if (navigator.share) {
                 navigator.share({
                     title: 'Full Brain Item',
                     text: text
+                }).catch(err => {
+                    console.log('Share cancelled or failed:', err);
                 });
             } else {
-                navigator.clipboard.writeText(text);
-                showToast('Copied to clipboard!', 'success');
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Copied to clipboard!', 'success');
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    showToast('Failed to copy to clipboard', 'error');
+                });
             }
         }
 
         window.deleteItem = async function(itemId) {
-            if (!confirm('Delete this item and its AI chat history?')) return;
+            console.log('Delete button clicked for item:', itemId);
+            
+            // Find item to show more context in confirmation
+            const item = feedItems.find(i => i.id == itemId);
+            const itemName = item ? (item.name || item.content_short || item.content || 'this item').substring(0, 50) : 'this item';
+            
+            if (!confirm(`Delete "${itemName}" and its AI chat history?`)) return;
             
             try {
                 const response = await fetch(`/api/memories/${itemId}`, {
@@ -5808,16 +5825,27 @@ Please be helpful, contextual, and focused on this specific item.`;
             }
         });
         
+        // Test all button functions are available
+        window.testButtonFunctions = function() {
+            const functions = ['toggleAIBubble', 'toggleComplete', 'editItem', 'shareItem', 'deleteItem'];
+            const results = {};
+            
+            functions.forEach(func => {
+                results[func] = typeof window[func] === 'function';
+            });
+            
+            console.log('Button function availability:', results);
+            
+            // Test if feedItems is populated
+            console.log('Feed items count:', feedItems ? feedItems.length : 'feedItems not defined');
+            
+            return results;
+        };
+
         // Final initialization check
         console.log('=== Full Brain Initialization Complete ===');
-        console.log('moveCard available:', typeof window.moveCard === 'function');
+        console.log('Button functions test:', window.testButtonFunctions());
         console.log('Ready to handle button clicks');
-        
-        // Set up a test after a short delay to ensure DOM is ready
-        setTimeout(() => {
-            console.log('Testing button setup after delay...');
-            window.testMoveButtons();
-        }, 1000);
     </script>
 </body>
 </html>
